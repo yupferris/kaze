@@ -1,13 +1,13 @@
 use std::convert::From;
 use std::io;
 
-pub struct CodeWriter<W: io::Write> {
-    w: W,
+pub struct CodeWriter<'a, W: io::Write> {
+    w: &'a mut W,
     indent_level: u32,
 }
 
-impl<W: io::Write> CodeWriter<W> {
-    pub fn new(w: W) -> CodeWriter<W> {
+impl<'a, W: io::Write> CodeWriter<'a, W> {
+    pub fn new(w: &'a mut W) -> CodeWriter<'a, W> {
         CodeWriter {
             w,
             indent_level: 0,

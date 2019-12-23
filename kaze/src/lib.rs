@@ -1,16 +1,18 @@
-mod code_writer;
-mod module;
+pub mod code_writer;
+pub mod module;
 
-mod sim {
+pub mod sim {
     use crate::code_writer;
     use crate::module;
 
     use std::io::Write;
 
-    pub fn generate<W: Write>(m: &module::Module, w: W) -> Result<(), code_writer::Error> {
+    pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writer::Error> {
         let mut w = code_writer::CodeWriter::new(w);
 
-        w.append_line(&format!("struct {} {{", m.name))?;
+        w.append_line("#[allow(non_camel_case_types)]")?;
+        w.append_line("#[derive(Default)]")?;
+        w.append_line(&format!("pub struct {} {{", m.name))?;
         w.indent();
 
         let inputs = m.inputs();
@@ -18,7 +20,7 @@ mod sim {
             w.append_line("// Inputs")?;
             for (name, _) in inputs.iter() {
                 // TODO: Properly determine output type
-                w.append_line(&format!("bool {},", name))?;
+                w.append_line(&format!("pub {}: bool,", name))?;
             }
         }
 
@@ -27,7 +29,7 @@ mod sim {
             w.append_line("// Outputs")?;
             for (name, _) in outputs.iter() {
                 // TODO: Properly determine output type
-                w.append_line(&format!("bool {},", name))?;
+                w.append_line(&format!("pub {}: bool,", name))?;
             }
         }
 
@@ -47,6 +49,7 @@ mod sim {
         w.append_line("}")?;
         w.append_newline()?;
 
+        w.append_line("#[allow(unused_parens)]")?;
         w.append_line("pub fn prop(&mut self) {")?;
         w.indent();
 
@@ -78,7 +81,7 @@ mod sim {
             }
 
             module::SignalData::Input { ref name, .. } => {
-                w.append(&name)?;
+                w.append(&format!("self.{}", name))?;
             }
 
             module::SignalData::BinOp { lhs, rhs, op } => {
@@ -95,13 +98,13 @@ mod sim {
     }
 }
 
-mod verilog {
+pub mod verilog {
     use crate::code_writer;
     use crate::module;
 
     use std::io::Write;
 
-    pub fn generate<W: Write>(m: &module::Module, w: W) -> Result<(), code_writer::Error> {
+    pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writer::Error> {
         let mut w = code_writer::CodeWriter::new(w);
 
         w.append_line(&format!("module {}(", m.name))?;
@@ -159,7 +162,7 @@ mod verilog {
     }
 }
 
-use module::*;
+/*use module::*;
 
 use std::io::stdout;
 
@@ -194,4 +197,4 @@ fn test_mod<'a>(c: &'a Context<'a>) -> &'a Module<'a> {
     m.output("cya", m.input("henlo", 1) | m.low() | m.low() | m.input("hiiii", 1));
 
     m
-}
+}*/
