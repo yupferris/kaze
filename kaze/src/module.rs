@@ -1,10 +1,26 @@
+//! `Module` graph API.
+//!
+//! TODO: This is where most of the meat should go!
+
 use typed_arena::Arena;
 
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
-use std::ops::BitOr;
+use std::ops::{BitAnd, BitOr, Not};
 use std::ptr;
 
+/// A top-level container/owner object for a module graph.
+///
+/// A `Context` owns all parts of a module graph, and provides an API for creating `Module` objects.
+///
+/// # Examples
+///
+/// ```
+/// # use kaze::module::*;
+/// let c = Context::new();
+/// let m = c.module("my_module");
+/// m.output("out", m.input("in", 1));
+/// ```
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
     signal_arena: Arena<Signal<'a>>,
@@ -14,6 +30,14 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    /// Creates a new, empty `Context`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    /// ```
     pub fn new() -> Context<'a> {
         Context {
             module_arena: Arena::new(),
@@ -24,11 +48,43 @@ impl<'a> Context<'a> {
         }
     }
 
+    /// Creates a new `Module` called `name` in this `Context`.
+    ///
+    /// Conventionally, `name` should be `snake_case`, though this is not enforced.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a `Module` with the same `name` already exists in this `Context`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let my_mod = c.module("my_mod");
+    /// let another_mod = c.module("another_mod");
+    /// ```
+    ///
+    /// The following example panics by creating a `Module` with the same `name` as a previously-created `Module` in the same `Context`:
+    ///
+    /// ```should_panic
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let _ = c.module("a"); // Unique name, OK
+    /// let _ = c.module("b"); // Unique name, OK
+    ///
+    /// let _ = c.module("a"); // Non-unique name, panic!
+    /// ```
     pub fn module<S: Into<String>>(&'a self, name: S) -> &Module {
         let name = name.into();
         let mut modules = self.modules.borrow_mut();
         if modules.contains_key(&name) {
-            panic!("A module with the name \"{}\" already exists in this context", name);
+            panic!(
+                "A module with the name \"{}\" already exists in this context",
+                name
+            );
         }
         let module = self.module_arena.alloc(Module::new(self, name.clone()));
         modules.insert(name, module);
@@ -90,7 +146,10 @@ impl<'a> Module<'a> {
             context: self.context,
             module: self,
 
-            data: SignalData::Input { name: name.clone(), bit_width },
+            data: SignalData::Input {
+                name: name.clone(),
+                bit_width,
+            },
         });
         self.inputs.borrow_mut().insert(name, input);
         input
@@ -101,10 +160,19 @@ impl<'a> Module<'a> {
             panic!("Cannot output a signal from another module");
         }
         // TODO: Error if name already exists in this context
-        let output = self.context.output_arena.alloc(Output {
-            source,
-        });
+        let output = self.context.output_arena.alloc(Output { source });
         self.outputs.borrow_mut().insert(name.into(), output);
+    }
+
+    pub fn mux(&'a self, a: &'a Signal<'a>, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
+        // TODO: Ensure a and b have the same bit widths
+        // TODO: Ensure sel is 1 bit wide
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self,
+
+            data: SignalData::Mux { a, b, sel },
+        })
     }
 }
 
@@ -120,8 +188,15 @@ impl<'a> Signal<'a> {
         match &self.data {
             SignalData::Low | SignalData::High => 1,
             SignalData::Input { bit_width, .. } => *bit_width,
+            SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { lhs, .. } => lhs.bit_width(),
+            SignalData::Mux { a, .. } => a.bit_width(),
         }
+    }
+
+    // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
+    pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
+        self.module.mux(self, b, sel)
     }
 }
 
@@ -130,32 +205,166 @@ pub enum SignalData<'a> {
     Low,
     High,
 
-    Input { name: String, bit_width: u32 },
+    Input {
+        name: String,
+        bit_width: u32,
+    },
 
-    BinOp { lhs: &'a Signal<'a>, rhs: &'a Signal<'a>, op: BinOp }
+    UnOp {
+        source: &'a Signal<'a>,
+        op: UnOp,
+    },
+    BinOp {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
+        op: BinOp,
+    },
+
+    Mux {
+        a: &'a Signal<'a>,
+        b: &'a Signal<'a>,
+        sel: &'a Signal<'a>,
+    },
 }
 
-impl<'a> BitOr for &'a Signal<'a> {
+impl<'a> BitAnd for &'a Signal<'a> {
     type Output = Self;
 
-    fn bitor(self, rhs: Self) -> Self {
+    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `&` of each of the bits of the original two `Signal`s.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lhs = m.low();
+    /// let rhs = m.high();
+    /// let single_bitand = lhs & rhs;
+    ///
+    /// let lhs = m.input("in1", 3);
+    /// let rhs = m.input("in2", 3);
+    /// let multi_bitand = lhs & rhs;
+    /// ```
+    fn bitand(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules");
         }
         if self.bit_width() != rhs.bit_width() {
-            panic!("Signals have different bit widths ({} and {}, respectively)", self.bit_width(), rhs.bit_width());
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively)",
+                self.bit_width(),
+                rhs.bit_width()
+            );
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp { lhs: self, rhs, op: BinOp::BitOr },
+            data: SignalData::BinOp {
+                lhs: self,
+                rhs,
+                op: BinOp::BitAnd,
+            },
+        })
+    }
+}
+
+impl<'a> BitOr for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `|` of each of the bits of the original two `Signal`s.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lhs = m.low();
+    /// let rhs = m.high();
+    /// let single_bitor = lhs | rhs;
+    ///
+    /// let lhs = m.input("in1", 3);
+    /// let rhs = m.input("in2", 3);
+    /// let multi_bitor = lhs | rhs;
+    /// ```
+    fn bitor(self, rhs: Self) -> Self {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively)",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                lhs: self,
+                rhs,
+                op: BinOp::BitOr,
+            },
+        })
+    }
+}
+
+impl<'a> Not for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Produces a new `Signal` whose bits represent the bitwise `!` of each of the bits of the original `Signal`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let input1 = m.input("input1", 1);
+    /// let single_not = !input1;
+    ///
+    /// let input2 = m.input("input2", 6);
+    /// let multi_not = !input2;
+    /// ```
+    fn not(self) -> Self {
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::UnOp {
+                source: self,
+                op: UnOp::Not,
+            },
         })
     }
 }
 
 #[derive(Clone, Copy)]
+pub enum UnOp {
+    Not,
+}
+
+#[derive(Clone, Copy)]
 pub enum BinOp {
+    BitAnd,
     BitOr,
 }
 
@@ -194,18 +403,31 @@ mod tests {
     }
 
     #[test]
-    fn bitor() {
+    #[should_panic(expected = "Attempted to combine signals from different modules")]
+    fn bitand_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 & i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively)")]
+    fn bitand_incompatible_bit_widths_error() {
         let c = Context::new();
 
         let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
 
-        let lhs = m.low();
-        let rhs = m.high();
-        let _ = lhs | rhs;
-
-        let lhs = m.input("a", 3);
-        let rhs = m.input("b", 3);
-        let _ = lhs | rhs;
+        // Panic
+        let _ = i1 & i2;
     }
 
     #[test]

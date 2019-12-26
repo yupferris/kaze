@@ -1,3 +1,5 @@
+//! Internal utilities for writing textual code.
+
 use std::convert::From;
 use std::io;
 
@@ -8,10 +10,7 @@ pub struct CodeWriter<'a, W: io::Write> {
 
 impl<'a, W: io::Write> CodeWriter<'a, W> {
     pub fn new(w: &'a mut W) -> CodeWriter<'a, W> {
-        CodeWriter {
-            w,
-            indent_level: 0,
-        }
+        CodeWriter { w, indent_level: 0 }
     }
 
     pub fn indent(&mut self) {
