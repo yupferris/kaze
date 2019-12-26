@@ -1,6 +1,10 @@
 //! `Module` graph API.
 //!
 //! TODO: This is where most of the meat should go!
+//!
+//! # Modules
+//! # Signals
+//! # Registers
 
 use typed_arena::Arena;
 
@@ -16,7 +20,8 @@ use std::ptr;
 /// # Examples
 ///
 /// ```
-/// # use kaze::module::*;
+/// use kaze::module::*;
+///
 /// let c = Context::new();
 /// let m = c.module("my_module");
 /// m.output("out", m.input("in", 1));
@@ -35,7 +40,8 @@ impl<'a> Context<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     /// ```
     pub fn new() -> Context<'a> {
@@ -59,7 +65,8 @@ impl<'a> Context<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let my_mod = c.module("my_mod");
@@ -69,7 +76,8 @@ impl<'a> Context<'a> {
     /// The following example panics by creating a `Module` with the same `name` as a previously-created `Module` in the same `Context`:
     ///
     /// ```should_panic
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let _ = c.module("a"); // Unique name, OK
@@ -142,6 +150,7 @@ impl<'a> Module<'a> {
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
+        // TODO: Error if bit_width is 0
         let input = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -239,7 +248,8 @@ impl<'a> BitAnd for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let m = c.module("my_module");
