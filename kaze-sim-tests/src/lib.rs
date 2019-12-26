@@ -7,6 +7,15 @@ mod tests {
     use modules::*;
 
     #[test]
+    fn input_masking() {
+        let mut m = input_masking::default();
+
+        m.i = 0xffffffff;
+        m.prop();
+        assert_eq!(m.o, 0x07ffffff);
+    }
+
+    #[test]
     fn bitand_test_module() {
         let mut m = bitand_test_module::default();
 
@@ -109,6 +118,30 @@ mod tests {
         m.i = 0xfadebabe;
         m.prop();
         assert_eq!(m.o, 0xdeadbeef);
+    }
+
+    #[test]
+    fn simple_reg_delay() {
+        let mut m = simple_reg_delay::default();
+
+        // Check initial value
+        m.reset();
+        m.prop();
+        assert_eq!(m.o, 0);
+
+        // The input propagates through 3 registers, so we won't see it output for 3 cycles
+        m.i = 0xffffffffffffffffffffffffffffffff;
+        m.prop(); // Propagate to first register input
+        assert_eq!(m.o, 0);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o, 0);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o, 0);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o, 0xfffffffffffffffffffffffff);
     }
 
     #[test]

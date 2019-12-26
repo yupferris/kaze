@@ -36,9 +36,10 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         w.append_line("// Inputs")?;
         for (name, input) in inputs.iter() {
             w.append_line(&format!(
-                "pub {}: {},",
+                "pub {}: {}, // {} bit(s)",
                 name,
-                type_name_from_bit_width(input.bit_width())
+                type_name_from_bit_width(input.bit_width()),
+                input.bit_width()
             ))?;
         }
     }
@@ -48,9 +49,10 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         w.append_line("// Outputs")?;
         for (name, output) in outputs.iter() {
             w.append_line(&format!(
-                "pub {}: {},",
+                "pub {}: {}, // {} bit(s)",
                 name,
-                type_name_from_bit_width(output.source.bit_width())
+                type_name_from_bit_width(output.source.bit_width()),
+                output.source.bit_width()
             ))?;
         }
     }
@@ -60,7 +62,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         for (reg, names) in c.reg_names.iter() {
             let reg = unsafe { &**reg as &module::Signal };
             let type_name = type_name_from_bit_width(reg.bit_width());
-            w.append_line(&format!("{}: {},", names.value_name, type_name))?;
+            w.append_line(&format!("{}: {}, // {} bit(s)", names.value_name, type_name, reg.bit_width()))?;
             w.append_line(&format!("{}: {},", names.next_name, type_name))?;
         }
     }
@@ -199,8 +201,15 @@ fn gen_expr<'a, W: Write>(
             gen_value(value, bit_width, w)?;
         }
 
-        module::SignalData::Input { ref name, .. } => {
+        module::SignalData::Input { ref name, bit_width } => {
+            if bit_width > 1 {
+                w.append("(")?;
+            }
             w.append(&format!("self.{}", name))?;
+            if bit_width > 1 {
+                w.append(&format!(" & 0x{:x}", (1u128 << bit_width) - 1))?;
+                w.append(")")?;
+            }
         }
 
         module::SignalData::Reg { .. } => {
@@ -219,8 +228,8 @@ fn gen_expr<'a, W: Write>(
                 module::UnOp::Not => "!",
             })?;
             gen_expr(source, c, w)?;
-            if source.bit_width() > 1 {
-                w.append(&format!(" & {}", (1 << source.bit_width()) - 1))?;
+            if bit_width > 1 {
+                w.append(&format!(" & 0x{:x}", (1u128 << bit_width) - 1))?;
                 w.append(")")?;
             }
         }
@@ -277,13 +286,13 @@ fn gen_value<W: Write>(
             if bit_width == 1 {
                 format!("{}", value)
             } else {
-                format!("{}{}", if *value { 1 } else { 0 }, type_name)
+                format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
             }
         }
-        module::Value::U8(value) => format!("{}{}", value, type_name),
-        module::Value::U16(value) => format!("{}{}", value, type_name),
-        module::Value::U32(value) => format!("{}{}", value, type_name),
-        module::Value::U64(value) => format!("{}{}", value, type_name),
-        module::Value::U128(value) => format!("{}{}", value, type_name),
+        module::Value::U8(value) => format!("0x{:x}{}", value, type_name),
+        module::Value::U16(value) => format!("0x{:x}{}", value, type_name),
+        module::Value::U32(value) => format!("0x{:x}{}", value, type_name),
+        module::Value::U64(value) => format!("0x{:x}{}", value, type_name),
+        module::Value::U128(value) => format!("0x{:x}{}", value, type_name),
     })
 }

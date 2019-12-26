@@ -23,13 +23,23 @@ fn main() -> Result<(), Error> {
 
     let c = Context::new();
 
+    sim::generate(&input_masking(&c), &mut file)?;
     sim::generate(&bitand_test_module(&c), &mut file)?;
     sim::generate(&bitor_test_module(&c), &mut file)?;
     sim::generate(&not_test_module(&c), &mut file)?;
     sim::generate(&reg_test_module(&c), &mut file)?;
+    sim::generate(&simple_reg_delay(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
+}
+
+fn input_masking<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("input_masking");
+
+    m.output("o", m.input("i", 27));
+
+    m
 }
 
 fn bitand_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
@@ -67,6 +77,20 @@ fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let r = m.reg(32, None);
     r.drive_next_with(m.input("i", 32));
     m.output("o", r.value());
+
+    m
+}
+
+fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("simple_reg_delay");
+
+    let r1 = m.reg(100, None);
+    r1.drive_next_with(m.input("i", 100));
+    let r2 = m.reg(100, None);
+    r2.drive_next_with(r1.value());
+    let r3 = m.reg(100, None);
+    r3.drive_next_with(r2.value());
+    m.output("o", r3.value());
 
     m
 }
