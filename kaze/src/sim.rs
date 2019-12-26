@@ -3,7 +3,7 @@
 use crate::code_writer;
 use crate::module;
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::io::Write;
 
 struct RegNames {
@@ -12,12 +12,12 @@ struct RegNames {
 }
 
 struct Context<'a> {
-    reg_names: BTreeMap<*const module::Signal<'a>, RegNames>,
+    reg_names: HashMap<*const module::Signal<'a>, RegNames>,
 }
 
 pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writer::Error> {
     let mut c = Context {
-        reg_names: BTreeMap::new(),
+        reg_names: HashMap::new(),
     };
 
     for (_, output) in m.outputs().iter() {
