@@ -25,6 +25,8 @@ fn main() -> Result<(), Error> {
 
     sim::generate(&bitand_test_module(&c), &mut file)?;
     sim::generate(&bitor_test_module(&c), &mut file)?;
+    sim::generate(&not_test_module(&c), &mut file)?;
+    sim::generate(&reg_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -46,6 +48,25 @@ fn bitor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
     m.output("o", i1 | i2);
+
+    m
+}
+
+fn not_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("not_test_module");
+
+    let i = m.input("i", 4);
+    m.output("o", !i);
+
+    m
+}
+
+fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("reg_test_module");
+
+    let r = m.reg(32, None);
+    r.drive_next_with(m.input("i", 32));
+    m.output("o", r.value());
 
     m
 }

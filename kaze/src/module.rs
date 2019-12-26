@@ -30,6 +30,7 @@ pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
     signal_arena: Arena<Signal<'a>>,
     output_arena: Arena<Output<'a>>,
+    register_arena: Arena<Register<'a>>,
 
     modules: RefCell<BTreeMap<String, &'a Module<'a>>>,
 }
@@ -49,6 +50,7 @@ impl<'a> Context<'a> {
             module_arena: Arena::new(),
             signal_arena: Arena::new(),
             output_arena: Arena::new(),
+            register_arena: Arena::new(),
 
             modules: RefCell::new(BTreeMap::new()),
         }
@@ -69,7 +71,7 @@ impl<'a> Context<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let my_mod = c.module("my_mod");
+    /// let my_module = c.module("my_module");
     /// let another_mod = c.module("another_mod");
     /// ```
     ///
@@ -129,28 +131,76 @@ impl<'a> Module<'a> {
         self.outputs.borrow()
     }
 
-    pub fn low(&'a self) -> &Signal<'a> {
+    /// Creates a `Signal` that represents the constant literal specified by `value` and with `bit_width` bits.
+    ///
+    /// The bit width of the type provided by `value` doesn't need to match `bit_width`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let eight_bit_const = m.lit(Value::U32(0xff), 8);
+    /// let one_bit_const = m.lit(Value::U128(0), 1);
+    /// let twenty_seven_bit_const = m.lit(Value::Bool(true), 27);
+    /// ```
+    pub fn lit(&'a self, value: Value, bit_width: u32) -> &Signal<'a> {
+        // TODO: bit_width bounds checks
+        // TODO: Ensure value fits within bit_width bits
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
 
-            data: SignalData::Low,
+            data: SignalData::Lit { value, bit_width },
         })
     }
 
-    pub fn high(&'a self) -> &Signal<'a> {
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
+    /// Convenience method to create a `Signal` that represents a single `0` bit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// // The following two signals are semantically equivalent:
+    /// let low1 = m.low();
+    /// let low2 = m.lit(Value::Bool(false), 1);
+    /// ```
+    pub fn low(&'a self) -> &Signal<'a> {
+        self.lit(Value::Bool(false), 1)
+    }
 
-            data: SignalData::High,
-        })
+    /// Convenience method to create a `Signal` that represents a single `1` bit.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// // The following two signals are semantically equivalent:
+    /// let high1 = m.high();
+    /// let high2 = m.lit(Value::Bool(true), 1);
+    /// ```
+    pub fn high(&'a self) -> &Signal<'a> {
+        self.lit(Value::Bool(true), 1)
     }
 
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
-        // TODO: Error if bit_width is 0
+        // TODO: bit_width bounds checks
         let input = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -171,6 +221,22 @@ impl<'a> Module<'a> {
         // TODO: Error if name already exists in this context
         let output = self.context.output_arena.alloc(Output { source });
         self.outputs.borrow_mut().insert(name.into(), output);
+    }
+
+    pub fn reg(&'a self, bit_width: u32, initial_value: Option<Value>) -> &Register<'a> {
+        // TODO: bit_width bounds checks
+        // TODO: Ensure initial_value fits within bit_width bits
+        let value = self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self,
+
+            data: SignalData::Reg {
+                initial_value: initial_value.unwrap_or(Value::U32(0)),
+                bit_width,
+                next: RefCell::new(None),
+            },
+        });
+        self.context.register_arena.alloc(Register { value })
     }
 
     pub fn mux(&'a self, a: &'a Signal<'a>, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
@@ -195,8 +261,9 @@ pub struct Signal<'a> {
 impl<'a> Signal<'a> {
     pub fn bit_width(&self) -> u32 {
         match &self.data {
-            SignalData::Low | SignalData::High => 1,
+            SignalData::Lit { bit_width, .. } => *bit_width,
             SignalData::Input { bit_width, .. } => *bit_width,
+            SignalData::Reg { bit_width, .. } => *bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { lhs, .. } => lhs.bit_width(),
             SignalData::Mux { a, .. } => a.bit_width(),
@@ -210,13 +277,26 @@ impl<'a> Signal<'a> {
 }
 
 pub enum SignalData<'a> {
-    // TODO: It probably make sense for these to alias to 1-bit literals instead to reduce cases
-    Low,
-    High,
+    Lit {
+        value: Value,
+        bit_width: u32,
+    },
 
     Input {
         name: String,
         bit_width: u32,
+    },
+
+    Reg {
+        initial_value: Value,
+        bit_width: u32,
+        next: RefCell<Option<&'a Signal<'a>>>,
+    },
+
+    Mux {
+        a: &'a Signal<'a>,
+        b: &'a Signal<'a>,
+        sel: &'a Signal<'a>,
     },
 
     UnOp {
@@ -227,12 +307,6 @@ pub enum SignalData<'a> {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: BinOp,
-    },
-
-    Mux {
-        a: &'a Signal<'a>,
-        b: &'a Signal<'a>,
-        sel: &'a Signal<'a>,
     },
 }
 
@@ -380,6 +454,37 @@ pub enum BinOp {
 
 pub struct Output<'a> {
     pub source: &'a Signal<'a>,
+}
+
+pub struct Register<'a> {
+    pub value: &'a Signal<'a>,
+}
+
+impl<'a> Register<'a> {
+    pub fn value(&'a self) -> &Signal<'a> {
+        self.value
+    }
+
+    pub fn drive_next_with(&'a self, n: &'a Signal<'a>) {
+        match self.value.data {
+            SignalData::Reg { ref next, .. } => {
+                // TODO: Ensure n's bit_width is the same as self.value.data.bit_width
+                // TODO: Ensure this register isn't already driven
+                *next.borrow_mut() = Some(n);
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+// TODO: Should this be named Literal or Const or something?
+pub enum Value {
+    Bool(bool),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    U64(u64),
+    U128(u128),
 }
 
 #[cfg(test)]
