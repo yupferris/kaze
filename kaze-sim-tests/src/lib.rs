@@ -179,6 +179,52 @@ mod tests {
     }
 
     #[test]
+    fn bits_test_module_0() {
+        let mut m = bits_test_module_0::default();
+
+        m.i = 0b0110;
+        m.prop();
+        assert_eq!(m.o210, 0b110);
+        assert_eq!(m.o321, 0b011);
+        assert_eq!(m.o10, 0b10);
+        assert_eq!(m.o32, 0b01);
+        assert_eq!(m.o2, true);
+
+        m.i = 0b1001;
+        m.prop();
+        assert_eq!(m.o210, 0b001);
+        assert_eq!(m.o321, 0b100);
+        assert_eq!(m.o10, 0b01);
+        assert_eq!(m.o32, 0b10);
+        assert_eq!(m.o2, false);
+
+        m.i = 0b1111;
+        m.prop();
+        assert_eq!(m.o210, 0b111);
+        assert_eq!(m.o321, 0b111);
+        assert_eq!(m.o10, 0b11);
+        assert_eq!(m.o32, 0b11);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
+    fn bits_test_module_1() {
+        let mut m = bits_test_module_1::default();
+
+        m.i = 0xfadebabedeadbeefabad1deabadc0de5;
+        m.prop();
+        assert_eq!(m.o0, 0xfadebabedeadbeefu64);
+        assert_eq!(m.o1, 0xabad1deabadc0de5u64);
+        assert_eq!(m.o2, 0xfadebabeu32);
+        assert_eq!(m.o3, 0xdeadbeefu32);
+        assert_eq!(m.o4, 0xabad1deau32);
+        assert_eq!(m.o5, 0xbadc0de5u32);
+        assert_eq!(m.o6, 0xadebabedeadbeefau64);
+        assert_eq!(m.o7, true);
+        assert_eq!(m.o8, 0xabadu32);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 

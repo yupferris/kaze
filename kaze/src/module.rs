@@ -92,7 +92,7 @@ impl<'a> Context<'a> {
         let mut modules = self.modules.borrow_mut();
         if modules.contains_key(&name) {
             panic!(
-                "A module with the name \"{}\" already exists in this context",
+                "A module with the name \"{}\" already exists in this context.",
                 name
             );
         }
@@ -283,7 +283,7 @@ impl<'a> Module<'a> {
     /// ```
     pub fn output<S: Into<String>>(&'a self, name: S, source: &'a Signal<'a>) {
         if !ptr::eq(self, source.module) {
-            panic!("Cannot output a signal from another module");
+            panic!("Cannot output a signal from another module.");
         }
         // TODO: Error if name already exists in this context
         let output = self.context.output_arena.alloc(Output { source });
@@ -343,6 +343,11 @@ impl<'a> Signal<'a> {
             SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { lhs, .. } => lhs.bit_width(),
             SignalData::Bit { .. } => 1,
+            SignalData::Bits {
+                range_high,
+                range_low,
+                ..
+            } => range_high - range_low + 1,
             SignalData::Mux { a, .. } => a.bit_width(),
         }
     }
@@ -379,6 +384,50 @@ impl<'a> Signal<'a> {
             data: SignalData::Bit {
                 source: self,
                 index,
+            },
+        })
+    }
+
+    /// Creates a `Signal` that represents a contiguous subset of the bits of this `Signal`, starting at `range_low` as the least significant bit and ending at `range_high` as the most significant bit, inclusive.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either `range_low` or `range_high` is greater than or equal to the bit width of this `Signal`, or if `range_low` is greater than `range_high`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit = m.lit(Value::U32(0b0110), 4);
+    /// let bits_210 = lit.bits(2, 0); // Represents 0b110
+    /// let bits_321 = lit.bits(3, 1); // Represents 0b011
+    /// let bits_10 = lit.bits(1, 0); // Represents 0b10
+    /// let bits_32 = lit.bits(3, 2); // Represents 0b01
+    /// let bits_2 = lit.bits(2, 2); // Represents 1, equivalent to lit.bit(2)
+    /// ```
+    pub fn bits(&'a self, range_high: u32, range_low: u32) -> &Signal<'a> {
+        if range_low >= self.bit_width() {
+            panic!("Cannot specify a range of bits where the lower bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but a lower bound of {} was given.", self.bit_width() - 1, self.bit_width(), range_low);
+        }
+        if range_high >= self.bit_width() {
+            panic!("Cannot specify a range of bits where the upper bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but an upper bound of {} was given.", self.bit_width() - 1, self.bit_width(), range_high);
+        }
+        if range_low > range_high {
+            panic!("Cannot specify a range of bits where the lower bound is greater than the upper bound.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::Bits {
+                source: self,
+                range_high,
+                range_low,
             },
         })
     }
@@ -420,6 +469,11 @@ pub enum SignalData<'a> {
         source: &'a Signal<'a>,
         index: u32,
     },
+    Bits {
+        source: &'a Signal<'a>,
+        range_high: u32,
+        range_low: u32,
+    },
 
     Mux {
         a: &'a Signal<'a>,
@@ -456,11 +510,11 @@ impl<'a> BitAnd for &'a Signal<'a> {
     /// ```
     fn bitand(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules");
+            panic!("Attempted to combine signals from different modules.");
         }
         if self.bit_width() != rhs.bit_width() {
             panic!(
-                "Signals have different bit widths ({} and {}, respectively)",
+                "Signals have different bit widths ({} and {}, respectively).",
                 self.bit_width(),
                 rhs.bit_width()
             );
@@ -505,11 +559,11 @@ impl<'a> BitOr for &'a Signal<'a> {
     /// ```
     fn bitor(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules");
+            panic!("Attempted to combine signals from different modules.");
         }
         if self.bit_width() != rhs.bit_width() {
             panic!(
-                "Signals have different bit widths ({} and {}, respectively)",
+                "Signals have different bit widths ({} and {}, respectively).",
                 self.bit_width(),
                 rhs.bit_width()
             );
@@ -611,7 +665,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "A module with the name \"a\" already exists in this context")]
+    #[should_panic(expected = "A module with the name \"a\" already exists in this context.")]
     fn unique_module_names() {
         let c = Context::new();
 
@@ -671,7 +725,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot output a signal from another module")]
+    #[should_panic(expected = "Cannot output a signal from another module.")]
     fn output_separate_module_error() {
         let c = Context::new();
 
@@ -702,7 +756,49 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Attempted to combine signals from different modules")]
+    #[should_panic(
+        expected = "Cannot specify a range of bits where the lower bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, 2] for a signal with a width of 3 bits, but a lower bound of 3 was given."
+    )]
+    fn bits_range_low_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 3);
+
+        // Panic
+        let _ = i.bits(4, 3);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot specify a range of bits where the upper bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, 2] for a signal with a width of 3 bits, but an upper bound of 3 was given."
+    )]
+    fn bits_range_high_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 3);
+
+        // Panic
+        let _ = i.bits(3, 2);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot specify a range of bits where the lower bound is greater than the upper bound."
+    )]
+    fn bits_range_low_gt_high_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 3);
+
+        // Panic
+        let _ = i.bits(0, 1);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
     fn bitand_separate_module_error() {
         let c = Context::new();
 
@@ -717,7 +813,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively)")]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
     fn bitand_incompatible_bit_widths_error() {
         let c = Context::new();
 
@@ -730,7 +826,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Attempted to combine signals from different modules")]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
     fn bitor_separate_module_error() {
         let c = Context::new();
 
@@ -745,7 +841,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively)")]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
     fn bitor_incompatible_bit_widths_error() {
         let c = Context::new();
 

@@ -32,6 +32,8 @@ fn main() -> Result<(), Error> {
     sim::generate(&simple_reg_delay(&c), &mut file)?;
     sim::generate(&bit_test_module_0(&c), &mut file)?;
     sim::generate(&bit_test_module_1(&c), &mut file)?;
+    sim::generate(&bits_test_module_0(&c), &mut file)?;
+    sim::generate(&bits_test_module_1(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -121,8 +123,40 @@ fn bit_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i = m.input("i", 4);
     m.output("o0", i.bit(0));
     m.output("o1", i.bit(1));
-    m.output("o2", i.bit(2));
+    m.output("o2", i.bit(2).bit(0));
     m.output("o3", i.bit(3));
+
+    m
+}
+
+fn bits_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("bits_test_module_0");
+
+    let i = m.input("i", 4);
+
+    m.output("o210", i.bits(2, 0));
+    m.output("o321", i.bits(3, 1).bits(2, 0));
+    m.output("o10", i.bits(1, 0).bits(1, 0));
+    m.output("o32", i.bits(3, 2));
+    m.output("o2", i.bits(2, 2));
+
+    m
+}
+
+fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("bits_test_module_1");
+
+    let i = m.input("i", 128);
+
+    m.output("o0", i.bits(127, 64));
+    m.output("o1", i.bits(63, 0));
+    m.output("o2", i.bits(127, 96));
+    m.output("o3", i.bits(95, 64));
+    m.output("o4", i.bits(63, 32).bits(31, 0));
+    m.output("o5", i.bits(31, 0));
+    m.output("o6", i.bits(123, 60));
+    m.output("o7", i.bits(99, 99).bits(0, 0).bits(0, 0));
+    m.output("o8", i.bits(63, 48));
 
     m
 }

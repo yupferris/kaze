@@ -229,6 +229,9 @@ fn gather_regs<'a>(signal: &'a module::Signal<'a>, c: &mut Context<'a>) {
         module::SignalData::Bit { source, .. } => {
             gather_regs(source, c);
         }
+        module::SignalData::Bits { source, .. } => {
+            gather_regs(source, c);
+        }
 
         module::SignalData::Mux { a, b, sel } => {
             gather_regs(sel, c);
@@ -311,6 +314,40 @@ fn gen_expr<'a, W: Write>(
             gen_expr(source, c, w)?;
             if source_type.bit_width() > 1 {
                 w.append(&format!(" >> {}) & 1) == 1", index))?;
+            }
+        }
+        module::SignalData::Bits {
+            source, range_low, ..
+        } => {
+            let source_bit_width = source.bit_width();
+            let source_type = ValueType::from_bit_width(source_bit_width);
+            let target_bit_width = signal.bit_width();
+            let target_type = ValueType::from_bit_width(target_bit_width);
+            if source_type.bit_width() > target_type.bit_width() {
+                w.append("(")?;
+            }
+            if target_bit_width < source_bit_width
+                && (target_type.bit_width() == 1 || target_type.bit_width() != target_bit_width)
+            {
+                w.append("(")?;
+            }
+            gen_expr(source, c, w)?;
+            if range_low > 0 {
+                w.append(&format!(" >> {}", range_low))?;
+            }
+            if target_bit_width < source_bit_width
+                && (target_type.bit_width() == 1 || target_type.bit_width() != target_bit_width)
+            {
+                // TODO: It's probably better to do this masking before the type cast for more than one bit
+                w.append(&format!(") & {}", (1u128 << target_bit_width) - 1))?;
+            }
+            if source_type.bit_width() > target_type.bit_width() {
+                w.append(")")?;
+                if target_type.bit_width() == 1 {
+                    w.append(" == 1")?;
+                } else {
+                    w.append(&format!(" as {}", target_type.name()))?;
+                }
             }
         }
 
