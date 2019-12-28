@@ -135,6 +135,10 @@ impl<'a> Module<'a> {
     ///
     /// The bit width of the type provided by `value` doesn't need to match `bit_width`.
     ///
+    /// # Panics
+    ///
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    ///
     /// # Examples
     ///
     /// ```
@@ -148,8 +152,11 @@ impl<'a> Module<'a> {
     /// let one_bit_const = m.lit(Value::U128(0), 1);
     /// let twenty_seven_bit_const = m.lit(Value::Bool(true), 27);
     /// ```
+    ///
+    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn lit(&'a self, value: Value, bit_width: u32) -> &Signal<'a> {
-        // TODO: bit_width bounds checks
+        bit_width_bounds_check(bit_width);
         // TODO: Ensure value fits within bit_width bits
         self.context.signal_arena.alloc(Signal {
             context: self.context,
@@ -200,7 +207,7 @@ impl<'a> Module<'a> {
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
-        // TODO: bit_width bounds checks
+        bit_width_bounds_check(bit_width);
         let input = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -248,6 +255,24 @@ impl<'a> Module<'a> {
 
             data: SignalData::Mux { a, b, sel },
         })
+    }
+}
+
+/// The minimum allowed bit width for any given `Signal`.
+///
+/// This is currently set to `1`, and is not likely to change in future versions of this library.
+pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
+/// The maximum allowed bit width for any given `Signal`.
+///
+/// This is currently set to `128` to simplify simulator code generation, since it allows the generated code to rely purely on native integer types provided by Rust's standard library for storage, arithmetic, etc. Larger widths may be supported in a future version of this library.
+pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
+
+fn bit_width_bounds_check(bit_width: u32) {
+    if bit_width < MIN_SIGNAL_BIT_WIDTH {
+        panic!("Cannot create a literal with {} bit(s). Literals must not be narrower than {} bit(s).", bit_width, MIN_SIGNAL_BIT_WIDTH);
+    }
+    if bit_width > MAX_SIGNAL_BIT_WIDTH {
+        panic!("Cannot create a literal with {} bit(s). Literals must not be wider than {} bit(s).", bit_width, MAX_SIGNAL_BIT_WIDTH);
     }
 }
 
@@ -502,6 +527,46 @@ mod tests {
 
         // Panic
         let _ = c.module("a");
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s).")]
+    fn lit_bit_width_lt_min_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        let _ = m.lit(Value::Bool(false), 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s).")]
+    fn lit_bit_width_gt_max_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        let _ = m.lit(Value::Bool(false), 129);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s).")]
+    fn input_width_lt_min_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        let _ = m.input("i", 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s).")]
+    fn input_width_gt_max_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        let _ = m.input("i", 129);
     }
 
     #[test]
