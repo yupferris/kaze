@@ -313,7 +313,7 @@ fn gen_expr<'a, W: Write>(
             }
             gen_expr(source, c, w)?;
             if source_type.bit_width() > 1 {
-                w.append(&format!(" >> {}) & 1) == 1", index))?;
+                w.append(&format!(" >> {}) & 0x1) == 1", index))?;
             }
         }
         module::SignalData::Bits {
@@ -339,7 +339,7 @@ fn gen_expr<'a, W: Write>(
                 && (target_type.bit_width() == 1 || target_type.bit_width() != target_bit_width)
             {
                 // TODO: It's probably better to do this masking before the type cast for more than one bit
-                w.append(&format!(") & {}", (1u128 << target_bit_width) - 1))?;
+                w.append(&format!(") & 0x{:x}", (1u128 << target_bit_width) - 1))?;
             }
             if source_type.bit_width() > target_type.bit_width() {
                 w.append(")")?;
