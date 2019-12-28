@@ -16,6 +16,15 @@ mod tests {
     }
 
     #[test]
+    fn widest_input() {
+        let mut m = widest_input::default();
+
+        m.i = 0xfadebabedeadbeefabad1deabadc0de5;
+        m.prop();
+        assert_eq!(m.o, 0xfadebabedeadbeefabad1deabadc0de5);
+    }
+
+    #[test]
     fn bitand_test_module() {
         let mut m = bitand_test_module::default();
 

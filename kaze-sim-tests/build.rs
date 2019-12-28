@@ -24,6 +24,7 @@ fn main() -> Result<(), Error> {
     let c = Context::new();
 
     sim::generate(&input_masking(&c), &mut file)?;
+    sim::generate(&widest_input(&c), &mut file)?;
     sim::generate(&bitand_test_module(&c), &mut file)?;
     sim::generate(&bitor_test_module(&c), &mut file)?;
     sim::generate(&not_test_module(&c), &mut file)?;
@@ -38,6 +39,14 @@ fn input_masking<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let m = c.module("input_masking");
 
     m.output("o", m.input("i", 27));
+
+    m
+}
+
+fn widest_input<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("widest_input");
+
+    m.output("o", m.input("i", 128));
 
     m
 }

@@ -15,6 +15,47 @@ struct Context<'a> {
     reg_names: HashMap<*const module::Signal<'a>, RegNames>,
 }
 
+enum ValueType {
+    Bool,
+    U32,
+    U64,
+    U128,
+}
+
+impl ValueType {
+    fn from_bit_width(bit_width: u32) -> ValueType {
+        if bit_width == 1 {
+            ValueType::Bool
+        } else if bit_width <= 32 {
+            ValueType::U32
+        } else if bit_width <= 64 {
+            ValueType::U64
+        } else if bit_width <= 128 {
+            ValueType::U128
+        } else {
+            unreachable!()
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            ValueType::Bool => "bool",
+            ValueType::U32 => "u32",
+            ValueType::U64 => "u64",
+            ValueType::U128 => "u128",
+        }
+    }
+
+    fn bit_width(&self) -> u32 {
+        match self {
+            ValueType::Bool => 1,
+            ValueType::U32 => 32,
+            ValueType::U64 => 64,
+            ValueType::U128 => 128,
+        }
+    }
+}
+
 pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writer::Error> {
     let mut c = Context {
         reg_names: HashMap::new(),
@@ -38,7 +79,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
             w.append_line(&format!(
                 "pub {}: {}, // {} bit(s)",
                 name,
-                type_name_from_bit_width(input.bit_width()),
+                ValueType::from_bit_width(input.bit_width()).name(),
                 input.bit_width()
             ))?;
         }
@@ -51,7 +92,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
             w.append_line(&format!(
                 "pub {}: {}, // {} bit(s)",
                 name,
-                type_name_from_bit_width(output.source.bit_width()),
+                ValueType::from_bit_width(output.source.bit_width()).name(),
                 output.source.bit_width()
             ))?;
         }
@@ -61,7 +102,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         w.append_line("// Regs")?;
         for (reg, names) in c.reg_names.iter() {
             let reg = unsafe { &**reg as &module::Signal };
-            let type_name = type_name_from_bit_width(reg.bit_width());
+            let type_name = ValueType::from_bit_width(reg.bit_width()).name();
             w.append_line(&format!("{}: {}, // {} bit(s)", names.value_name, type_name, reg.bit_width()))?;
             w.append_line(&format!("{}: {},", names.next_name, type_name))?;
         }
@@ -202,11 +243,12 @@ fn gen_expr<'a, W: Write>(
         }
 
         module::SignalData::Input { ref name, bit_width } => {
-            if bit_width > 1 {
+            let target_type = ValueType::from_bit_width(bit_width);
+            if target_type.bit_width() > 1 && target_type.bit_width() != bit_width {
                 w.append("(")?;
             }
             w.append(&format!("self.{}", name))?;
-            if bit_width > 1 {
+            if target_type.bit_width() > 1 && target_type.bit_width() != bit_width {
                 w.append(&format!(" & 0x{:x}", (1u128 << bit_width) - 1))?;
                 w.append(")")?;
             }
@@ -221,14 +263,15 @@ fn gen_expr<'a, W: Write>(
 
         module::SignalData::UnOp { source, op } => {
             let bit_width = source.bit_width();
-            if bit_width > 1 {
+            let target_type = ValueType::from_bit_width(bit_width);
+            if target_type.bit_width() > 1 && target_type.bit_width() != bit_width {
                 w.append("(")?;
             }
             w.append(match op {
                 module::UnOp::Not => "!",
             })?;
             gen_expr(source, c, w)?;
-            if bit_width > 1 {
+            if target_type.bit_width() > 1 && target_type.bit_width() != bit_width {
                 w.append(&format!(" & 0x{:x}", (1u128 << bit_width) - 1))?;
                 w.append(")")?;
             }
@@ -261,26 +304,12 @@ fn gen_expr<'a, W: Write>(
     Ok(())
 }
 
-fn type_name_from_bit_width(bit_width: u32) -> &'static str {
-    if bit_width == 1 {
-        "bool"
-    } else if bit_width <= 32 {
-        "u32"
-    } else if bit_width <= 64 {
-        "u64"
-    } else if bit_width <= 128 {
-        "u128"
-    } else {
-        unreachable!()
-    }
-}
-
 fn gen_value<W: Write>(
     value: &module::Value,
     bit_width: u32,
     w: &mut code_writer::CodeWriter<W>,
 ) -> Result<(), code_writer::Error> {
-    let type_name = type_name_from_bit_width(bit_width);
+    let type_name = ValueType::from_bit_width(bit_width).name();
     w.append(&match value {
         module::Value::Bool(value) => {
             if bit_width == 1 {
