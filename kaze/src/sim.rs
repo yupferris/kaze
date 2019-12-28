@@ -103,7 +103,12 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         for (reg, names) in c.reg_names.iter() {
             let reg = unsafe { &**reg as &module::Signal };
             let type_name = ValueType::from_bit_width(reg.bit_width()).name();
-            w.append_line(&format!("{}: {}, // {} bit(s)", names.value_name, type_name, reg.bit_width()))?;
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                names.value_name,
+                type_name,
+                reg.bit_width()
+            ))?;
             w.append_line(&format!("{}: {},", names.next_name, type_name))?;
         }
     }
@@ -242,7 +247,10 @@ fn gen_expr<'a, W: Write>(
             gen_value(value, bit_width, w)?;
         }
 
-        module::SignalData::Input { ref name, bit_width } => {
+        module::SignalData::Input {
+            ref name,
+            bit_width,
+        } => {
             let target_type = ValueType::from_bit_width(bit_width);
             if target_type.bit_width() > 1 && target_type.bit_width() != bit_width {
                 w.append("(")?;

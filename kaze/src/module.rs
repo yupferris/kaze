@@ -269,10 +269,16 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 
 fn bit_width_bounds_check(bit_width: u32) {
     if bit_width < MIN_SIGNAL_BIT_WIDTH {
-        panic!("Cannot create a literal with {} bit(s). Literals must not be narrower than {} bit(s).", bit_width, MIN_SIGNAL_BIT_WIDTH);
+        panic!(
+            "Cannot create a literal with {} bit(s). Literals must not be narrower than {} bit(s).",
+            bit_width, MIN_SIGNAL_BIT_WIDTH
+        );
     }
     if bit_width > MAX_SIGNAL_BIT_WIDTH {
-        panic!("Cannot create a literal with {} bit(s). Literals must not be wider than {} bit(s).", bit_width, MAX_SIGNAL_BIT_WIDTH);
+        panic!(
+            "Cannot create a literal with {} bit(s). Literals must not be wider than {} bit(s).",
+            bit_width, MAX_SIGNAL_BIT_WIDTH
+        );
     }
 }
 
@@ -530,7 +536,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s).")]
+    #[should_panic(
+        expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s)."
+    )]
     fn lit_bit_width_lt_min_error() {
         let c = Context::new();
 
@@ -540,7 +548,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s).")]
+    #[should_panic(
+        expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s)."
+    )]
     fn lit_bit_width_gt_max_error() {
         let c = Context::new();
 
@@ -550,7 +560,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s).")]
+    #[should_panic(
+        expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s)."
+    )]
     fn input_width_lt_min_error() {
         let c = Context::new();
 
@@ -560,7 +572,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s).")]
+    #[should_panic(
+        expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s)."
+    )]
     fn input_width_gt_max_error() {
         let c = Context::new();
 
