@@ -303,9 +303,15 @@ fn gen_expr<'a, W: Write>(
         }
 
         module::SignalData::Bit { source, index } => {
-            w.append("((")?;
+            let bit_width = source.bit_width();
+            let source_type = ValueType::from_bit_width(bit_width);
+            if source_type.bit_width() > 1 {
+                w.append("((")?;
+            }
             gen_expr(source, c, w)?;
-            w.append(&format!(" >> {}) & 1) == 1", index))?;
+            if source_type.bit_width() > 1 {
+                w.append(&format!(" >> {}) & 1) == 1", index))?;
+            }
         }
 
         module::SignalData::Mux { a, b, sel } => {

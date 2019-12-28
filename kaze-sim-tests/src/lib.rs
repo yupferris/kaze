@@ -154,8 +154,21 @@ mod tests {
     }
 
     #[test]
-    fn bit_test_module() {
-        let mut m = bit_test_module::default();
+    fn bit_test_module_0() {
+        let mut m = bit_test_module_0::default();
+
+        m.i = false;
+        m.prop();
+        assert_eq!(m.o, false);
+
+        m.i = true;
+        m.prop();
+        assert_eq!(m.o, true);
+    }
+
+    #[test]
+    fn bit_test_module_1() {
+        let mut m = bit_test_module_1::default();
 
         m.i = 0b0110;
         m.prop();
