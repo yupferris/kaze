@@ -685,6 +685,7 @@ mod tests {
 
         let m = c.module("a");
 
+        // Panic
         let _ = m.lit(Value::Bool(false), 0);
     }
 
@@ -697,6 +698,7 @@ mod tests {
 
         let m = c.module("a");
 
+        // Panic
         let _ = m.lit(Value::Bool(false), 129);
     }
 
@@ -709,6 +711,7 @@ mod tests {
 
         let m = c.module("a");
 
+        // Panic
         let _ = m.input("i", 0);
     }
 
@@ -721,6 +724,7 @@ mod tests {
 
         let m = c.module("a");
 
+        // Panic
         let _ = m.input("i", 129);
     }
 
