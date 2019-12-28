@@ -156,7 +156,18 @@ impl<'a> Module<'a> {
     /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn lit(&'a self, value: Value, bit_width: u32) -> &Signal<'a> {
-        bit_width_bounds_check(bit_width);
+        if bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a literal with {} bit(s). Signals must not be narrower than {} bit(s).",
+                bit_width, MIN_SIGNAL_BIT_WIDTH
+            );
+        }
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a literal with {} bit(s). Signals must not be wider than {} bit(s).",
+                bit_width, MAX_SIGNAL_BIT_WIDTH
+            );
+        }
         // TODO: Ensure value fits within bit_width bits
         self.context.signal_arena.alloc(Signal {
             context: self.context,
@@ -207,7 +218,18 @@ impl<'a> Module<'a> {
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
-        bit_width_bounds_check(bit_width);
+        if bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create an input with {} bit(s). Signals must not be narrower than {} bit(s).",
+                bit_width, MIN_SIGNAL_BIT_WIDTH
+            );
+        }
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create an input with {} bit(s). Signals must not be wider than {} bit(s).",
+                bit_width, MAX_SIGNAL_BIT_WIDTH
+            );
+        }
         let input = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -266,21 +288,6 @@ pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
 ///
 /// This is currently set to `128` to simplify simulator code generation, since it allows the generated code to rely purely on native integer types provided by Rust's standard library for storage, arithmetic, etc. Larger widths may be supported in a future version of this library.
 pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
-
-fn bit_width_bounds_check(bit_width: u32) {
-    if bit_width < MIN_SIGNAL_BIT_WIDTH {
-        panic!(
-            "Cannot create a literal with {} bit(s). Literals must not be narrower than {} bit(s).",
-            bit_width, MIN_SIGNAL_BIT_WIDTH
-        );
-    }
-    if bit_width > MAX_SIGNAL_BIT_WIDTH {
-        panic!(
-            "Cannot create a literal with {} bit(s). Literals must not be wider than {} bit(s).",
-            bit_width, MAX_SIGNAL_BIT_WIDTH
-        );
-    }
-}
 
 pub struct Signal<'a> {
     context: &'a Context<'a>,
@@ -537,7 +544,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s)."
+        expected = "Cannot create a literal with 0 bit(s). Signals must not be narrower than 1 bit(s)."
     )]
     fn lit_bit_width_lt_min_error() {
         let c = Context::new();
@@ -549,7 +556,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s)."
+        expected = "Cannot create a literal with 129 bit(s). Signals must not be wider than 128 bit(s)."
     )]
     fn lit_bit_width_gt_max_error() {
         let c = Context::new();
@@ -561,7 +568,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Cannot create a literal with 0 bit(s). Literals must not be narrower than 1 bit(s)."
+        expected = "Cannot create an input with 0 bit(s). Signals must not be narrower than 1 bit(s)."
     )]
     fn input_width_lt_min_error() {
         let c = Context::new();
@@ -573,7 +580,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Cannot create a literal with 129 bit(s). Literals must not be wider than 128 bit(s)."
+        expected = "Cannot create an input with 129 bit(s). Signals must not be wider than 128 bit(s)."
     )]
     fn input_width_gt_max_error() {
         let c = Context::new();
