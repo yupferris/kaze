@@ -342,8 +342,45 @@ impl<'a> Signal<'a> {
             SignalData::Reg { bit_width, .. } => *bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { lhs, .. } => lhs.bit_width(),
+            SignalData::Bit { .. } => 1,
             SignalData::Mux { a, .. } => a.bit_width(),
         }
+    }
+
+    /// Creates a `Signal` that represents the value of the single bit of this `Signal` at index `index`, where `index` equal to `0` represents this `Signal`'s least significant bit.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index` is greater than or equal to this `Signal`'s `bit_width`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit = m.lit(Value::U32(0b0110), 4);
+    /// let bit_0 = lit.bit(0); // Represents 0
+    /// let bit_1 = lit.bit(1); // Represents 1
+    /// let bit_2 = lit.bit(2); // Represents 1
+    /// let bit_3 = lit.bit(3); // Represents 0
+    /// ```
+    pub fn bit(&'a self, index: u32) -> &Signal<'a> {
+        if index >= self.bit_width() {
+            panic!("Attempted to take bit index {} from a signal with a width of {} bits. Bit indices must be in the range [0, {}] for a signal with a width of {} bits.", index, self.bit_width(), self.bit_width() - 1, self.bit_width());
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::Bit {
+                source: self,
+                index,
+            },
+        })
     }
 
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
@@ -369,12 +406,6 @@ pub enum SignalData<'a> {
         next: RefCell<Option<&'a Signal<'a>>>,
     },
 
-    Mux {
-        a: &'a Signal<'a>,
-        b: &'a Signal<'a>,
-        sel: &'a Signal<'a>,
-    },
-
     UnOp {
         source: &'a Signal<'a>,
         op: UnOp,
@@ -383,6 +414,17 @@ pub enum SignalData<'a> {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: BinOp,
+    },
+
+    Bit {
+        source: &'a Signal<'a>,
+        index: u32,
+    },
+
+    Mux {
+        a: &'a Signal<'a>,
+        b: &'a Signal<'a>,
+        sel: &'a Signal<'a>,
     },
 }
 
@@ -640,6 +682,23 @@ mod tests {
 
         // Panic
         m1.output("a", i);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to take bit index 3 from a signal with a width of 3 bits. Bit indices must be in the range [0, 2] for a signal with a width of 3 bits."
+    )]
+    fn bit_index_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 3);
+
+        let _ = i.bit(0); // OK
+        let _ = i.bit(1); // OK
+        let _ = i.bit(2); // OK
+
+        let _ = i.bit(3); // Panic, `index` too high
     }
 
     #[test]

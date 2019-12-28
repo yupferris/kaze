@@ -226,6 +226,10 @@ fn gather_regs<'a>(signal: &'a module::Signal<'a>, c: &mut Context<'a>) {
             gather_regs(rhs, c);
         }
 
+        module::SignalData::Bit { source, .. } => {
+            gather_regs(source, c);
+        }
+
         module::SignalData::Mux { a, b, sel } => {
             gather_regs(sel, c);
             gather_regs(b, c);
@@ -296,6 +300,12 @@ fn gen_expr<'a, W: Write>(
             ))?;
             gen_expr(rhs, c, w)?;
             w.append(")")?;
+        }
+
+        module::SignalData::Bit { source, index } => {
+            w.append("((")?;
+            gen_expr(source, c, w)?;
+            w.append(&format!(" >> {}) & 1) == 1", index))?;
         }
 
         module::SignalData::Mux { a, b, sel } => {

@@ -30,6 +30,7 @@ fn main() -> Result<(), Error> {
     sim::generate(&not_test_module(&c), &mut file)?;
     sim::generate(&reg_test_module(&c), &mut file)?;
     sim::generate(&simple_reg_delay(&c), &mut file)?;
+    sim::generate(&bit_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -100,6 +101,18 @@ fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let r3 = m.reg(100, None);
     r3.drive_next_with(r2.value());
     m.output("o", r3.value());
+
+    m
+}
+
+fn bit_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("bit_test_module");
+
+    let i = m.input("i", 4);
+    m.output("o0", i.bit(0));
+    m.output("o1", i.bit(1));
+    m.output("o2", i.bit(2));
+    m.output("o3", i.bit(3));
 
     m
 }
