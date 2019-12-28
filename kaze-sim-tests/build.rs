@@ -148,16 +148,18 @@ fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
 
     let i = m.input("i", 128);
 
-    m.output("o0", i.bits(127, 64));
-    m.output("o1", i.bits(63, 0));
-    m.output("o2", i.bits(127, 96));
-    m.output("o3", i.bits(95, 64));
-    m.output("o4", i.bits(63, 32).bits(31, 0));
-    m.output("o5", i.bits(31, 0));
-    m.output("o6", i.bits(123, 60));
-    m.output("o7", i.bits(99, 99).bits(0, 0).bits(0, 0));
-    m.output("o8", i.bits(63, 48));
-    m.output("o9", i.bits(63, 0).bits(31, 0).bits(15, 0).bits(0, 0));
+    m.output("o0", i.bits(127, 0));
+    m.output("o1", i.bits(126, 0));
+    m.output("o2", i.bits(127, 64));
+    m.output("o3", i.bits(63, 0));
+    m.output("o4", i.bits(127, 96));
+    m.output("o5", i.bits(95, 64));
+    m.output("o6", i.bits(63, 32).bits(31, 0));
+    m.output("o7", i.bits(31, 0));
+    m.output("o8", i.bits(123, 60));
+    m.output("o9", i.bits(99, 99).bits(0, 0).bits(0, 0));
+    m.output("o10", i.bits(63, 48));
+    m.output("o11", i.bits(63, 0).bits(31, 0).bits(15, 0).bits(0, 0));
 
     m
 }
