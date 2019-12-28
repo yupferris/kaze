@@ -215,6 +215,26 @@ impl<'a> Module<'a> {
         self.lit(Value::Bool(true), 1)
     }
 
+    /// Creates an input for this `Module` called `name` with `bit_width` bits, and returns a `Signal` that represents the value of this input.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let my_input = m.input("my_input", 80);
+    /// ```
+    ///
+    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
@@ -243,6 +263,24 @@ impl<'a> Module<'a> {
         input
     }
 
+    /// Creates an output for this `Module` called `name` and with the same number of bits as `source`, and drives this output with `source`.
+    ///
+    /// # Panics
+    ///
+    /// Panics of `source` doesn't belong to this `Module`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let some_signal = m.high();
+    /// m.output("my_output", some_signal);
+    /// ```
     pub fn output<S: Into<String>>(&'a self, name: S, source: &'a Signal<'a>) {
         if !ptr::eq(self, source.module) {
             panic!("Cannot output a signal from another module");
