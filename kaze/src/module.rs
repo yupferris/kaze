@@ -335,6 +335,26 @@ pub struct Signal<'a> {
 }
 
 impl<'a> Signal<'a> {
+    /// Returns the bit width of the given `Signal`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// assert_eq!(m.lit(Value::U32(42), 7).bit_width(), 7);
+    /// assert_eq!(m.input("i", 27).bit_width(), 27);
+    /// assert_eq!(m.reg(46, None).value().bit_width(), 46);
+    /// assert_eq!((!m.low()).bit_width(), 1);
+    /// assert_eq!((m.high() | m.low()).bit_width(), 1);
+    /// assert_eq!(m.lit(Value::U32(12), 100).bit(30).bit_width(), 1);
+    /// assert_eq!(m.lit(Value::U32(1), 99).bits(37, 29).bit_width(), 9);
+    /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
+    /// ```
     pub fn bit_width(&self) -> u32 {
         match &self.data {
             SignalData::Lit { bit_width, .. } => *bit_width,
