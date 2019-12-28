@@ -157,6 +157,7 @@ fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o6", i.bits(123, 60));
     m.output("o7", i.bits(99, 99).bits(0, 0).bits(0, 0));
     m.output("o8", i.bits(63, 48));
+    m.output("o9", i.bits(63, 0).bits(31, 0).bits(15, 0).bits(0, 0));
 
     m
 }

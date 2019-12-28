@@ -222,6 +222,7 @@ mod tests {
         assert_eq!(m.o6, 0xadebabedeadbeefau64);
         assert_eq!(m.o7, true);
         assert_eq!(m.o8, 0xabadu32);
+        assert_eq!(m.o9, true);
     }
 
     #[test]
