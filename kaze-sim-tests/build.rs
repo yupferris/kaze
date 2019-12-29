@@ -34,6 +34,7 @@ fn main() -> Result<(), Error> {
     sim::generate(&bit_test_module_1(&c), &mut file)?;
     sim::generate(&bits_test_module_0(&c), &mut file)?;
     sim::generate(&bits_test_module_1(&c), &mut file)?;
+    sim::generate(&repeat_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -160,6 +161,24 @@ fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o9", i.bits(99, 99).bits(0, 0).bits(0, 0));
     m.output("o10", i.bits(63, 48));
     m.output("o11", i.bits(63, 0).bits(31, 0).bits(15, 0).bits(0, 0));
+
+    m
+}
+
+fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("repeat_test_module");
+
+    let i = m.input("i", 4);
+
+    m.output("o0", i.repeat(1));
+    m.output("o1", i.repeat(2));
+    m.output("o2", i.repeat(5));
+    m.output("o3", i.repeat(8));
+    m.output("o4", i.repeat(16));
+    m.output("o5", i.repeat(32));
+    m.output("o6", i.bit(0).repeat(3));
+    m.output("o7", i.bit(0).repeat(64));
+    m.output("o8", i.bit(0).repeat(128));
 
     m
 }

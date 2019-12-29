@@ -228,6 +228,35 @@ mod tests {
     }
 
     #[test]
+    fn repeat_test_module() {
+        let mut m = repeat_test_module::default();
+
+        m.i = 0xa;
+        m.prop();
+        assert_eq!(m.o0, 0xau32);
+        assert_eq!(m.o1, 0xaau32);
+        assert_eq!(m.o2, 0xaaaaau32);
+        assert_eq!(m.o3, 0xaaaaaaaau32);
+        assert_eq!(m.o4, 0xaaaaaaaaaaaaaaaau64);
+        assert_eq!(m.o5, 0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaau128);
+        assert_eq!(m.o6, 0b000u32);
+        assert_eq!(m.o7, 0x0u64);
+        assert_eq!(m.o8, 0x0u128);
+
+        m.i = 0x5;
+        m.prop();
+        assert_eq!(m.o0, 0x5u32);
+        assert_eq!(m.o1, 0x55u32);
+        assert_eq!(m.o2, 0x55555u32);
+        assert_eq!(m.o3, 0x55555555u32);
+        assert_eq!(m.o4, 0x5555555555555555u64);
+        assert_eq!(m.o5, 0x55555555555555555555555555555555u128);
+        assert_eq!(m.o6, 0b111u32);
+        assert_eq!(m.o7, 0xffffffffffffffffu64);
+        assert_eq!(m.o8, 0xffffffffffffffffffffffffffffffffu128);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 

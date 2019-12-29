@@ -233,6 +233,10 @@ fn gather_regs<'a>(signal: &'a module::Signal<'a>, c: &mut Context<'a>) {
             gather_regs(source, c);
         }
 
+        module::SignalData::Repeat { source, .. } => {
+            gather_regs(source, c);
+        }
+
         module::SignalData::Mux { a, b, sel } => {
             gather_regs(sel, c);
             gather_regs(b, c);
@@ -349,6 +353,35 @@ fn gen_expr<'a, W: Write>(
                     w.append(&format!(" as {}", target_type.name()))?;
                 }
             }
+        }
+
+        module::SignalData::Repeat { source, count } => {
+            let source_bit_width = source.bit_width();
+            let source_type = ValueType::from_bit_width(source_bit_width);
+            let target_bit_width = signal.bit_width();
+            let target_type = ValueType::from_bit_width(target_bit_width);
+            w.append("(")?;
+            for i in 0..count {
+                if i > 0 {
+                    w.append(" | ")?;
+                }
+                w.append("(")?;
+                if target_type.bit_width() > source_type.bit_width() {
+                    w.append("(")?;
+                    if source_type.bit_width() == 1 {
+                        w.append("if ")?;
+                    }
+                }
+                gen_expr(source, c, w)?;
+                if target_type.bit_width() > source_type.bit_width() {
+                    if source_type.bit_width() == 1 {
+                        w.append(" { 1 } else { 0 }")?;
+                    }
+                    w.append(&format!(") as {}", target_type.name()))?;
+                }
+                w.append(&format!(") << 0x{:x}", i * source.bit_width()))?;
+            }
+            w.append(")")?;
         }
 
         module::SignalData::Mux { a, b, sel } => {

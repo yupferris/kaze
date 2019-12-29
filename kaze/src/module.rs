@@ -353,6 +353,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(12), 100).bit(30).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(1), 99).bits(37, 29).bit_width(), 9);
+    /// assert_eq!(m.high().repeat(35).bit_width(), 35);
     /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
@@ -368,6 +369,7 @@ impl<'a> Signal<'a> {
                 range_low,
                 ..
             } => range_high - range_low + 1,
+            SignalData::Repeat { source, count } => source.bit_width() * count,
             SignalData::Mux { a, .. } => a.bit_width(),
         }
     }
@@ -452,6 +454,49 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Creates a `Signal` that represents this `Signal` repeated `count` times.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.bit_width() * count` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit = m.lit(Value::U32(0xa), 4);
+    /// let repeat_1 = lit.repeat(1); // Equivalent to just lit
+    /// let repeat_2 = lit.repeat(2); // Equivalent to 8-bit lit with value 0xaa
+    /// let repeat_5 = lit.repeat(5); // Equivalent to 20-bit lit with value 0xaaaaa
+    /// let repeat_8 = lit.repeat(8); // Equivalent to 32-bit lit with value 0xaaaaaaaa
+    /// ```
+    ///
+    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    pub fn repeat(&'a self, count: u32) -> &Signal<'a> {
+        let target_bit_width = self.bit_width() * count;
+        if target_bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to repeat a {}-bit signal {} times, but this results in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MIN_SIGNAL_BIT_WIDTH);
+        }
+        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to repeat a {}-bit signal {} times, but this results in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::Repeat {
+                source: self,
+                count,
+            },
+        })
+    }
+
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, b, sel)
@@ -493,6 +538,11 @@ pub enum SignalData<'a> {
         source: &'a Signal<'a>,
         range_high: u32,
         range_low: u32,
+    },
+
+    Repeat {
+        source: &'a Signal<'a>,
+        count: u32,
     },
 
     Mux {
@@ -819,6 +869,34 @@ mod tests {
 
         // Panic
         let _ = i.bits(0, 1);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to repeat a 1-bit signal 0 times, but this results in a bit width of 0, which is less than the minimal signal bit width of 1 bit(s)."
+    )]
+    fn repeat_count_zero_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 1);
+
+        // Panic
+        let _ = i.repeat(0);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to repeat a 1-bit signal 129 times, but this results in a bit width of 129, which is greater than the maximum signal bit width of 128 bit(s)."
+    )]
+    fn repeat_count_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i = m.input("i", 1);
+
+        // Panic
+        let _ = i.repeat(129);
     }
 
     #[test]
