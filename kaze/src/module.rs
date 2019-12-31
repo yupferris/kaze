@@ -481,10 +481,10 @@ impl<'a> Signal<'a> {
     pub fn repeat(&'a self, count: u32) -> &Signal<'a> {
         let target_bit_width = self.bit_width() * count;
         if target_bit_width < MIN_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this results in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MIN_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MIN_SIGNAL_BIT_WIDTH);
         }
         if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this results in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
@@ -873,7 +873,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to repeat a 1-bit signal 0 times, but this results in a bit width of 0, which is less than the minimal signal bit width of 1 bit(s)."
+        expected = "Attempted to repeat a 1-bit signal 0 times, but this would result in a bit width of 0, which is less than the minimal signal bit width of 1 bit(s)."
     )]
     fn repeat_count_zero_error() {
         let c = Context::new();
@@ -887,7 +887,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to repeat a 1-bit signal 129 times, but this results in a bit width of 129, which is greater than the maximum signal bit width of 128 bit(s)."
+        expected = "Attempted to repeat a 1-bit signal 129 times, but this would result in a bit width of 129, which is greater than the maximum signal bit width of 128 bit(s)."
     )]
     fn repeat_count_oob_error() {
         let c = Context::new();
