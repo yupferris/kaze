@@ -257,6 +257,23 @@ mod tests {
     }
 
     #[test]
+    fn concat_test_module() {
+        let mut m = concat_test_module::default();
+
+        m.i1 = 0xa;
+        m.i2 = 0x5;
+        m.i3 = 0xfadebabe;
+        m.prop();
+        assert_eq!(m.o0, 0xa5u32);
+        assert_eq!(m.o1, 0x5au32);
+        assert_eq!(m.o2, 0xau32);
+        assert_eq!(m.o3, 0x1au32);
+        assert_eq!(m.o4, 0x1au32);
+        assert_eq!(m.o5, 0xfadebabefadebabeu64);
+        assert_eq!(m.o6, 0xfadebabefadebabefadebabefadebabeu128);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 

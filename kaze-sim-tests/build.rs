@@ -35,6 +35,7 @@ fn main() -> Result<(), Error> {
     sim::generate(&bits_test_module_0(&c), &mut file)?;
     sim::generate(&bits_test_module_1(&c), &mut file)?;
     sim::generate(&repeat_test_module(&c), &mut file)?;
+    sim::generate(&concat_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -179,6 +180,24 @@ fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o6", i.bit(0).repeat(3));
     m.output("o7", i.bit(0).repeat(64));
     m.output("o8", i.bit(0).repeat(128));
+
+    m
+}
+
+fn concat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("concat_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    let i3 = m.input("i3", 32);
+
+    m.output("o0", i1.concat(i2));
+    m.output("o1", i2.concat(i1));
+    m.output("o2", m.low().concat(i1));
+    m.output("o3", m.high().concat(i1));
+    m.output("o4", i2.bit(0).concat(i1));
+    m.output("o5", i3.concat(i3));
+    m.output("o6", i3.concat(i3).concat(i3).concat(i3));
 
     m
 }

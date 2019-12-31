@@ -354,6 +354,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(Value::U32(12), 100).bit(30).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(1), 99).bits(37, 29).bit_width(), 9);
     /// assert_eq!(m.high().repeat(35).bit_width(), 35);
+    /// assert_eq!(m.lit(Value::U32(1), 20).concat(m.high()).bit_width(), 21);
     /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
@@ -370,6 +371,7 @@ impl<'a> Signal<'a> {
                 ..
             } => range_high - range_low + 1,
             SignalData::Repeat { source, count } => source.bit_width() * count,
+            SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
             SignalData::Mux { a, .. } => a.bit_width(),
         }
     }
@@ -497,6 +499,44 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Creates a `Signal` that represents this `Signal` concatenated with `rhs`.
+    ///
+    /// `self` represents the upper bits in the resulting `Signal`, and `rhs` represents the lower bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.bit_width() + rhs.bit_width()` is greater than [`MAX_SIGNAL_BIT_WIDTH`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(Value::U32(0xa), 4);
+    /// let lit_b = m.lit(Value::U32(0xff), 8);
+    /// let concat_1 = lit_a.concat(lit_b); // Equivalent to 12-bit lit with value 0xaff
+    /// let concat_2 = lit_b.concat(lit_a); // Equivalent to 12-bit lit with value 0xffa
+    /// let concat_3 = lit_a.concat(lit_a); // Equivalent to 8-bit lit with value 0xaa
+    /// ```
+    ///
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    pub fn concat(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        let target_bit_width = self.bit_width() + rhs.bit_width();
+        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::Concat { lhs: self, rhs },
+        })
+    }
+
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, b, sel)
@@ -543,6 +583,10 @@ pub enum SignalData<'a> {
     Repeat {
         source: &'a Signal<'a>,
         count: u32,
+    },
+    Concat {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
     },
 
     Mux {
@@ -897,6 +941,21 @@ mod tests {
 
         // Panic
         let _ = i.repeat(129);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to concatenate signals with 128 bit(s) and 1 bit(s) respectively, but this would result in a bit width of 129, which is greater than the maximum signal bit width of 128 bit(s)."
+    )]
+    fn concat_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("i1", 128);
+        let i2 = m.input("i2", 1);
+
+        // Panic
+        let _ = i1.concat(i2);
     }
 
     #[test]

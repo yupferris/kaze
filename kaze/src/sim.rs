@@ -74,6 +74,10 @@ impl<'a> Compiler<'a> {
             module::SignalData::Repeat { source, .. } => {
                 self.gather_regs(source);
             }
+            module::SignalData::Concat { lhs, rhs } => {
+                self.gather_regs(lhs);
+                self.gather_regs(rhs);
+            }
 
             module::SignalData::Mux { a, b, sel } => {
                 self.gather_regs(sel);
@@ -200,6 +204,22 @@ impl<'a> Compiler<'a> {
                     }
 
                     expr
+                }
+                module::SignalData::Concat { lhs, rhs } => {
+                    let lhs_type = ValueType::from_bit_width(lhs.bit_width());
+                    let rhs_bit_width = rhs.bit_width();
+                    let rhs_type = ValueType::from_bit_width(rhs_bit_width);
+                    let lhs = self.compile_signal(lhs);
+                    let rhs = self.compile_signal(rhs);
+                    let target_type = ValueType::from_bit_width(signal.bit_width());
+                    let lhs = self.gen_cast(lhs, lhs_type, target_type);
+                    let rhs = self.gen_cast(rhs, rhs_type, target_type);
+                    let lhs = self.gen_shift_left(lhs, rhs_bit_width);
+                    self.gen_temp(Expr::BinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: BinOp::BitOr,
+                    })
                 }
 
                 module::SignalData::Mux { a, b, sel } => {
