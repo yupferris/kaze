@@ -355,6 +355,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(Value::U32(1), 99).bits(37, 29).bit_width(), 9);
     /// assert_eq!(m.high().repeat(35).bit_width(), 35);
     /// assert_eq!(m.lit(Value::U32(1), 20).concat(m.high()).bit_width(), 21);
+    /// assert_eq!(m.lit(Value::U32(0xaa), 8).eq(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
@@ -363,7 +364,7 @@ impl<'a> Signal<'a> {
             SignalData::Input { bit_width, .. } => *bit_width,
             SignalData::Reg { bit_width, .. } => *bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
-            SignalData::BinOp { lhs, .. } => lhs.bit_width(),
+            SignalData::BinOp { bit_width, .. } => *bit_width,
             SignalData::Bit { .. } => 1,
             SignalData::Bits {
                 range_high,
@@ -537,6 +538,52 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Creates a `Signal` that represents the single-bit result of a bitwise boolean equality comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(Value::U32(0xa), 4);
+    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let eq_1 = lit_a.eq(lit_a); // Equivalent to m.high()
+    /// let eq_2 = lit_b.eq(lit_b); // Equivalent to m.high()
+    /// let eq_3 = lit_a.eq(lit_b); // Equivalent to m.low()
+    /// let eq_4 = lit_b.eq(lit_a); // Equivalent to m.low()
+    /// ```
+    pub fn eq(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::Equal,
+            },
+        })
+    }
+
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, b, sel)
@@ -565,6 +612,7 @@ pub enum SignalData<'a> {
         op: UnOp,
     },
     BinOp {
+        bit_width: u32,
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: BinOp,
@@ -638,6 +686,7 @@ impl<'a> BitAnd for &'a Signal<'a> {
             module: self.module,
 
             data: SignalData::BinOp {
+                bit_width: self.bit_width(),
                 lhs: self,
                 rhs,
                 op: BinOp::BitAnd,
@@ -687,6 +736,7 @@ impl<'a> BitOr for &'a Signal<'a> {
             module: self.module,
 
             data: SignalData::BinOp {
+                bit_width: self.bit_width(),
                 lhs: self,
                 rhs,
                 op: BinOp::BitOr,
@@ -736,6 +786,7 @@ impl<'a> BitXor for &'a Signal<'a> {
             module: self.module,
 
             data: SignalData::BinOp {
+                bit_width: self.bit_width(),
                 lhs: self,
                 rhs,
                 op: BinOp::BitXor,
@@ -786,6 +837,7 @@ pub enum BinOp {
     BitAnd,
     BitOr,
     BitXor,
+    Equal,
 }
 
 pub struct Output<'a> {
@@ -1010,7 +1062,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Attempted to combine signals from different modules.")]
-    fn bitand_separate_module_error() {
+    fn eq_separate_module_error() {
         let c = Context::new();
 
         let m1 = c.module("a");
@@ -1020,12 +1072,12 @@ mod tests {
         let i2 = m2.high();
 
         // Panic
-        let _ = i1 & i2;
+        let _ = i1.eq(i2);
     }
 
     #[test]
     #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
-    fn bitand_incompatible_bit_widths_error() {
+    fn eq_incompatible_bit_widths_error() {
         let c = Context::new();
 
         let m = c.module("a");
@@ -1033,7 +1085,7 @@ mod tests {
         let i2 = m.input("b", 5);
 
         // Panic
-        let _ = i1 & i2;
+        let _ = i1.eq(i2);
     }
 
     #[test]

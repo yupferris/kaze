@@ -144,7 +144,7 @@ impl<'a> Compiler<'a> {
                     let target_type = ValueType::from_bit_width(bit_width);
                     self.gen_mask(expr, bit_width, target_type)
                 }
-                module::SignalData::BinOp { lhs, rhs, op } => {
+                module::SignalData::BinOp { lhs, rhs, op, .. } => {
                     let lhs = self.compile_signal(lhs);
                     let rhs = self.compile_signal(rhs);
                     self.gen_temp(Expr::BinOp {
@@ -154,6 +154,7 @@ impl<'a> Compiler<'a> {
                             module::BinOp::BitAnd => BinOp::BitAnd,
                             module::BinOp::BitOr => BinOp::BitOr,
                             module::BinOp::BitXor => BinOp::BitXor,
+                            module::BinOp::Equal => BinOp::Equal,
                         },
                     })
                 }
@@ -385,6 +386,7 @@ impl Expr {
                         BinOp::BitAnd => "&",
                         BinOp::BitOr => "|",
                         BinOp::BitXor => "^",
+                        BinOp::Equal => "==",
                         BinOp::NotEqual => "!=",
                         BinOp::Shl => "<<",
                         BinOp::Shr => ">>",
@@ -444,6 +446,7 @@ enum BinOp {
     BitAnd,
     BitOr,
     BitXor,
+    Equal,
     NotEqual,
     Shl,
     Shr,
