@@ -38,6 +38,7 @@ fn main() -> Result<(), Error> {
     sim::generate(&repeat_test_module(&c), &mut file)?;
     sim::generate(&concat_test_module(&c), &mut file)?;
     sim::generate(&eq_test_module(&c), &mut file)?;
+    sim::generate(&ne_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -221,6 +222,17 @@ fn eq_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i2 = m.input("i2", 4);
     m.output("o1", i1.eq(i2));
     m.output("o2", i1.bit(0).eq(i2.bit(0)));
+
+    m
+}
+
+fn ne_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("ne_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.ne(i2));
+    m.output("o2", i1.bit(0).ne(i2.bit(0)));
 
     m
 }

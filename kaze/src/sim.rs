@@ -155,6 +155,7 @@ impl<'a> Compiler<'a> {
                             module::BinOp::BitOr => BinOp::BitOr,
                             module::BinOp::BitXor => BinOp::BitXor,
                             module::BinOp::Equal => BinOp::Equal,
+                            module::BinOp::NotEqual => BinOp::NotEqual,
                         },
                     })
                 }
