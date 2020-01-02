@@ -41,6 +41,8 @@ fn main() -> Result<(), Error> {
     sim::generate(&ne_test_module(&c), &mut file)?;
     sim::generate(&lt_test_module(&c), &mut file)?;
     sim::generate(&lte_test_module(&c), &mut file)?;
+    sim::generate(&gt_test_module(&c), &mut file)?;
+    sim::generate(&gte_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -257,6 +259,28 @@ fn lte_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i2 = m.input("i2", 4);
     m.output("o1", i1.lte(i2));
     m.output("o2", i1.bit(0).lte(i2.bit(0)));
+
+    m
+}
+
+fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("gt_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.gt(i2));
+    m.output("o2", i1.bit(0).gt(i2.bit(0)));
+
+    m
+}
+
+fn gte_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("gte_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.gte(i2));
+    m.output("o2", i1.bit(0).gte(i2.bit(0)));
 
     m
 }

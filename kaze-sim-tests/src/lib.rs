@@ -373,6 +373,40 @@ mod tests {
     }
 
     #[test]
+    fn gt_test_module() {
+        let mut m = gt_test_module::default();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+    }
+
+    #[test]
+    fn gte_test_module() {
+        let mut m = gte_test_module::default();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 
