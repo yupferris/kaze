@@ -664,7 +664,6 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         w.append_newline()?;
     }
 
-    w.append_line("#[allow(unused_parens)]")?;
     w.append_line("pub fn prop(&mut self) {")?;
     w.indent();
 
