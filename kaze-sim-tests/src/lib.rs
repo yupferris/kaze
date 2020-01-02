@@ -87,6 +87,37 @@ mod tests {
     }
 
     #[test]
+    fn bitxor_test_module() {
+        let mut m = bitxor_test_module::default();
+
+        m.i1 = false;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o, false);
+
+        m.i1 = true;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o, true);
+
+        m.i1 = false;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o, true);
+
+        m.i1 = true;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o, false);
+
+        m.i1 = true;
+        m.i2 = false;
+        assert_eq!(m.o, false); // No propagation
+        m.prop();
+        assert_eq!(m.o, true);
+    }
+
+    #[test]
     fn not_test_module() {
         let mut m = not_test_module::default();
 

@@ -10,7 +10,7 @@ use typed_arena::Arena;
 
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
-use std::ops::{BitAnd, BitOr, Not};
+use std::ops::{BitAnd, BitOr, BitXor, Not};
 use std::ptr;
 
 /// A top-level container/owner object for a module graph.
@@ -695,6 +695,55 @@ impl<'a> BitOr for &'a Signal<'a> {
     }
 }
 
+impl<'a> BitXor for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `^` of each of the bits of the original two `Signal`s.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use kaze::module::*;
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lhs = m.low();
+    /// let rhs = m.high();
+    /// let single_bitxor = lhs ^ rhs;
+    ///
+    /// let lhs = m.input("in1", 3);
+    /// let rhs = m.input("in2", 3);
+    /// let multi_bitxor = lhs ^ rhs;
+    /// ```
+    fn bitxor(self, rhs: Self) -> Self {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                lhs: self,
+                rhs,
+                op: BinOp::BitXor,
+            },
+        })
+    }
+}
+
 impl<'a> Not for &'a Signal<'a> {
     type Output = Self;
 
@@ -736,6 +785,7 @@ pub enum UnOp {
 pub enum BinOp {
     BitAnd,
     BitOr,
+    BitXor,
 }
 
 pub struct Output<'a> {
@@ -1012,5 +1062,33 @@ mod tests {
 
         // Panic
         let _ = i1 | i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn bitxor_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 ^ i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn bitxor_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1 ^ i2;
     }
 }

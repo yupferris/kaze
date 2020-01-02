@@ -27,6 +27,7 @@ fn main() -> Result<(), Error> {
     sim::generate(&widest_input(&c), &mut file)?;
     sim::generate(&bitand_test_module(&c), &mut file)?;
     sim::generate(&bitor_test_module(&c), &mut file)?;
+    sim::generate(&bitxor_test_module(&c), &mut file)?;
     sim::generate(&not_test_module(&c), &mut file)?;
     sim::generate(&reg_test_module(&c), &mut file)?;
     sim::generate(&simple_reg_delay(&c), &mut file)?;
@@ -73,6 +74,16 @@ fn bitor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
     m.output("o", i1 | i2);
+
+    m
+}
+
+fn bitxor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("bitxor_test_module");
+
+    let i1 = m.input("i1", 1);
+    let i2 = m.input("i2", 1);
+    m.output("o", i1 ^ i2);
 
     m
 }

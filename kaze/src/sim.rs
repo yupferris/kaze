@@ -153,6 +153,7 @@ impl<'a> Compiler<'a> {
                         op: match op {
                             module::BinOp::BitAnd => BinOp::BitAnd,
                             module::BinOp::BitOr => BinOp::BitOr,
+                            module::BinOp::BitXor => BinOp::BitXor,
                         },
                     })
                 }
@@ -383,6 +384,7 @@ impl Expr {
                     match op {
                         BinOp::BitAnd => "&",
                         BinOp::BitOr => "|",
+                        BinOp::BitXor => "^",
                         BinOp::NotEqual => "!=",
                         BinOp::Shl => "<<",
                         BinOp::Shr => ">>",
@@ -441,6 +443,7 @@ enum UnOp {
 enum BinOp {
     BitAnd,
     BitOr,
+    BitXor,
     NotEqual,
     Shl,
     Shr,
