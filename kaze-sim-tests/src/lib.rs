@@ -356,6 +356,23 @@ mod tests {
     }
 
     #[test]
+    fn lte_test_module() {
+        let mut m = lte_test_module::default();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 

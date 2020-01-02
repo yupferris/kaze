@@ -157,6 +157,7 @@ impl<'a> Compiler<'a> {
                             module::BinOp::Equal => BinOp::Equal,
                             module::BinOp::NotEqual => BinOp::NotEqual,
                             module::BinOp::LessThan => BinOp::LessThan,
+                            module::BinOp::LessThanEqual => BinOp::LessThanEqual,
                         },
                     })
                 }
@@ -391,6 +392,7 @@ impl Expr {
                         BinOp::Equal => "==",
                         BinOp::NotEqual => "!=",
                         BinOp::LessThan => "<",
+                        BinOp::LessThanEqual => "<=",
                         BinOp::Shl => "<<",
                         BinOp::Shr => ">>",
                     }
@@ -452,6 +454,7 @@ enum BinOp {
     Equal,
     NotEqual,
     LessThan,
+    LessThanEqual,
     Shl,
     Shr,
 }
