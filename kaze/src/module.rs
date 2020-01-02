@@ -358,9 +358,9 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).eq(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).ne(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).lt(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).lte(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(Value::U32(0xaa), 8).le(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).gt(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).gte(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(Value::U32(0xaa), 8).ge(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
@@ -698,12 +698,12 @@ impl<'a> Signal<'a> {
     ///
     /// let lit_a = m.lit(Value::U32(0xa), 4);
     /// let lit_b = m.lit(Value::U32(0xb), 4);
-    /// let lte_1 = lit_a.lte(lit_a); // Equivalent to m.high()
-    /// let lte_2 = lit_b.lte(lit_b); // Equivalent to m.high()
-    /// let lte_3 = lit_a.lte(lit_b); // Equivalent to m.high()
-    /// let lte_4 = lit_b.lte(lit_a); // Equivalent to m.low()
+    /// let le_1 = lit_a.le(lit_a); // Equivalent to m.high()
+    /// let le_2 = lit_b.le(lit_b); // Equivalent to m.high()
+    /// let le_3 = lit_a.le(lit_b); // Equivalent to m.high()
+    /// let le_4 = lit_b.le(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn lte(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+    pub fn le(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
@@ -790,12 +790,12 @@ impl<'a> Signal<'a> {
     ///
     /// let lit_a = m.lit(Value::U32(0xa), 4);
     /// let lit_b = m.lit(Value::U32(0xb), 4);
-    /// let gte_1 = lit_a.gte(lit_a); // Equivalent to m.high()
-    /// let gte_2 = lit_b.gte(lit_b); // Equivalent to m.high()
-    /// let gte_3 = lit_a.gte(lit_b); // Equivalent to m.low()
-    /// let gte_4 = lit_b.gte(lit_a); // Equivalent to m.high()
+    /// let ge_1 = lit_a.ge(lit_a); // Equivalent to m.high()
+    /// let ge_2 = lit_b.ge(lit_b); // Equivalent to m.high()
+    /// let ge_3 = lit_a.ge(lit_b); // Equivalent to m.low()
+    /// let ge_4 = lit_b.ge(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn gte(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+    pub fn ge(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
@@ -1386,7 +1386,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Attempted to combine signals from different modules.")]
-    fn lte_separate_module_error() {
+    fn le_separate_module_error() {
         let c = Context::new();
 
         let m1 = c.module("a");
@@ -1396,12 +1396,12 @@ mod tests {
         let i2 = m2.high();
 
         // Panic
-        let _ = i1.lte(i2);
+        let _ = i1.le(i2);
     }
 
     #[test]
     #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
-    fn lte_incompatible_bit_widths_error() {
+    fn le_incompatible_bit_widths_error() {
         let c = Context::new();
 
         let m = c.module("a");
@@ -1409,7 +1409,7 @@ mod tests {
         let i2 = m.input("b", 5);
 
         // Panic
-        let _ = i1.lte(i2);
+        let _ = i1.le(i2);
     }
 
     #[test]
@@ -1442,7 +1442,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Attempted to combine signals from different modules.")]
-    fn gte_separate_module_error() {
+    fn ge_separate_module_error() {
         let c = Context::new();
 
         let m1 = c.module("a");
@@ -1452,12 +1452,12 @@ mod tests {
         let i2 = m2.high();
 
         // Panic
-        let _ = i1.gte(i2);
+        let _ = i1.ge(i2);
     }
 
     #[test]
     #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
-    fn gte_incompatible_bit_widths_error() {
+    fn ge_incompatible_bit_widths_error() {
         let c = Context::new();
 
         let m = c.module("a");
@@ -1465,7 +1465,7 @@ mod tests {
         let i2 = m.input("b", 5);
 
         // Panic
-        let _ = i1.gte(i2);
+        let _ = i1.ge(i2);
     }
 
     #[test]

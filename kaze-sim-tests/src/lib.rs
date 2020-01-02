@@ -356,8 +356,8 @@ mod tests {
     }
 
     #[test]
-    fn lte_test_module() {
-        let mut m = lte_test_module::default();
+    fn le_test_module() {
+        let mut m = le_test_module::default();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -390,8 +390,8 @@ mod tests {
     }
 
     #[test]
-    fn gte_test_module() {
-        let mut m = gte_test_module::default();
+    fn ge_test_module() {
+        let mut m = ge_test_module::default();
 
         m.i1 = 0xa;
         m.i2 = 0xb;

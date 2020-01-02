@@ -40,9 +40,9 @@ fn main() -> Result<(), Error> {
     sim::generate(&eq_test_module(&c), &mut file)?;
     sim::generate(&ne_test_module(&c), &mut file)?;
     sim::generate(&lt_test_module(&c), &mut file)?;
-    sim::generate(&lte_test_module(&c), &mut file)?;
+    sim::generate(&le_test_module(&c), &mut file)?;
     sim::generate(&gt_test_module(&c), &mut file)?;
-    sim::generate(&gte_test_module(&c), &mut file)?;
+    sim::generate(&ge_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
 
     Ok(())
@@ -252,13 +252,13 @@ fn lt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn lte_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("lte_test_module");
+fn le_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("le_test_module");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
-    m.output("o1", i1.lte(i2));
-    m.output("o2", i1.bit(0).lte(i2.bit(0)));
+    m.output("o1", i1.le(i2));
+    m.output("o2", i1.bit(0).le(i2.bit(0)));
 
     m
 }
@@ -274,13 +274,13 @@ fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn gte_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("gte_test_module");
+fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("ge_test_module");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
-    m.output("o1", i1.gte(i2));
-    m.output("o2", i1.bit(0).gte(i2.bit(0)));
+    m.output("o1", i1.ge(i2));
+    m.output("o2", i1.bit(0).ge(i2.bit(0)));
 
     m
 }
