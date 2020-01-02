@@ -156,6 +156,7 @@ impl<'a> Compiler<'a> {
                             module::BinOp::BitXor => BinOp::BitXor,
                             module::BinOp::Equal => BinOp::Equal,
                             module::BinOp::NotEqual => BinOp::NotEqual,
+                            module::BinOp::LessThan => BinOp::LessThan,
                         },
                     })
                 }
@@ -389,6 +390,7 @@ impl Expr {
                         BinOp::BitXor => "^",
                         BinOp::Equal => "==",
                         BinOp::NotEqual => "!=",
+                        BinOp::LessThan => "<",
                         BinOp::Shl => "<<",
                         BinOp::Shr => ">>",
                     }
@@ -449,6 +451,7 @@ enum BinOp {
     BitXor,
     Equal,
     NotEqual,
+    LessThan,
     Shl,
     Shr,
 }

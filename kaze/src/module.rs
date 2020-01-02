@@ -357,6 +357,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(Value::U32(1), 20).concat(m.high()).bit_width(), 21);
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).eq(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(0xaa), 8).ne(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(Value::U32(0xaa), 8).lt(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
     /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
@@ -631,6 +632,52 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Creates a `Signal` that represents the single-bit result of an unsigned `<` comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(Value::U32(0xa), 4);
+    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let eq_1 = lit_a.lt(lit_a); // Equivalent to m.low()
+    /// let eq_2 = lit_b.lt(lit_b); // Equivalent to m.low()
+    /// let eq_3 = lit_a.lt(lit_b); // Equivalent to m.high()
+    /// let eq_4 = lit_b.lt(lit_a); // Equivalent to m.low()
+    /// ```
+    pub fn lt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::LessThan,
+            },
+        })
+    }
+
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, b, sel)
@@ -885,6 +932,7 @@ pub enum BinOp {
     BitOr,
     BitXor,
     Equal,
+    LessThan,
     NotEqual,
 }
 
@@ -1162,6 +1210,34 @@ mod tests {
 
         // Panic
         let _ = i1.ne(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn lt_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.lt(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn lt_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1.lt(i2);
     }
 
     #[test]
