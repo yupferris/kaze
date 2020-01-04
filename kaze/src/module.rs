@@ -1093,7 +1093,7 @@ impl<'a> Register<'a> {
         self.value
     }
 
-    pub fn drive_next_with(&'a self, n: &'a Signal<'a>) {
+    pub fn drive_next(&'a self, n: &'a Signal<'a>) {
         match self.value.data {
             SignalData::Reg { ref next, .. } => {
                 // TODO: Ensure n is in the same module as self
