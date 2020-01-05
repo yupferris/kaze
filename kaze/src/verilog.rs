@@ -38,8 +38,8 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
     for (i, (name, output)) in outputs.iter().enumerate() {
         w.append_indent()?;
         w.append("output wire logic ")?;
-        if output.source.bit_width() > 1 {
-            w.append(&format!("[{}:{}]", output.source.bit_width() - 1, 0))?;
+        if output.bit_width() > 1 {
+            w.append(&format!("[{}:{}]", output.bit_width() - 1, 0))?;
         }
         w.append(name)?;
         if i < num_outputs - 1 {

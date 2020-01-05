@@ -29,7 +29,6 @@ use std::ptr;
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
     signal_arena: Arena<Signal<'a>>,
-    output_arena: Arena<Output<'a>>,
     register_arena: Arena<Register<'a>>,
     instance_arena: Arena<Instance<'a>>,
 
@@ -50,7 +49,6 @@ impl<'a> Context<'a> {
         Context {
             module_arena: Arena::new(),
             signal_arena: Arena::new(),
-            output_arena: Arena::new(),
             register_arena: Arena::new(),
             instance_arena: Arena::new(),
 
@@ -110,7 +108,7 @@ pub struct Module<'a> {
     pub name: String,
 
     inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
-    outputs: RefCell<BTreeMap<String, &'a Output<'a>>>,
+    outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -129,7 +127,7 @@ impl<'a> Module<'a> {
         self.inputs.borrow()
     }
 
-    pub fn outputs(&self) -> Ref<BTreeMap<String, &Output<'a>>> {
+    pub fn outputs(&self) -> Ref<BTreeMap<String, &Signal<'a>>> {
         self.outputs.borrow()
     }
 
@@ -288,8 +286,7 @@ impl<'a> Module<'a> {
             panic!("Cannot output a signal from another module.");
         }
         // TODO: Error if name already exists in this context
-        let output = self.context.output_arena.alloc(Output { source });
-        self.outputs.borrow_mut().insert(name.into(), output);
+        self.outputs.borrow_mut().insert(name.into(), source);
     }
 
     pub fn reg(&'a self, bit_width: u32, initial_value: Option<Value>) -> &Register<'a> {
@@ -420,10 +417,9 @@ impl<'a> Signal<'a> {
             SignalData::Repeat { source, count } => source.bit_width() * count,
             SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
             SignalData::Mux { a, .. } => a.bit_width(),
-            SignalData::InstanceOutput { instance, name } => instance.instantiated_module.outputs()
-                [name]
-                .source
-                .bit_width(),
+            SignalData::InstanceOutput { instance, name } => {
+                instance.instantiated_module.outputs()[name].bit_width()
+            }
         }
     }
 
@@ -1128,10 +1124,6 @@ pub enum BinOp {
     LessThan,
     LessThanEqual,
     NotEqual,
-}
-
-pub struct Output<'a> {
-    pub source: &'a Signal<'a>,
 }
 
 pub struct Register<'a> {

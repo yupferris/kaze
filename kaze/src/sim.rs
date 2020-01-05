@@ -138,7 +138,7 @@ impl<'a> Compiler<'a> {
 
             module::SignalData::InstanceOutput { instance, ref name } => {
                 let output = instance.instantiated_module.outputs()[name];
-                self.gather_regs(output.source, &instance_stack.push(instance));
+                self.gather_regs(output, &instance_stack.push(instance));
             }
         }
     }
@@ -306,7 +306,7 @@ impl<'a> Compiler<'a> {
 
                 module::SignalData::InstanceOutput { instance, ref name } => {
                     let output = instance.instantiated_module.outputs()[name];
-                    self.compile_signal(output.source, &instance_stack.push(instance))
+                    self.compile_signal(output, &instance_stack.push(instance))
                 }
             };
             self.signal_exprs.insert(key.clone(), expr);
@@ -587,15 +587,15 @@ impl ValueType {
     }
 }
 
-pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
+pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: &mut W) -> Result<()> {
     let mut c = Compiler::new();
 
     for (_, output) in m.outputs().iter() {
-        c.gather_regs(&output.source, &InstanceStack::new());
+        c.gather_regs(&output, &InstanceStack::new());
     }
 
     for (name, output) in m.outputs().iter() {
-        let expr = c.compile_signal(&output.source, &InstanceStack::new());
+        let expr = c.compile_signal(&output, &InstanceStack::new());
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,
             target_name: name.clone(),
@@ -646,8 +646,8 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
             w.append_line(&format!(
                 "pub {}: {}, // {} bit(s)",
                 name,
-                ValueType::from_bit_width(output.source.bit_width()).name(),
-                output.source.bit_width()
+                ValueType::from_bit_width(output.bit_width()).name(),
+                output.bit_width()
             ))?;
         }
     }
