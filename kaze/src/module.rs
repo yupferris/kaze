@@ -31,6 +31,7 @@ pub struct Context<'a> {
     signal_arena: Arena<Signal<'a>>,
     output_arena: Arena<Output<'a>>,
     register_arena: Arena<Register<'a>>,
+    instance_arena: Arena<Instance<'a>>,
 
     modules: RefCell<BTreeMap<String, &'a Module<'a>>>,
 }
@@ -51,6 +52,7 @@ impl<'a> Context<'a> {
             signal_arena: Arena::new(),
             output_arena: Arena::new(),
             register_arena: Arena::new(),
+            instance_arena: Arena::new(),
 
             modules: RefCell::new(BTreeMap::new()),
         }
@@ -316,6 +318,19 @@ impl<'a> Module<'a> {
             data: SignalData::Mux { a, b, sel },
         })
     }
+
+    pub fn instance(&'a self, name: &str) -> &Instance<'a> {
+        // TODO: Error if a module of this name doesn't exist
+        // TODO: Error if this creates a recursive module definition
+        let instantiated_module = self.context.modules.borrow()[name];
+        self.context.instance_arena.alloc(Instance {
+            context: self.context,
+            module: self,
+
+            instantiated_module,
+            driven_inputs: RefCell::new(BTreeMap::new()),
+        })
+    }
 }
 
 /// The minimum allowed bit width for any given `Signal`.
@@ -379,6 +394,10 @@ impl<'a> Signal<'a> {
             SignalData::Repeat { source, count } => source.bit_width() * count,
             SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
             SignalData::Mux { a, .. } => a.bit_width(),
+            SignalData::InstanceOutput { instance, name } => instance.instantiated_module.outputs()
+                [name]
+                .source
+                .bit_width(),
         }
     }
 
@@ -877,6 +896,11 @@ pub enum SignalData<'a> {
         b: &'a Signal<'a>,
         sel: &'a Signal<'a>,
     },
+
+    InstanceOutput {
+        instance: &'a Instance<'a>,
+        name: String,
+    },
 }
 
 impl<'a> BitAnd for &'a Signal<'a> {
@@ -1103,6 +1127,42 @@ impl<'a> Register<'a> {
             }
             _ => unreachable!(),
         }
+    }
+}
+
+pub struct Instance<'a> {
+    context: &'a Context<'a>,
+    module: &'a Module<'a>,
+
+    pub instantiated_module: &'a Module<'a>,
+    driven_inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+}
+
+impl<'a> Instance<'a> {
+    pub fn driven_inputs(&self) -> Ref<BTreeMap<String, &'a Signal<'a>>> {
+        self.driven_inputs.borrow()
+    }
+
+    pub fn drive_input<S: Into<String>>(&'a self, name: S, i: &'a Signal<'a>) {
+        // TODO: Error if i is from a different module than self.module
+        // TODO: Error if there's no input called `name` on this module
+        // TODO: Error if this input is already driven
+        // TODO: Error if the signal's bit width and the input's bit width don't match
+        // TODO: Should we try to detect loops and error here? Is that sufficient? Efficient?
+        self.driven_inputs.borrow_mut().insert(name.into(), i);
+    }
+
+    pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
+        // TODO: Error if there's no output called `name` on this module
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::InstanceOutput {
+                instance: self,
+                name: name.into(),
+            },
+        })
     }
 }
 

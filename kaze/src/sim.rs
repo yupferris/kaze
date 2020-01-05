@@ -5,6 +5,46 @@ use crate::module;
 
 use std::collections::HashMap;
 use std::io::Write;
+use std::rc::Rc;
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+struct Stack<T: Clone + Eq + PartialEq> {
+    head: Option<Rc<StackNode<T>>>,
+}
+
+#[derive(Clone, Eq, Hash, PartialEq)]
+struct StackNode<T: Clone + Eq + PartialEq> {
+    datum: T,
+    next: Option<Rc<StackNode<T>>>,
+}
+
+impl<T: Clone + Eq + PartialEq> Stack<T> {
+    fn new() -> Stack<T> {
+        Stack { head: None }
+    }
+
+    fn push(&self, datum: T) -> Stack<T> {
+        Stack {
+            head: Some(Rc::new(StackNode {
+                datum,
+                next: self.head.clone(),
+            })),
+        }
+    }
+
+    fn pop(&self) -> Option<(T, Stack<T>)> {
+        self.head.as_ref().map(|node| {
+            (
+                node.datum.clone(),
+                Stack {
+                    head: node.next.clone(),
+                },
+            )
+        })
+    }
+}
+
+type InstanceStack<'a> = Stack<*const module::Instance<'a>>;
 
 #[derive(Clone)]
 struct RegNames {
@@ -13,82 +53,103 @@ struct RegNames {
 }
 
 struct Compiler<'a> {
-    reg_names: HashMap<*const module::Signal<'a>, RegNames>,
+    reg_names: HashMap<(InstanceStack<'a>, *const module::Signal<'a>), RegNames>,
+    signal_exprs: HashMap<(InstanceStack<'a>, *const module::Signal<'a>), Expr>,
 
     prop_assignments: Vec<Assignment>,
 
     local_count: u32,
-
-    signal_exprs: HashMap<*const module::Signal<'a>, Expr>,
 }
 
 impl<'a> Compiler<'a> {
     fn new() -> Compiler<'a> {
         Compiler {
             reg_names: HashMap::new(),
+            signal_exprs: HashMap::new(),
 
             prop_assignments: Vec::new(),
 
             local_count: 0,
-
-            signal_exprs: HashMap::new(),
         }
     }
 
-    fn gather_regs(&mut self, signal: &'a module::Signal<'a>) {
+    fn gather_regs(&mut self, signal: &'a module::Signal<'a>, instance_stack: &InstanceStack<'a>) {
         match signal.data {
-            module::SignalData::Lit { .. } | module::SignalData::Input { .. } => (),
+            module::SignalData::Lit { .. } => (),
+
+            module::SignalData::Input { ref name, .. } => {
+                if let Some((instance, instance_stack_tail)) = instance_stack.pop() {
+                    let instance = unsafe { &*instance };
+                    // TODO: Report error if input isn't driven
+                    //  Should we report errors for all undriven inputs here?
+                    self.gather_regs(instance.driven_inputs()[name], &instance_stack_tail);
+                }
+            }
 
             module::SignalData::Reg { ref next, .. } => {
-                if self.reg_names.contains_key(&(signal as *const _)) {
+                let key = (instance_stack.clone(), signal as *const _);
+                if self.reg_names.contains_key(&key) {
                     return;
                 }
                 let value_name = format!("__reg{}", self.reg_names.len());
                 let next_name = format!("{}_next", value_name);
                 self.reg_names.insert(
-                    signal,
+                    key,
                     RegNames {
                         value_name,
                         next_name,
                     },
                 );
                 // TODO: Proper error and test(s)
-                self.gather_regs(next.borrow().expect("Discovered undriven register(s)"));
+                self.gather_regs(
+                    next.borrow().expect("Discovered undriven register(s)"),
+                    instance_stack,
+                );
             }
 
             module::SignalData::UnOp { source, .. } => {
-                self.gather_regs(source);
+                self.gather_regs(source, instance_stack);
             }
             module::SignalData::BinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs);
-                self.gather_regs(rhs);
+                self.gather_regs(lhs, instance_stack);
+                self.gather_regs(rhs, instance_stack);
             }
 
             module::SignalData::Bit { source, .. } => {
-                self.gather_regs(source);
+                self.gather_regs(source, instance_stack);
             }
             module::SignalData::Bits { source, .. } => {
-                self.gather_regs(source);
+                self.gather_regs(source, instance_stack);
             }
 
             module::SignalData::Repeat { source, .. } => {
-                self.gather_regs(source);
+                self.gather_regs(source, instance_stack);
             }
             module::SignalData::Concat { lhs, rhs } => {
-                self.gather_regs(lhs);
-                self.gather_regs(rhs);
+                self.gather_regs(lhs, instance_stack);
+                self.gather_regs(rhs, instance_stack);
             }
 
             module::SignalData::Mux { a, b, sel } => {
-                self.gather_regs(sel);
-                self.gather_regs(b);
-                self.gather_regs(a);
+                self.gather_regs(sel, instance_stack);
+                self.gather_regs(b, instance_stack);
+                self.gather_regs(a, instance_stack);
+            }
+
+            module::SignalData::InstanceOutput { instance, ref name } => {
+                let output = instance.instantiated_module.outputs()[name];
+                self.gather_regs(output.source, &instance_stack.push(instance));
             }
         }
     }
 
-    fn compile_signal(&mut self, signal: &'a module::Signal<'a>) -> Expr {
-        if !self.signal_exprs.contains_key(&(signal as *const _)) {
+    fn compile_signal(
+        &mut self,
+        signal: &'a module::Signal<'a>,
+        instance_stack: &InstanceStack<'a>,
+    ) -> Expr {
+        let key = (instance_stack.clone(), signal as *const _);
+        if !self.signal_exprs.contains_key(&key) {
             let expr = match signal.data {
                 module::SignalData::Lit {
                     ref value,
@@ -118,21 +179,26 @@ impl<'a> Compiler<'a> {
                     ref name,
                     bit_width,
                 } => {
-                    let target_type = ValueType::from_bit_width(bit_width);
-                    let expr = Expr::Ref {
-                        name: name.clone(),
-                        scope: RefScope::Member,
-                    };
-                    self.gen_mask(expr, bit_width, target_type)
+                    if let Some((instance, instance_stack_tail)) = instance_stack.pop() {
+                        let instance = unsafe { &*instance };
+                        self.compile_signal(instance.driven_inputs()[name], &instance_stack_tail)
+                    } else {
+                        let target_type = ValueType::from_bit_width(bit_width);
+                        let expr = Expr::Ref {
+                            name: name.clone(),
+                            scope: RefScope::Member,
+                        };
+                        self.gen_mask(expr, bit_width, target_type)
+                    }
                 }
 
                 module::SignalData::Reg { .. } => Expr::Ref {
-                    name: self.reg_names[&(signal as *const _)].value_name.clone(),
+                    name: self.reg_names[&key].value_name.clone(),
                     scope: RefScope::Member,
                 },
 
                 module::SignalData::UnOp { source, op } => {
-                    let expr = self.compile_signal(source);
+                    let expr = self.compile_signal(source, instance_stack);
                     let expr = self.gen_temp(Expr::UnOp {
                         source: Box::new(expr),
                         op: match op {
@@ -145,8 +211,8 @@ impl<'a> Compiler<'a> {
                     self.gen_mask(expr, bit_width, target_type)
                 }
                 module::SignalData::BinOp { lhs, rhs, op, .. } => {
-                    let lhs = self.compile_signal(lhs);
-                    let rhs = self.compile_signal(rhs);
+                    let lhs = self.compile_signal(lhs, instance_stack);
+                    let rhs = self.compile_signal(rhs, instance_stack);
                     self.gen_temp(Expr::BinOp {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -165,7 +231,7 @@ impl<'a> Compiler<'a> {
                 }
 
                 module::SignalData::Bit { source, index } => {
-                    let expr = self.compile_signal(source);
+                    let expr = self.compile_signal(source, instance_stack);
                     let expr = self.gen_shift_right(expr, index);
                     self.gen_cast(
                         expr,
@@ -176,7 +242,7 @@ impl<'a> Compiler<'a> {
                 module::SignalData::Bits {
                     source, range_low, ..
                 } => {
-                    let expr = self.compile_signal(source);
+                    let expr = self.compile_signal(source, instance_stack);
                     let expr = self.gen_shift_right(expr, range_low);
                     let target_bit_width = signal.bit_width();
                     let target_type = ValueType::from_bit_width(target_bit_width);
@@ -189,7 +255,7 @@ impl<'a> Compiler<'a> {
                 }
 
                 module::SignalData::Repeat { source, count } => {
-                    let expr = self.compile_signal(source);
+                    let expr = self.compile_signal(source, instance_stack);
                     let mut expr = self.gen_cast(
                         expr,
                         ValueType::from_bit_width(source.bit_width()),
@@ -216,8 +282,8 @@ impl<'a> Compiler<'a> {
                     let lhs_type = ValueType::from_bit_width(lhs.bit_width());
                     let rhs_bit_width = rhs.bit_width();
                     let rhs_type = ValueType::from_bit_width(rhs_bit_width);
-                    let lhs = self.compile_signal(lhs);
-                    let rhs = self.compile_signal(rhs);
+                    let lhs = self.compile_signal(lhs, instance_stack);
+                    let rhs = self.compile_signal(rhs, instance_stack);
                     let target_type = ValueType::from_bit_width(signal.bit_width());
                     let lhs = self.gen_cast(lhs, lhs_type, target_type);
                     let rhs = self.gen_cast(rhs, rhs_type, target_type);
@@ -230,20 +296,25 @@ impl<'a> Compiler<'a> {
                 }
 
                 module::SignalData::Mux { a, b, sel } => {
-                    let lhs = self.compile_signal(b);
-                    let rhs = self.compile_signal(a);
-                    let cond = self.compile_signal(sel);
+                    let lhs = self.compile_signal(b, instance_stack);
+                    let rhs = self.compile_signal(a, instance_stack);
+                    let cond = self.compile_signal(sel, instance_stack);
                     self.gen_temp(Expr::Ternary {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
                         cond: Box::new(cond),
                     })
                 }
+
+                module::SignalData::InstanceOutput { instance, ref name } => {
+                    let output = instance.instantiated_module.outputs()[name];
+                    self.compile_signal(output.source, &instance_stack.push(instance))
+                }
             };
-            self.signal_exprs.insert(signal, expr);
+            self.signal_exprs.insert(key.clone(), expr);
         }
 
-        self.signal_exprs[&(signal as *const _)].clone()
+        self.signal_exprs[&key].clone()
     }
 
     fn gen_temp(&mut self, expr: Expr) -> Expr {
@@ -525,11 +596,11 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
     let mut c = Compiler::new();
 
     for (_, output) in m.outputs().iter() {
-        c.gather_regs(&output.source);
+        c.gather_regs(&output.source, &InstanceStack::new());
     }
 
     for (name, output) in m.outputs().iter() {
-        let expr = c.compile_signal(&output.source);
+        let expr = c.compile_signal(&output.source, &InstanceStack::new());
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,
             target_name: name.clone(),
@@ -538,11 +609,11 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
     }
 
     // TODO: Can we get rid of this clone?
-    for (reg, names) in c.reg_names.clone().iter() {
+    for ((instance_stack, reg), names) in c.reg_names.clone().iter() {
         let reg = unsafe { &**reg as &module::Signal };
         match reg.data {
             module::SignalData::Reg { ref next, .. } => {
-                let expr = c.compile_signal(next.borrow().unwrap());
+                let expr = c.compile_signal(next.borrow().unwrap(), instance_stack);
                 c.prop_assignments.push(Assignment {
                     target_scope: TargetScope::Member,
                     target_name: names.next_name.clone(),
@@ -588,7 +659,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
 
     if c.reg_names.len() > 0 {
         w.append_line("// Regs")?;
-        for (reg, names) in c.reg_names.iter() {
+        for ((_, reg), names) in c.reg_names.iter() {
             let reg = unsafe { &**reg as &module::Signal };
             let type_name = ValueType::from_bit_width(reg.bit_width()).name();
             w.append_line(&format!(
@@ -613,7 +684,7 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
         w.indent();
 
         // TODO: Consider using assignments/exprs instead of generating statement strings
-        for (reg, names) in c.reg_names.iter() {
+        for ((_, reg), names) in c.reg_names.iter() {
             let reg = unsafe { &**reg as &module::Signal };
             match reg.data {
                 module::SignalData::Reg {

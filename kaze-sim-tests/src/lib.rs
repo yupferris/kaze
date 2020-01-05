@@ -430,4 +430,47 @@ mod tests {
         m.prop();
         assert_eq!(m.o, false);
     }
+
+    #[test]
+    fn instantiation_test_module_comb() {
+        let mut m = instantiation_test_module_comb::default();
+
+        m.i1 = 0xffffffff;
+        m.i2 = 0xffff0000;
+        m.i3 = 0x00ff0000;
+        m.i4 = 0x000f0000;
+        m.prop();
+        assert_eq!(m.o, 0x000f0000u32);
+
+        m.i1 = 0x00000f00;
+        m.i2 = 0xffffffff;
+        m.i3 = 0x0000ffff;
+        m.i4 = 0xffffffff;
+        m.prop();
+        assert_eq!(m.o, 0x00000f00u32);
+    }
+
+    #[test]
+    fn instantiation_test_module_reg() {
+        let mut m = instantiation_test_module_reg::default();
+
+        // Check initial value
+        m.reset();
+        m.prop();
+        assert_eq!(m.o, 0);
+
+        // The inputs propagate through 2 registers, so we won't see proper output for 3 cycles
+        m.i1 = 0xffffffff;
+        m.i2 = 0xffff0000;
+        m.i3 = 0x00ff0000;
+        m.i4 = 0x000f0000;
+        m.prop(); // Propagate to first register inputs
+        assert_eq!(m.o, 0u32);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o, 0u32);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o, 0x000f0000u32);
+    }
 }

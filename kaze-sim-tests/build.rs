@@ -44,6 +44,8 @@ fn main() -> Result<(), Error> {
     sim::generate(&gt_test_module(&c), &mut file)?;
     sim::generate(&ge_test_module(&c), &mut file)?;
     sim::generate(&mux_test_module(&c), &mut file)?;
+    sim::generate(instantiation_test_module_comb(&c), &mut file)?;
+    sim::generate(instantiation_test_module_reg(&c), &mut file)?;
 
     Ok(())
 }
@@ -338,4 +340,48 @@ macro_rules! kaze_sugar_impl {
         $name = prev.mux($value, $sel);
     };
     ([ $_:expr ], []) => {};
+}
+
+fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("instantiation_test_module_comb_inner");
+    let i1 = m.input("i1", 32);
+    let i2 = m.input("i2", 32);
+    m.output("o", i1 & i2);
+
+    let m = c.module("instantiation_test_module_comb");
+    let i1 = m.instance("instantiation_test_module_comb_inner");
+    i1.drive_input("i1", m.input("i1", 32));
+    i1.drive_input("i2", m.input("i2", 32));
+    let i2 = m.instance("instantiation_test_module_comb_inner");
+    i2.drive_input("i1", m.input("i3", 32));
+    i2.drive_input("i2", m.input("i4", 32));
+    let i3 = m.instance("instantiation_test_module_comb_inner");
+    i3.drive_input("i1", i1.output("o"));
+    i3.drive_input("i2", i2.output("o"));
+    m.output("o", i3.output("o"));
+
+    m
+}
+
+fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("instantiation_test_module_reg_inner");
+    let i1 = m.input("i1", 32);
+    let i2 = m.input("i2", 32);
+    let r = m.reg(32, None);
+    r.drive_next(i1 & i2);
+    m.output("o", r.value());
+
+    let m = c.module("instantiation_test_module_reg");
+    let i1 = m.instance("instantiation_test_module_reg_inner");
+    i1.drive_input("i1", m.input("i1", 32));
+    i1.drive_input("i2", m.input("i2", 32));
+    let i2 = m.instance("instantiation_test_module_reg_inner");
+    i2.drive_input("i1", m.input("i3", 32));
+    i2.drive_input("i2", m.input("i4", 32));
+    let i3 = m.instance("instantiation_test_module_reg_inner");
+    i3.drive_input("i1", i1.output("o"));
+    i3.drive_input("i2", i2.output("o"));
+    m.output("o", i3.output("o"));
+
+    m
 }
