@@ -320,7 +320,7 @@ macro_rules! kaze_sugar {
     };
 }
 
-#[macro_export(local__inner_macros)]
+#[macro_export(local_inner_macros)]
 macro_rules! kaze_sugar_impl {
     ([], [ if ($sel:expr) { $($rest:tt)* } ]) => {
         kaze_sugar_impl!([ $sel ], [ $($rest)* ])
