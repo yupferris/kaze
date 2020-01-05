@@ -1203,11 +1203,31 @@ impl<'a> Instance<'a> {
     }
 }
 
+/// A container for different types of constant values.
+///
+/// # Examples
+///
+/// ```
+/// use kaze::module::*;
+///
+/// let c = Context::new();
+///
+/// let m = c.module("my_module");
+///
+/// let a = m.lit(Value::Bool(true), 16);
+/// let b = m.lit(Value::U32(0xdeadbeef), 47);
+/// let c = m.reg(20, Some(Value::U64(5)));
+/// let d = m.lit(Value::U128(42), 8);
+/// ```
 // TODO: Should this be named Literal or Const or something?
 pub enum Value {
+    /// Contains a boolean value
     Bool(bool),
+    /// Contains an unsigned, 32-bit value
     U32(u32),
+    /// Contains an unsigned, 64-bit value
     U64(u64),
+    /// Contains an unsigned, 128-bit value
     U128(u128),
 }
 
