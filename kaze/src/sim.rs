@@ -4,7 +4,7 @@ use crate::code_writer;
 use crate::module;
 
 use std::collections::HashMap;
-use std::io::Write;
+use std::io::{Result, Write};
 use std::rc::Rc;
 
 #[derive(Clone, Eq, Hash, PartialEq)]
@@ -447,10 +447,7 @@ enum Expr {
 }
 
 impl Expr {
-    fn write<W: Write>(
-        &self,
-        w: &mut code_writer::CodeWriter<W>,
-    ) -> Result<(), code_writer::Error> {
+    fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         match self {
             Expr::BinOp { lhs, rhs, op } => {
                 lhs.write(w)?;
@@ -590,7 +587,7 @@ impl ValueType {
     }
 }
 
-pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writer::Error> {
+pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
     let mut c = Compiler::new();
 
     for (_, output) in m.outputs().iter() {

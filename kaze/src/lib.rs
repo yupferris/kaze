@@ -8,7 +8,7 @@
 //!
 //! [`Module`]: ./module/struct.Module.html
 
-pub mod code_writer;
+mod code_writer;
 pub mod module;
 pub mod sim;
 pub mod verilog;

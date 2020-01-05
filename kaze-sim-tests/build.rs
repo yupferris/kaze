@@ -3,20 +3,10 @@ use kaze::*;
 
 use std::env;
 use std::fs::File;
+use std::io::Result;
 use std::path::Path;
 
-#[derive(Debug)]
-enum Error {
-    CodeWriter(code_writer::Error),
-}
-
-impl From<code_writer::Error> for Error {
-    fn from(error: code_writer::Error) -> Error {
-        Error::CodeWriter(error)
-    }
-}
-
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("modules.rs");
     let mut file = File::create(&dest_path).unwrap();
