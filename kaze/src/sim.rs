@@ -157,8 +157,6 @@ impl<'a> Compiler<'a> {
                 } => {
                     let value = match value {
                         module::Value::Bool(value) => *value as u128,
-                        module::Value::U8(value) => *value as u128,
-                        module::Value::U16(value) => *value as u128,
                         module::Value::U32(value) => *value as u128,
                         module::Value::U64(value) => *value as u128,
                         module::Value::U128(value) => *value,
@@ -703,8 +701,6 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<(), code_writ
                                 format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
                             }
                         }
-                        module::Value::U8(value) => format!("0x{:x}{}", value, type_name),
-                        module::Value::U16(value) => format!("0x{:x}{}", value, type_name),
                         module::Value::U32(value) => format!("0x{:x}{}", value, type_name),
                         module::Value::U64(value) => format!("0x{:x}{}", value, type_name),
                         module::Value::U128(value) => format!("0x{:x}{}", value, type_name),
