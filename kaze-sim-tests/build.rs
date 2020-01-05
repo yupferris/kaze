@@ -100,7 +100,7 @@ fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 
     let r = m.reg(32, None);
     r.drive_next(m.input("i", 32));
-    m.output("o", r.value());
+    m.output("o", r.value);
 
     m
 }
@@ -111,10 +111,10 @@ fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let r1 = m.reg(100, None);
     r1.drive_next(m.input("i", 100));
     let r2 = m.reg(100, None);
-    r2.drive_next(r1.value());
+    r2.drive_next(r1.value);
     let r3 = m.reg(100, None);
-    r3.drive_next(r2.value());
-    m.output("o", r3.value());
+    r3.drive_next(r2.value);
+    m.output("o", r3.value);
 
     m
 }
@@ -359,7 +359,7 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i2 = m.input("i2", 32);
     let r = m.reg(32, None);
     r.drive_next(i1 & i2);
-    m.output("o", r.value());
+    m.output("o", r.value);
 
     let m = c.module("instantiation_test_module_reg");
     let i1 = m.instance("instantiation_test_module_reg_inner");

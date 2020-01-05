@@ -378,7 +378,7 @@ impl<'a> Signal<'a> {
     ///
     /// assert_eq!(m.lit(Value::U32(42), 7).bit_width(), 7);
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
-    /// assert_eq!(m.reg(46, None).value().bit_width(), 46);
+    /// assert_eq!(m.reg(46, None).value.bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(Value::U32(12), 100).bit(30).bit_width(), 1);
@@ -1123,10 +1123,6 @@ pub struct Register<'a> {
 }
 
 impl<'a> Register<'a> {
-    pub fn value(&'a self) -> &Signal<'a> {
-        self.value
-    }
-
     pub fn drive_next(&'a self, n: &'a Signal<'a>) {
         match self.value.data {
             SignalData::Reg { ref next, .. } => {
