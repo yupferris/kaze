@@ -131,7 +131,7 @@ impl<'a> Module<'a> {
         self.outputs.borrow()
     }
 
-    /// Creates a `Signal` that represents the constant literal specified by `value` and with `bit_width` bits.
+    /// Creates a `Signal` that represents the constant literal specified by `value` with `bit_width` bits.
     ///
     /// The bit width of the type provided by `value` doesn't need to match `bit_width`.
     ///
@@ -263,7 +263,7 @@ impl<'a> Module<'a> {
         input
     }
 
-    /// Creates an output for this `Module` called `name` and with the same number of bits as `source`, and drives this output with `source`.
+    /// Creates an output for this `Module` called `name` with the same number of bits as `source`, and drives this output with `source`.
     ///
     /// # Panics
     ///
