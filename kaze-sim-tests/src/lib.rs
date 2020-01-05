@@ -459,7 +459,7 @@ mod tests {
         m.prop();
         assert_eq!(m.o, 0);
 
-        // The inputs propagate through 2 registers, so we won't see proper output for 3 cycles
+        // The inputs propagate through 2 registers, so we won't see proper output for 2 cycles
         m.i1 = 0xffffffff;
         m.i2 = 0xffff0000;
         m.i3 = 0x00ff0000;

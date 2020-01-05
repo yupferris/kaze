@@ -319,17 +319,43 @@ impl<'a> Module<'a> {
         })
     }
 
+    /// Instantiates the `Module` called `name` in this `Context` inside this `Module` definition, and returns the new `Instance`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a `Module` called `name` doesn't exist in this `Context` or if creating this `Instance` would cause this `Module` definition to become recursive.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// // Inner module (simple pass-through)
+    /// let inner = c.module("inner");
+    /// inner.output("o", inner.input("i", 32));
+    ///
+    /// // Outer module (wraps a single `inner` instance)
+    /// let outer = c.module("outer");
+    /// let inner_inst = outer.instance("inner");
+    /// inner_inst.drive_input("i", outer.input("i", 32));
+    /// outer.output("o", inner_inst.output("o"));
+    /// ```
     pub fn instance(&'a self, name: &str) -> &Instance<'a> {
-        // TODO: Error if a module of this name doesn't exist
-        // TODO: Error if this creates a recursive module definition
-        let instantiated_module = self.context.modules.borrow()[name];
-        self.context.instance_arena.alloc(Instance {
-            context: self.context,
-            module: self,
+        // TODO: Error if this creates a recursive module definition (can we actually do this here?)
+        match self.context.modules.borrow().get(name) {
+            Some(instantiated_module) => {
+                self.context.instance_arena.alloc(Instance {
+                    context: self.context,
+                    module: self,
 
-            instantiated_module,
-            driven_inputs: RefCell::new(BTreeMap::new()),
-        })
+                    instantiated_module,
+                    driven_inputs: RefCell::new(BTreeMap::new()),
+                })
+            }
+            _ => panic!("Attempted to instantiate a module with the name \"{}\", but no such module with this name exists in this context.", name)
+        }
     }
 }
 
@@ -1256,6 +1282,19 @@ mod tests {
 
         // Panic
         m1.output("a", i);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to instantiate a module with the name \"nope\", but no such module with this name exists in this context."
+    )]
+    fn instantiate_nonexistent_module_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.instance("nope");
     }
 
     #[test]
