@@ -82,7 +82,7 @@ impl<'a> Compiler<'a> {
                     let instance = unsafe { &*instance };
                     // TODO: Report error if input isn't driven
                     //  Should we report errors for all undriven inputs here?
-                    self.gather_regs(instance.driven_inputs()[name], &instance_stack_tail);
+                    self.gather_regs(instance.driven_inputs.borrow()[name], &instance_stack_tail);
                 }
             }
 
@@ -137,7 +137,7 @@ impl<'a> Compiler<'a> {
             }
 
             module::SignalData::InstanceOutput { instance, ref name } => {
-                let output = instance.instantiated_module.outputs()[name];
+                let output = instance.instantiated_module.outputs.borrow()[name];
                 self.gather_regs(output, &instance_stack.push(instance));
             }
         }
@@ -179,7 +179,10 @@ impl<'a> Compiler<'a> {
                 } => {
                     if let Some((instance, instance_stack_tail)) = instance_stack.pop() {
                         let instance = unsafe { &*instance };
-                        self.compile_signal(instance.driven_inputs()[name], &instance_stack_tail)
+                        self.compile_signal(
+                            instance.driven_inputs.borrow()[name],
+                            &instance_stack_tail,
+                        )
                     } else {
                         let target_type = ValueType::from_bit_width(bit_width);
                         let expr = Expr::Ref {
@@ -305,7 +308,7 @@ impl<'a> Compiler<'a> {
                 }
 
                 module::SignalData::InstanceOutput { instance, ref name } => {
-                    let output = instance.instantiated_module.outputs()[name];
+                    let output = instance.instantiated_module.outputs.borrow()[name];
                     self.compile_signal(output, &instance_stack.push(instance))
                 }
             };
@@ -590,11 +593,11 @@ impl ValueType {
 pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: &mut W) -> Result<()> {
     let mut c = Compiler::new();
 
-    for (_, output) in m.outputs().iter() {
+    for (_, output) in m.outputs.borrow().iter() {
         c.gather_regs(&output, &InstanceStack::new());
     }
 
-    for (name, output) in m.outputs().iter() {
+    for (name, output) in m.outputs.borrow().iter() {
         let expr = c.compile_signal(&output, &InstanceStack::new());
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,
@@ -626,7 +629,7 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: &mut W) -> Result<()
     w.append_line(&format!("pub struct {} {{", m.name))?;
     w.indent();
 
-    let inputs = m.inputs();
+    let inputs = m.inputs.borrow();
     if inputs.len() > 0 {
         w.append_line("// Inputs")?;
         for (name, input) in inputs.iter() {
@@ -639,7 +642,7 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: &mut W) -> Result<()
         }
     }
 
-    let outputs = m.outputs();
+    let outputs = m.outputs.borrow();
     if outputs.len() > 0 {
         w.append_line("// Outputs")?;
         for (name, output) in outputs.iter() {

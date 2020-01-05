@@ -14,12 +14,12 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
     w.append_line("input wire logic reset_n,")?;
     w.append_indent()?;
     w.append("input wire logic clk")?;
-    if m.inputs().len() > 0 || m.outputs().len() > 0 {
+    if m.inputs.borrow().len() > 0 || m.outputs.borrow().len() > 0 {
         w.append(",")?;
         w.append_newline()?;
     }
     w.append_newline()?;
-    let inputs = m.inputs();
+    let inputs = m.inputs.borrow();
     let num_inputs = inputs.len();
     for (i, (name, source)) in inputs.iter().enumerate() {
         w.append_indent()?;
@@ -28,12 +28,12 @@ pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
             w.append(&format!("[{}:{}] ", source.bit_width() - 1, 0))?;
         }
         w.append(name)?;
-        if m.outputs().len() > 0 || i < num_inputs - 1 {
+        if m.outputs.borrow().len() > 0 || i < num_inputs - 1 {
             w.append(",")?;
         }
         w.append_newline()?;
     }
-    let outputs = m.outputs();
+    let outputs = m.outputs.borrow();
     let num_outputs = outputs.len();
     for (i, (name, output)) in outputs.iter().enumerate() {
         w.append_indent()?;

@@ -8,7 +8,7 @@
 
 use typed_arena::Arena;
 
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ops::{BitAnd, BitOr, BitXor, Not};
 use std::ptr;
@@ -105,10 +105,10 @@ impl<'a> Context<'a> {
 pub struct Module<'a> {
     context: &'a Context<'a>,
 
-    pub name: String,
+    pub(crate) name: String,
 
-    inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
-    outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -121,14 +121,6 @@ impl<'a> Module<'a> {
             inputs: RefCell::new(BTreeMap::new()),
             outputs: RefCell::new(BTreeMap::new()),
         }
-    }
-
-    pub fn inputs(&self) -> Ref<BTreeMap<String, &Signal<'a>>> {
-        self.inputs.borrow()
-    }
-
-    pub fn outputs(&self) -> Ref<BTreeMap<String, &Signal<'a>>> {
-        self.outputs.borrow()
     }
 
     /// Creates a `Signal` that represents the constant literal specified by `value` with `bit_width` bits.
@@ -369,7 +361,7 @@ pub struct Signal<'a> {
     context: &'a Context<'a>,
     module: &'a Module<'a>,
 
-    pub data: SignalData<'a>,
+    pub(crate) data: SignalData<'a>,
 }
 
 impl<'a> Signal<'a> {
@@ -418,7 +410,7 @@ impl<'a> Signal<'a> {
             SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
             SignalData::Mux { a, .. } => a.bit_width(),
             SignalData::InstanceOutput { instance, name } => {
-                instance.instantiated_module.outputs()[name].bit_width()
+                instance.instantiated_module.outputs.borrow()[name].bit_width()
             }
         }
     }
@@ -866,7 +858,7 @@ impl<'a> Signal<'a> {
     }
 }
 
-pub enum SignalData<'a> {
+pub(crate) enum SignalData<'a> {
     Lit {
         value: Value,
         bit_width: u32,
@@ -1109,12 +1101,12 @@ impl<'a> Not for &'a Signal<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub enum UnOp {
+pub(crate) enum UnOp {
     Not,
 }
 
 #[derive(Clone, Copy)]
-pub enum BinOp {
+pub(crate) enum BinOp {
     BitAnd,
     BitOr,
     BitXor,
@@ -1152,20 +1144,16 @@ pub struct Instance<'a> {
     context: &'a Context<'a>,
     module: &'a Module<'a>,
 
-    pub instantiated_module: &'a Module<'a>,
-    driven_inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) instantiated_module: &'a Module<'a>,
+    pub(crate) driven_inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
 }
 
 impl<'a> Instance<'a> {
-    pub fn driven_inputs(&self) -> Ref<BTreeMap<String, &'a Signal<'a>>> {
-        self.driven_inputs.borrow()
-    }
-
     /// Drives the input of this `Module` `Instance` specified by `name` with the given `Signal`.
     ///
     /// # Panics
     ///
-    /// Panics if `i` is from a different module than `self`, if `name` specifies an input that doesn't exist on this `Instance`'s `instantiated_module`, if this input is already driven on this `Instance`, or if `i`'s bit width differs from that of the input.
+    /// Panics if `i` is from a different module than `self`, if `name` specifies an input that doesn't exist on this `Instance`'s `Module`, if this input is already driven on this `Instance`, or if `i`'s bit width differs from that of the input.
     ///
     /// # Examples
     ///
