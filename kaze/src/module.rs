@@ -980,7 +980,8 @@ impl<'a> BitOr for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let m = c.module("my_module");
@@ -1030,7 +1031,8 @@ impl<'a> BitXor for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let m = c.module("my_module");
@@ -1076,7 +1078,8 @@ impl<'a> Not for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// # use kaze::module::*;
+    /// use kaze::module::*;
+    ///
     /// let c = Context::new();
     ///
     /// let m = c.module("my_module");
