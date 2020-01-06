@@ -140,14 +140,14 @@ impl<'a> Module<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let eight_bit_const = m.lit(Value::U32(0xff), 8);
-    /// let one_bit_const = m.lit(Value::U128(0), 1);
-    /// let twenty_seven_bit_const = m.lit(Value::Bool(true), 27);
+    /// let eight_bit_const = m.lit(0xffu32, 8);
+    /// let one_bit_const = m.lit(0u32, 1);
+    /// let twenty_seven_bit_const = m.lit(true, 27);
     /// ```
     ///
     /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    pub fn lit(&'a self, value: Value, bit_width: u32) -> &Signal<'a> {
+    pub fn lit<V: Into<Value>>(&'a self, value: V, bit_width: u32) -> &Signal<'a> {
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a literal with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -160,6 +160,7 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
+        let value = value.into();
         // TODO: Ensure value fits within bit_width bits
         self.context.signal_arena.alloc(Signal {
             context: self.context,
@@ -182,10 +183,10 @@ impl<'a> Module<'a> {
     ///
     /// // The following two signals are semantically equivalent:
     /// let low1 = m.low();
-    /// let low2 = m.lit(Value::Bool(false), 1);
+    /// let low2 = m.lit(false, 1);
     /// ```
     pub fn low(&'a self) -> &Signal<'a> {
-        self.lit(Value::Bool(false), 1)
+        self.lit(false, 1)
     }
 
     /// Convenience method to create a `Signal` that represents a single `1` bit.
@@ -201,10 +202,10 @@ impl<'a> Module<'a> {
     ///
     /// // The following two signals are semantically equivalent:
     /// let high1 = m.high();
-    /// let high2 = m.lit(Value::Bool(true), 1);
+    /// let high2 = m.lit(true, 1);
     /// ```
     pub fn high(&'a self) -> &Signal<'a> {
-        self.lit(Value::Bool(true), 1)
+        self.lit(true, 1)
     }
 
     /// Creates an input for this `Module` called `name` with `bit_width` bits, and returns a `Signal` that represents the value of this input.
@@ -376,22 +377,22 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// assert_eq!(m.lit(Value::U32(42), 7).bit_width(), 7);
+    /// assert_eq!(m.lit(42u32, 7).bit_width(), 7);
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
     /// assert_eq!(m.reg(46, None).value.bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(12), 100).bit(30).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(1), 99).bits(37, 29).bit_width(), 9);
+    /// assert_eq!(m.lit(12u32, 100).bit(30).bit_width(), 1);
+    /// assert_eq!(m.lit(1u32, 99).bits(37, 29).bit_width(), 9);
     /// assert_eq!(m.high().repeat(35).bit_width(), 35);
-    /// assert_eq!(m.lit(Value::U32(1), 20).concat(m.high()).bit_width(), 21);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).eq(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).ne(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).lt(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).le(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).gt(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.lit(Value::U32(0xaa), 8).ge(m.lit(Value::U32(0xaa), 8)).bit_width(), 1);
-    /// assert_eq!(m.mux(m.lit(Value::U32(5), 4), m.lit(Value::U32(6), 4), m.low()).bit_width(), 4);
+    /// assert_eq!(m.lit(1u32, 20).concat(m.high()).bit_width(), 21);
+    /// assert_eq!(m.lit(0xaau32, 8).eq(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(0xaau32, 8).ne(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(0xaau32, 8).lt(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(0xaau32, 8).le(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(0xaau32, 8).gt(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.lit(0xaau32, 8).ge(m.lit(0xaau32, 8)).bit_width(), 1);
+    /// assert_eq!(m.mux(m.lit(5u32, 4), m.lit(6u32, 4), m.low()).bit_width(), 4);
     /// ```
     pub fn bit_width(&self) -> u32 {
         match &self.data {
@@ -430,7 +431,7 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit = m.lit(Value::U32(0b0110), 4);
+    /// let lit = m.lit(0b0110u32, 4);
     /// let bit_0 = lit.bit(0); // Represents 0
     /// let bit_1 = lit.bit(1); // Represents 1
     /// let bit_2 = lit.bit(2); // Represents 1
@@ -466,7 +467,7 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit = m.lit(Value::U32(0b0110), 4);
+    /// let lit = m.lit(0b0110u32, 4);
     /// let bits_210 = lit.bits(2, 0); // Represents 0b110
     /// let bits_321 = lit.bits(3, 1); // Represents 0b011
     /// let bits_10 = lit.bits(1, 0); // Represents 0b10
@@ -510,7 +511,7 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit = m.lit(Value::U32(0xa), 4);
+    /// let lit = m.lit(0xau32, 4);
     /// let repeat_1 = lit.repeat(1); // Equivalent to just lit
     /// let repeat_2 = lit.repeat(2); // Equivalent to 8-bit lit with value 0xaa
     /// let repeat_5 = lit.repeat(5); // Equivalent to 20-bit lit with value 0xaaaaa
@@ -555,8 +556,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xff), 8);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xffu32, 8);
     /// let concat_1 = lit_a.concat(lit_b); // Equivalent to 12-bit lit with value 0xaff
     /// let concat_2 = lit_b.concat(lit_a); // Equivalent to 12-bit lit with value 0xffa
     /// let concat_3 = lit_a.concat(lit_a); // Equivalent to 8-bit lit with value 0xaa
@@ -591,8 +592,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let eq_1 = lit_a.eq(lit_a); // Equivalent to m.high()
     /// let eq_2 = lit_b.eq(lit_b); // Equivalent to m.high()
     /// let eq_3 = lit_a.eq(lit_b); // Equivalent to m.low()
@@ -637,8 +638,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let ne_1 = lit_a.ne(lit_a); // Equivalent to m.low()
     /// let ne_2 = lit_b.ne(lit_b); // Equivalent to m.low()
     /// let ne_3 = lit_a.ne(lit_b); // Equivalent to m.high()
@@ -683,8 +684,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let lt_1 = lit_a.lt(lit_a); // Equivalent to m.low()
     /// let lt_2 = lit_b.lt(lit_b); // Equivalent to m.low()
     /// let lt_3 = lit_a.lt(lit_b); // Equivalent to m.high()
@@ -729,8 +730,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let le_1 = lit_a.le(lit_a); // Equivalent to m.high()
     /// let le_2 = lit_b.le(lit_b); // Equivalent to m.high()
     /// let le_3 = lit_a.le(lit_b); // Equivalent to m.high()
@@ -775,8 +776,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let gt_1 = lit_a.gt(lit_a); // Equivalent to m.low()
     /// let gt_2 = lit_b.gt(lit_b); // Equivalent to m.low()
     /// let gt_3 = lit_a.gt(lit_b); // Equivalent to m.low()
@@ -821,8 +822,8 @@ impl<'a> Signal<'a> {
     ///
     /// let m = c.module("my_module");
     ///
-    /// let lit_a = m.lit(Value::U32(0xa), 4);
-    /// let lit_b = m.lit(Value::U32(0xb), 4);
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
     /// let ge_1 = lit_a.ge(lit_a); // Equivalent to m.high()
     /// let ge_2 = lit_b.ge(lit_b); // Equivalent to m.high()
     /// let ge_3 = lit_a.ge(lit_b); // Equivalent to m.low()
@@ -1167,7 +1168,7 @@ impl<'a> Instance<'a> {
     /// let outer = c.module("outer");
     /// let inner_inst = outer.instance("inner");
     /// // Drive inner_inst's "i" input with a 32-bit literal
-    /// inner_inst.drive_input("i", outer.lit(Value::U32(0xfadebabe), 32));
+    /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
     pub fn drive_input<S: Into<String>>(&'a self, name: S, i: &'a Signal<'a>) {
         let name = name.into();
@@ -1214,10 +1215,10 @@ impl<'a> Instance<'a> {
 ///
 /// let m = c.module("my_module");
 ///
-/// let a = m.lit(Value::Bool(true), 16);
-/// let b = m.lit(Value::U32(0xdeadbeef), 47);
+/// let a = m.lit(true, 16);
+/// let b = m.lit(0xdeadbeefu32, 47);
 /// let c = m.reg(20, Some(Value::U64(5)));
-/// let d = m.lit(Value::U128(42), 8);
+/// let d = m.lit(42u32, 8);
 /// ```
 // TODO: Should this be named Literal or Const or something?
 pub enum Value {
@@ -1229,6 +1230,42 @@ pub enum Value {
     U64(u64),
     /// Contains an unsigned, 128-bit value
     U128(u128),
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Bool(value)
+    }
+}
+
+impl From<u8> for Value {
+    fn from(value: u8) -> Self {
+        Value::U32(value as _)
+    }
+}
+
+impl From<u16> for Value {
+    fn from(value: u16) -> Self {
+        Value::U32(value as _)
+    }
+}
+
+impl From<u32> for Value {
+    fn from(value: u32) -> Self {
+        Value::U32(value)
+    }
+}
+
+impl From<u64> for Value {
+    fn from(value: u64) -> Self {
+        Value::U64(value)
+    }
+}
+
+impl From<u128> for Value {
+    fn from(value: u128) -> Self {
+        Value::U128(value)
+    }
 }
 
 #[cfg(test)]
@@ -1257,7 +1294,7 @@ mod tests {
         let m = c.module("a");
 
         // Panic
-        let _ = m.lit(Value::Bool(false), 0);
+        let _ = m.lit(false, 0);
     }
 
     #[test]
@@ -1270,7 +1307,7 @@ mod tests {
         let m = c.module("a");
 
         // Panic
-        let _ = m.lit(Value::Bool(false), 129);
+        let _ = m.lit(false, 129);
     }
 
     #[test]
