@@ -381,6 +381,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
     /// assert_eq!(m.reg(46, None).value.bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
+    /// assert_eq!((m.high() & m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(12u32, 100).bit(30).bit_width(), 1);
     /// assert_eq!(m.lit(1u32, 99).bits(37, 29).bit_width(), 9);
@@ -1627,6 +1628,34 @@ mod tests {
 
         // Panic
         let _ = i1.ge(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn bitand_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 & i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn bitand_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1 & i2;
     }
 
     #[test]
