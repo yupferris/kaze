@@ -10,7 +10,7 @@ use typed_arena::Arena;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
-use std::ops::{BitAnd, BitOr, BitXor, Not};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Not};
 use std::ptr;
 
 /// A top-level container/owner object for a module graph.
@@ -381,6 +381,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
     /// assert_eq!(m.reg(46, None).value.bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
+    /// assert_eq!((m.lit(25u8, 8) + m.lit(42u8, 8)).bit_width(), 8);
     /// assert_eq!((m.high() & m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(12u32, 100).bit(30).bit_width(), 1);
@@ -915,6 +916,61 @@ pub(crate) enum SignalData<'a> {
     },
 }
 
+impl<'a> Add for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Combines two `Signal`s, producing a new `Signal` that represents the sum of the original two `Signal`s.
+    ///
+    /// The sum is truncated to the `Signal`'s `bit_width`. If a carry bit is desired, the operands can be `concat`enated with a `0` bit before the operation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::module::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lhs = m.lit(1u32, 32);
+    /// let rhs = m.lit(2u32, 32);
+    /// let sum = lhs + rhs; // Equivalent to m.lit(3u32, 32)
+    ///
+    /// let lhs = m.low().concat(m.lit(0xffffffffu32, 32));
+    /// let rhs = m.low().concat(m.lit(0x00000001u32, 32));
+    /// let carry_sum = lhs + rhs; // Equivalent to m.lit(0x100000000u64, 33)
+    /// let sum = carry_sum.bits(31, 0); // Equivalent to m.lit(0u32, 32)
+    /// let carry = carry_sum.bit(32); // Equivalent to m.lit(true, 1)
+    /// ```
+    fn add(self, rhs: Self) -> Self {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: self.bit_width(),
+                lhs: self,
+                rhs,
+                op: BinOp::Add,
+            },
+        })
+    }
+}
+
 impl<'a> BitAnd for &'a Signal<'a> {
     type Output = Self;
 
@@ -1108,6 +1164,7 @@ pub(crate) enum UnOp {
 
 #[derive(Clone, Copy)]
 pub(crate) enum BinOp {
+    Add,
     BitAnd,
     BitOr,
     BitXor,
@@ -1628,6 +1685,34 @@ mod tests {
 
         // Panic
         let _ = i1.ge(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn add_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 + i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn add_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1 + i2;
     }
 
     #[test]

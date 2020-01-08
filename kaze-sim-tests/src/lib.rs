@@ -25,6 +25,76 @@ mod tests {
     }
 
     #[test]
+    fn add_test_module() {
+        let mut m = add_test_module::default();
+
+        m.i1 = false;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, false);
+
+        m.i1 = true;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, true);
+
+        m.i1 = false;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, true);
+
+        m.i1 = true;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, false);
+
+        m.i3 = 1;
+        m.i4 = 2;
+        m.prop();
+        assert_eq!(m.o2, 3);
+
+        m.i3 = 0xffffu32;
+        m.i4 = 0x0002u32;
+        m.prop();
+        assert_eq!(m.o2, 0x0001u32);
+
+        m.i5 = 0xfade0000u32;
+        m.i6 = 0x0000babeu32;
+        m.prop();
+        assert_eq!(m.o3, 0xfadebabeu32);
+
+        m.i5 = 0xffffffffu32;
+        m.i6 = 0x00000002u32;
+        m.prop();
+        assert_eq!(m.o3, 0x00000001u32);
+
+        m.i7 = 0xfade00000000beefu64;
+        m.i8 = 0x0000babedead0000u64;
+        m.prop();
+        assert_eq!(m.o4, 0xfadebabedeadbeefu64);
+
+        m.i7 = 0xffffffffffffffffu64;
+        m.i8 = 0x0000000000000002u64;
+        m.prop();
+        assert_eq!(m.o4, 0x0000000000000001u64);
+
+        m.i9 = 0xfade00000000beef0000000000000001u128;
+        m.i10 = 0x0000babedead00000000000000000002u128;
+        m.prop();
+        assert_eq!(m.o5, 0xfadebabedeadbeef0000000000000003u128);
+
+        m.i9 = 0xffffffffffffffffffffffffffffffffu128;
+        m.i10 = 0x00000000000000000000000000000002u128;
+        m.prop();
+        assert_eq!(m.o5, 0x00000000000000000000000000000001u128);
+
+        m.i11 = 127u32;
+        m.i12 = 2u32;
+        m.prop();
+        assert_eq!(m.o6, 1u32);
+    }
+
+    #[test]
     fn bitand_test_module() {
         let mut m = bitand_test_module::default();
 

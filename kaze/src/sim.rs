@@ -209,12 +209,20 @@ impl<'a> Compiler<'a> {
                     self.gen_mask(expr, bit_width, target_type)
                 }
                 module::SignalData::BinOp { lhs, rhs, op, .. } => {
+                    let source_type = ValueType::from_bit_width(lhs.bit_width());
                     let lhs = self.compile_signal(lhs, instance_stack);
                     let rhs = self.compile_signal(rhs, instance_stack);
-                    self.gen_temp(Expr::BinOp {
+                    let op_input_type = match (op, source_type) {
+                        (module::BinOp::Add, ValueType::Bool) => ValueType::U32,
+                        _ => source_type,
+                    };
+                    let lhs = self.gen_cast(lhs, source_type, op_input_type);
+                    let rhs = self.gen_cast(rhs, source_type, op_input_type);
+                    let expr = self.gen_temp(Expr::BinOp {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
                         op: match op {
+                            module::BinOp::Add => BinOp::Add,
                             module::BinOp::BitAnd => BinOp::BitAnd,
                             module::BinOp::BitOr => BinOp::BitOr,
                             module::BinOp::BitXor => BinOp::BitXor,
@@ -225,7 +233,20 @@ impl<'a> Compiler<'a> {
                             module::BinOp::GreaterThan => BinOp::GreaterThan,
                             module::BinOp::GreaterThanEqual => BinOp::GreaterThanEqual,
                         },
-                    })
+                    });
+                    let op_output_type = match op {
+                        module::BinOp::Equal
+                        | module::BinOp::NotEqual
+                        | module::BinOp::LessThan
+                        | module::BinOp::LessThanEqual
+                        | module::BinOp::GreaterThan
+                        | module::BinOp::GreaterThanEqual => ValueType::Bool,
+                        _ => op_input_type,
+                    };
+                    let target_bit_width = signal.bit_width();
+                    let target_type = ValueType::from_bit_width(target_bit_width);
+                    let expr = self.gen_cast(expr, op_output_type, target_type);
+                    self.gen_mask(expr, target_bit_width, target_type)
                 }
 
                 module::SignalData::Bits {
@@ -442,23 +463,33 @@ impl Expr {
         match self {
             Expr::BinOp { lhs, rhs, op } => {
                 lhs.write(w)?;
-                w.append(&format!(
-                    " {} ",
-                    match op {
-                        BinOp::BitAnd => "&",
-                        BinOp::BitOr => "|",
-                        BinOp::BitXor => "^",
-                        BinOp::Equal => "==",
-                        BinOp::NotEqual => "!=",
-                        BinOp::LessThan => "<",
-                        BinOp::LessThanEqual => "<=",
-                        BinOp::GreaterThan => ">",
-                        BinOp::GreaterThanEqual => ">=",
-                        BinOp::Shl => "<<",
-                        BinOp::Shr => ">>",
+                match op {
+                    BinOp::Add => {
+                        w.append(".wrapping_add(")?;
+                        rhs.write(w)?;
+                        w.append(")")?;
                     }
-                ))?;
-                rhs.write(w)?;
+                    _ => {
+                        w.append(&format!(
+                            " {} ",
+                            match op {
+                                BinOp::Add => unreachable!(),
+                                BinOp::BitAnd => "&",
+                                BinOp::BitOr => "|",
+                                BinOp::BitXor => "^",
+                                BinOp::Equal => "==",
+                                BinOp::NotEqual => "!=",
+                                BinOp::LessThan => "<",
+                                BinOp::LessThanEqual => "<=",
+                                BinOp::GreaterThan => ">",
+                                BinOp::GreaterThanEqual => ">=",
+                                BinOp::Shl => "<<",
+                                BinOp::Shr => ">>",
+                            }
+                        ))?;
+                        rhs.write(w)?;
+                    }
+                }
             }
             Expr::Cast {
                 source,
@@ -509,6 +540,7 @@ enum UnOp {
 
 #[derive(Clone)]
 enum BinOp {
+    Add,
     BitAnd,
     BitOr,
     BitXor,
