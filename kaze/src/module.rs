@@ -401,7 +401,6 @@ impl<'a> Signal<'a> {
             SignalData::Reg { bit_width, .. } => *bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { bit_width, .. } => *bit_width,
-            SignalData::Bit { .. } => 1,
             SignalData::Bits {
                 range_high,
                 range_low,
@@ -445,9 +444,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::Bit {
+            data: SignalData::Bits {
                 source: self,
-                index,
+                range_high: index,
+                range_low: index,
             },
         })
     }
@@ -887,10 +887,6 @@ pub(crate) enum SignalData<'a> {
         op: BinOp,
     },
 
-    Bit {
-        source: &'a Signal<'a>,
-        index: u32,
-    },
     Bits {
         source: &'a Signal<'a>,
         range_high: u32,

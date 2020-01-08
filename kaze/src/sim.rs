@@ -115,9 +115,6 @@ impl<'a> Compiler<'a> {
                 self.gather_regs(rhs, instance_stack);
             }
 
-            module::SignalData::Bit { source, .. } => {
-                self.gather_regs(source, instance_stack);
-            }
             module::SignalData::Bits { source, .. } => {
                 self.gather_regs(source, instance_stack);
             }
@@ -231,15 +228,6 @@ impl<'a> Compiler<'a> {
                     })
                 }
 
-                module::SignalData::Bit { source, index } => {
-                    let expr = self.compile_signal(source, instance_stack);
-                    let expr = self.gen_shift_right(expr, index);
-                    self.gen_cast(
-                        expr,
-                        ValueType::from_bit_width(source.bit_width()),
-                        ValueType::Bool,
-                    )
-                }
                 module::SignalData::Bits {
                     source, range_low, ..
                 } => {
