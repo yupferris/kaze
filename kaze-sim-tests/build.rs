@@ -313,54 +313,29 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 
     let invert = m.input("invert", 1);
 
-    let mut i = m.input("i", 1);
+    let mut i1 = m.input("i1", 1);
+    let mut i2 = m.input("i2", 1);
+
     kaze_sugar! {
-        i = i;
-        i = !i;
-        i = !i;
+        i1 = !i1;
+        i1 = i1;
+        i1 = !i1;
         if (invert) {
-            i = i; // TODO: Why does it break when we remove this?
+            i2 = i2;
             if (!m.low()) {
-                i = !i;
+                i1 = !i1;
+                i1 = i1;
+                i2 = !i2;
             }
-            //i = i; // TODO: Why does this not parse?
+            i1 = i1;
         }
-        //i = i; // TODO: Why does this not parse?
+        i2 = i2;
     }
 
-    m.output("o", i);
+    m.output("o1", i1);
+    m.output("o2", i2);
 
     m
-}
-
-// TODO: Better name?
-#[macro_export]
-macro_rules! kaze_sugar {
-    ($($contents:tt)*) => {
-        kaze_sugar_impl!([], [ $($contents)* ])
-    };
-}
-
-#[macro_export(local_inner_macros)]
-macro_rules! kaze_sugar_impl {
-    ([], [ if ($sel:expr) { $($rest:tt)* } ]) => {
-        kaze_sugar_impl!([ $sel ], [ $($rest)* ])
-    };
-    ([], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
-        $name = $value;
-        kaze_sugar_impl!([], [ $($rest)* ]);
-    };
-    ([], []) => {};
-
-    ([ $prev_sel:expr ], [ if ($sel:expr) { $($rest:tt)* } ]) => {
-        kaze_sugar_impl!([ $prev_sel & $sel ], [ $($rest)* ])
-    };
-    ([ $sel:expr ], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
-        let prev = $name;
-        kaze_sugar_impl!([ $sel ], [ $($rest)* ]);
-        $name = prev.mux($value, $sel);
-    };
-    ([ $_:expr ], []) => {};
 }
 
 fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {

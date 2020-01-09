@@ -299,6 +299,11 @@ impl<'a> Module<'a> {
     }
 
     pub fn mux(&'a self, a: &'a Signal<'a>, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
+        // TODO: This is an optimization to support kaze_sugar; if that doesn't go well, remove this
+        if ptr::eq(a, b) {
+            return a;
+        }
+
         // TODO: Ensure a and b have the same bit widths
         // TODO: Ensure sel is 1 bit wide
         self.context.signal_arena.alloc(Signal {
@@ -1320,6 +1325,42 @@ impl From<u128> for Value {
     fn from(value: u128) -> Self {
         Value::U128(value)
     }
+}
+
+// TODO: Better name?
+#[macro_export]
+macro_rules! kaze_sugar {
+    ($($contents:tt)*) => {
+        kaze_sugar_impl!([], [ $($contents)* ])
+    };
+}
+
+#[macro_export(local_inner_macros)]
+macro_rules! kaze_sugar_impl {
+    // [selector], [token stream]
+
+    // No selector cases
+    ([], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
+        $name = $value;
+        kaze_sugar_impl!([], [ $($rest)* ]);
+    };
+    ([], [ if ($sel:expr) { $($inner:tt)* } $($rest:tt)* ]) => {
+        kaze_sugar_impl!([ $sel ], [ $($inner)* ]);
+        kaze_sugar_impl!([], [ $($rest)* ]);
+    };
+    ([], []) => {};
+
+    // Selector cases
+    ([ $sel:expr ], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
+        let prev = $name;
+        kaze_sugar_impl!([ $sel ], [ $($rest)* ]);
+        $name = prev.mux($value, $sel);
+    };
+    ([ $prev_sel:expr ], [ if ($sel:expr) { $($inner:tt)* } $($rest:tt)* ]) => {
+        kaze_sugar_impl!([ $prev_sel & $sel ], [ $($inner)* ]);
+        kaze_sugar_impl!([ $prev_sel ], [ $($rest)* ]);
+    };
+    ([ $_:expr ], []) => {};
 }
 
 #[cfg(test)]

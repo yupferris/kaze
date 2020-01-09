@@ -480,25 +480,45 @@ mod tests {
     fn mux_test_module() {
         let mut m = mux_test_module::default();
 
-        m.i = false;
+        m.i1 = false;
         m.invert = false;
         m.prop();
-        assert_eq!(m.o, false);
+        assert_eq!(m.o1, false);
 
-        m.i = true;
+        m.i1 = true;
         m.invert = false;
         m.prop();
-        assert_eq!(m.o, true);
+        assert_eq!(m.o1, true);
 
-        m.i = false;
+        m.i1 = false;
         m.invert = true;
         m.prop();
-        assert_eq!(m.o, true);
+        assert_eq!(m.o1, true);
 
-        m.i = true;
+        m.i1 = true;
         m.invert = true;
         m.prop();
-        assert_eq!(m.o, false);
+        assert_eq!(m.o1, false);
+
+        m.i2 = false;
+        m.invert = false;
+        m.prop();
+        assert_eq!(m.o2, false);
+
+        m.i2 = true;
+        m.invert = false;
+        m.prop();
+        assert_eq!(m.o2, true);
+
+        m.i2 = false;
+        m.invert = true;
+        m.prop();
+        assert_eq!(m.o2, true);
+
+        m.i2 = true;
+        m.invert = true;
+        m.prop();
+        assert_eq!(m.o2, false);
     }
 
     #[test]
