@@ -8,12 +8,12 @@ use compiler::*;
 use il::*;
 
 use crate::code_writer;
-use crate::module;
+use crate::graph;
 
 use std::io::{Result, Write};
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
-pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
+pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     let mut c = Compiler::new();
 
     for (_, output) in m.outputs.borrow().iter() {
@@ -31,9 +31,9 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
 
     // TODO: Can we get rid of this clone?
     for ((instance_stack, reg), names) in c.reg_names.clone().iter() {
-        let reg = unsafe { &**reg as &module::Signal };
+        let reg = unsafe { &**reg as &graph::Signal };
         match reg.data {
-            module::SignalData::Reg { ref next, .. } => {
+            graph::SignalData::Reg { ref next, .. } => {
                 let expr = c.compile_signal(next.borrow().unwrap(), instance_stack);
                 c.prop_assignments.push(Assignment {
                     target_scope: TargetScope::Member,
@@ -81,7 +81,7 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
     if c.reg_names.len() > 0 {
         w.append_line("// Regs")?;
         for ((_, reg), names) in c.reg_names.iter() {
-            let reg = unsafe { &**reg as &module::Signal };
+            let reg = unsafe { &**reg as &graph::Signal };
             let type_name = ValueType::from_bit_width(reg.bit_width()).name();
             w.append_line(&format!(
                 "{}: {}, // {} bit(s)",
@@ -106,9 +106,9 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
 
         // TODO: Consider using assignments/exprs instead of generating statement strings
         for ((_, reg), names) in c.reg_names.iter() {
-            let reg = unsafe { &**reg as &module::Signal };
+            let reg = unsafe { &**reg as &graph::Signal };
             match reg.data {
-                module::SignalData::Reg {
+                graph::SignalData::Reg {
                     ref initial_value,
                     bit_width,
                     ..
@@ -117,16 +117,16 @@ pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
                     w.append(&format!("self.{} = ", names.value_name))?;
                     let type_name = ValueType::from_bit_width(bit_width).name();
                     w.append(&match initial_value {
-                        module::Value::Bool(value) => {
+                        graph::Value::Bool(value) => {
                             if bit_width == 1 {
                                 format!("{}", value)
                             } else {
                                 format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
                             }
                         }
-                        module::Value::U32(value) => format!("0x{:x}{}", value, type_name),
-                        module::Value::U64(value) => format!("0x{:x}{}", value, type_name),
-                        module::Value::U128(value) => format!("0x{:x}{}", value, type_name),
+                        graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
+                        graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
+                        graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
                     })?;
                     w.append(";")?;
                     w.append_newline()?;

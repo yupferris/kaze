@@ -296,7 +296,12 @@ impl<'a> Module<'a> {
         self.context.register_arena.alloc(Register { value })
     }
 
-    pub fn mux(&'a self, cond: &'a Signal<'a>, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
+    pub fn mux(
+        &'a self,
+        cond: &'a Signal<'a>,
+        when_true: &'a Signal<'a>,
+        when_false: &'a Signal<'a>,
+    ) -> &Signal<'a> {
         // TODO: This is an optimization to support kaze_sugar; if that doesn't go well, remove this
         if ptr::eq(when_true, when_false) {
             return when_true;
@@ -308,7 +313,11 @@ impl<'a> Module<'a> {
             context: self.context,
             module: self,
 
-            data: SignalData::Mux { cond, when_true, when_false },
+            data: SignalData::Mux {
+                cond,
+                when_true,
+                when_false,
+            },
         })
     }
 
@@ -1350,14 +1359,15 @@ impl From<u128> for Value {
 }
 
 // TODO: Better name?
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! kaze_sugar {
     ($($contents:tt)*) => {
         kaze_sugar_impl!([], [ $($contents)* ])
     };
 }
 
-#[macro_export(local_inner_macros)]
+#[doc(hidden)]
+#[macro_export]
 macro_rules! kaze_sugar_impl {
     // [selector], [token stream]
 

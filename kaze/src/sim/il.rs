@@ -107,7 +107,11 @@ impl Expr {
                 }
                 w.append(name)?;
             }
-            Expr::Ternary { cond, when_true, when_false } => {
+            Expr::Ternary {
+                cond,
+                when_true,
+                when_false,
+            } => {
                 w.append("if ")?;
                 cond.write(w)?;
                 w.append(" { ")?;

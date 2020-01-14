@@ -1,12 +1,12 @@
 //! Verilog code generation.
 
 use crate::code_writer;
-use crate::module;
+use crate::graph;
 
 use std::io::{Result, Write};
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
-pub fn generate<W: Write>(m: &module::Module, w: W) -> Result<()> {
+pub fn generate<W: Write>(m: &graph::Module, w: W) -> Result<()> {
     let mut w = code_writer::CodeWriter::new(w);
 
     w.append_line(&format!("module {}(", m.name))?;

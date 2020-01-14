@@ -6,11 +6,11 @@
 //!
 //! kaze's primary construct is the [`Module`]. Similar to Verilog/VHDL, a [`Module`] represents a blueprint or template for a given hardware module. [`Module`]s can be used to generate code directly, or be instantiated in other [`Module`]s.
 //!
-//! [`Module`]: ./module/struct.Module.html
+//! [`Module`]: ./graph/struct.Module.html
 
 mod code_writer;
-mod module;
+mod graph;
 pub mod sim;
 pub mod verilog;
 
-pub use module::*;
+pub use graph::*;
