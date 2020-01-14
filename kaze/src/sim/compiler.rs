@@ -92,10 +92,10 @@ impl<'a> Compiler<'a> {
                 self.gather_regs(rhs, instance_stack);
             }
 
-            module::SignalData::Mux { a, b, sel } => {
-                self.gather_regs(sel, instance_stack);
-                self.gather_regs(b, instance_stack);
-                self.gather_regs(a, instance_stack);
+            module::SignalData::Mux { cond, when_true, when_false } => {
+                self.gather_regs(cond, instance_stack);
+                self.gather_regs(when_true, instance_stack);
+                self.gather_regs(when_false, instance_stack);
             }
 
             module::SignalData::InstanceOutput { instance, ref name } => {
@@ -270,14 +270,14 @@ impl<'a> Compiler<'a> {
                     })
                 }
 
-                module::SignalData::Mux { a, b, sel } => {
-                    let lhs = self.compile_signal(b, instance_stack);
-                    let rhs = self.compile_signal(a, instance_stack);
-                    let cond = self.compile_signal(sel, instance_stack);
+                module::SignalData::Mux { cond, when_true, when_false } => {
+                    let cond = self.compile_signal(cond, instance_stack);
+                    let when_true = self.compile_signal(when_true, instance_stack);
+                    let when_false = self.compile_signal(when_false, instance_stack);
                     self.gen_temp(Expr::Ternary {
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
                         cond: Box::new(cond),
+                        when_true: Box::new(when_true),
+                        when_false: Box::new(when_false),
                     })
                 }
 

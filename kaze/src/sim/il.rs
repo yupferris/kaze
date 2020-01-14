@@ -48,9 +48,9 @@ pub enum Expr {
         scope: RefScope,
     },
     Ternary {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
         cond: Box<Expr>,
+        when_true: Box<Expr>,
+        when_false: Box<Expr>,
     },
     UnOp {
         source: Box<Expr>,
@@ -107,13 +107,13 @@ impl Expr {
                 }
                 w.append(name)?;
             }
-            Expr::Ternary { lhs, rhs, cond } => {
+            Expr::Ternary { cond, when_true, when_false } => {
                 w.append("if ")?;
                 cond.write(w)?;
                 w.append(" { ")?;
-                lhs.write(w)?;
+                when_true.write(w)?;
                 w.append(" } else { ")?;
-                rhs.write(w)?;
+                when_false.write(w)?;
                 w.append(" }")?;
             }
             Expr::UnOp { source, op } => {

@@ -304,19 +304,19 @@ impl<'a> Module<'a> {
         self.context.register_arena.alloc(Register { value })
     }
 
-    pub fn mux(&'a self, a: &'a Signal<'a>, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
+    pub fn mux(&'a self, cond: &'a Signal<'a>, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         // TODO: This is an optimization to support kaze_sugar; if that doesn't go well, remove this
-        if ptr::eq(a, b) {
-            return a;
+        if ptr::eq(when_true, when_false) {
+            return when_true;
         }
 
-        // TODO: Ensure a and b have the same bit widths
+        // TODO: Ensure when_true and when_false have the same bit widths
         // TODO: Ensure sel is 1 bit wide
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
 
-            data: SignalData::Mux { a, b, sel },
+            data: SignalData::Mux { cond, when_true, when_false },
         })
     }
 
@@ -406,7 +406,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(0xaau32, 8).le(m.lit(0xaau32, 8)).bit_width(), 1);
     /// assert_eq!(m.lit(0xaau32, 8).gt(m.lit(0xaau32, 8)).bit_width(), 1);
     /// assert_eq!(m.lit(0xaau32, 8).ge(m.lit(0xaau32, 8)).bit_width(), 1);
-    /// assert_eq!(m.mux(m.lit(5u32, 4), m.lit(6u32, 4), m.low()).bit_width(), 4);
+    /// assert_eq!(m.mux(m.low(), m.lit(5u32, 4), m.lit(6u32, 4)).bit_width(), 4);
     /// ```
     #[must_use]
     pub fn bit_width(&self) -> u32 {
@@ -423,7 +423,7 @@ impl<'a> Signal<'a> {
             } => range_high - range_low + 1,
             SignalData::Repeat { source, count } => source.bit_width() * count,
             SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
-            SignalData::Mux { a, .. } => a.bit_width(),
+            SignalData::Mux { when_true, .. } => when_true.bit_width(),
             SignalData::InstanceOutput { instance, name } => {
                 instance.instantiated_module.outputs.borrow()[name].bit_width()
             }
@@ -869,8 +869,8 @@ impl<'a> Signal<'a> {
     }
 
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
-    pub fn mux(&'a self, b: &'a Signal<'a>, sel: &'a Signal<'a>) -> &Signal<'a> {
-        self.module.mux(self, b, sel)
+    pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
+        self.module.mux(self, when_true, when_false)
     }
 }
 
@@ -918,9 +918,9 @@ pub(crate) enum SignalData<'a> {
     },
 
     Mux {
-        a: &'a Signal<'a>,
-        b: &'a Signal<'a>,
-        sel: &'a Signal<'a>,
+        cond: &'a Signal<'a>,
+        when_true: &'a Signal<'a>,
+        when_false: &'a Signal<'a>,
     },
 
     InstanceOutput {
@@ -1384,7 +1384,7 @@ macro_rules! kaze_sugar_impl {
     ([ $sel:expr ], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
         let prev = $name;
         kaze_sugar_impl!([ $sel ], [ $($rest)* ]);
-        $name = prev.mux($value, $sel);
+        $name = $sel.mux($value, prev)
     };
     ([ $prev_sel:expr ], [ if ($sel:expr) { $($inner:tt)* } $($rest:tt)* ]) => {
         kaze_sugar_impl!([ $prev_sel & $sel ], [ $($inner)* ]);
