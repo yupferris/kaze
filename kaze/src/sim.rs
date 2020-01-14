@@ -610,7 +610,7 @@ impl ValueType {
     }
 }
 
-pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: &mut W) -> Result<()> {
+pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
     let mut c = Compiler::new();
 
     for (_, output) in m.outputs.borrow().iter() {

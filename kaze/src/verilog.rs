@@ -5,7 +5,7 @@ use crate::module;
 
 use std::io::{Result, Write};
 
-pub fn generate<W: Write>(m: &module::Module, w: &mut W) -> Result<()> {
+pub fn generate<W: Write>(m: &module::Module, w: W) -> Result<()> {
     let mut w = code_writer::CodeWriter::new(w);
 
     w.append_line(&format!("module {}(", m.name))?;

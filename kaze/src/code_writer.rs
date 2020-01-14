@@ -1,12 +1,12 @@
 use std::io::{Result, Write};
 
-pub struct CodeWriter<'a, W: Write> {
-    w: &'a mut W,
+pub struct CodeWriter<W: Write> {
+    w: W,
     indent_level: u32,
 }
 
-impl<'a, W: Write> CodeWriter<'a, W> {
-    pub fn new(w: &'a mut W) -> CodeWriter<'a, W> {
+impl<W: Write> CodeWriter<W> {
+    pub fn new(w: W) -> CodeWriter<W> {
         CodeWriter { w, indent_level: 0 }
     }
 
