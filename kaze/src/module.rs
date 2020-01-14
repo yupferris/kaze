@@ -1279,7 +1279,6 @@ impl<'a> Instance<'a> {
 /// let c = m.reg(20, Some(Value::U64(5)));
 /// let d = m.lit(42u32, 8);
 /// ```
-// TODO: Should this be named Literal or Const or something?
 pub enum Value {
     /// Contains a boolean value
     Bool(bool),
