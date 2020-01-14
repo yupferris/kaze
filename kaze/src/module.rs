@@ -26,6 +26,7 @@ use std::ptr;
 /// let m = c.module("my_module");
 /// m.output("out", m.input("in", 1));
 /// ```
+#[must_use]
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
     signal_arena: Arena<Signal<'a>>,
@@ -102,6 +103,7 @@ impl<'a> Context<'a> {
     }
 }
 
+#[must_use]
 pub struct Module<'a> {
     context: &'a Context<'a>,
 
@@ -367,6 +369,7 @@ pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
 /// This is currently set to `128` to simplify simulator code generation, since it allows the generated code to rely purely on native integer types provided by Rust's standard library for storage, arithmetic, etc. Larger widths may be supported in a future version of this library.
 pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 
+#[must_use]
 pub struct Signal<'a> {
     context: &'a Context<'a>,
     module: &'a Module<'a>,
@@ -1185,6 +1188,7 @@ pub(crate) enum BinOp {
     NotEqual,
 }
 
+#[must_use]
 pub struct Register<'a> {
     pub value: &'a Signal<'a>,
 }
@@ -1203,6 +1207,7 @@ impl<'a> Register<'a> {
     }
 }
 
+#[must_use]
 pub struct Instance<'a> {
     context: &'a Context<'a>,
     module: &'a Module<'a>,
