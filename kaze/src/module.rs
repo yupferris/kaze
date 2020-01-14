@@ -408,6 +408,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(0xaau32, 8).ge(m.lit(0xaau32, 8)).bit_width(), 1);
     /// assert_eq!(m.mux(m.lit(5u32, 4), m.lit(6u32, 4), m.low()).bit_width(), 4);
     /// ```
+    #[must_use]
     pub fn bit_width(&self) -> u32 {
         match &self.data {
             SignalData::Lit { bit_width, .. } => *bit_width,
