@@ -125,11 +125,11 @@ impl<'a> Module<'a> {
 
     /// Creates a `Signal` that represents the constant literal specified by `value` with `bit_width` bits.
     ///
-    /// The bit width of the type provided by `value` doesn't need to match `bit_width`.
+    /// The bit width of the type provided by `value` doesn't need to match `bit_width`. but the value represented by `value` must fit into `bit_width` bits.
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively, or if the specified `value` doesn't fit into `bit_width` bits.
     ///
     /// # Examples
     ///
@@ -161,7 +161,11 @@ impl<'a> Module<'a> {
             );
         }
         let value = value.into();
-        // TODO: Ensure value fits within bit_width bits
+        let required_bits = value.required_bits();
+        if required_bits > bit_width {
+            let numeric_value = value.numeric_value();
+            panic!("Cannot fit the specified value '{}' into the specified bit width '{}'. The value '{}' requires a bit width of at least {} bit(s).", numeric_value, bit_width, numeric_value, required_bits);
+        }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -1290,6 +1294,27 @@ pub enum Value {
     U128(u128),
 }
 
+impl Value {
+    // TODO: Specific tests? I don't necessarily want to make this part of the public API at least.
+    fn required_bits(&self) -> u32 {
+        match *self {
+            Value::Bool(value) => 32 - (value as u32).leading_zeros(),
+            Value::U32(value) => 32 - value.leading_zeros(),
+            Value::U64(value) => 64 - value.leading_zeros(),
+            Value::U128(value) => 128 - value.leading_zeros(),
+        }
+    }
+
+    fn numeric_value(&self) -> u128 {
+        match *self {
+            Value::Bool(value) => value.into(),
+            Value::U32(value) => value.into(),
+            Value::U64(value) => value.into(),
+            Value::U128(value) => value,
+        }
+    }
+}
+
 impl From<bool> for Value {
     fn from(value: bool) -> Self {
         Value::Bool(value)
@@ -1402,6 +1427,58 @@ mod tests {
 
         // Panic
         let _ = m.lit(false, 129);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot fit the specified value '128' into the specified bit width '7'. The value '128' requires a bit width of at least 8 bit(s)."
+    )]
+    fn lit_value_cannot_bit_into_bit_width_error_1() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.lit(128u32, 7);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot fit the specified value '128' into the specified bit width '2'. The value '128' requires a bit width of at least 8 bit(s)."
+    )]
+    fn lit_value_cannot_bit_into_bit_width_error_2() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.lit(128u64, 2);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot fit the specified value '1023' into the specified bit width '4'. The value '1023' requires a bit width of at least 10 bit(s)."
+    )]
+    fn lit_value_cannot_bit_into_bit_width_error_3() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.lit(1023u128, 4);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot fit the specified value '65536' into the specified bit width '1'. The value '65536' requires a bit width of at least 17 bit(s)."
+    )]
+    fn lit_value_cannot_bit_into_bit_width_error_4() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.lit(65536u32, 1);
     }
 
     #[test]
