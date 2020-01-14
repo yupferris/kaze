@@ -20,7 +20,7 @@ use std::ptr;
 /// # Examples
 ///
 /// ```
-/// use kaze::module::*;
+/// use kaze::*;
 ///
 /// let c = Context::new();
 /// let m = c.module("my_module");
@@ -42,7 +42,7 @@ impl<'a> Context<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     /// ```
@@ -68,7 +68,7 @@ impl<'a> Context<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -79,7 +79,7 @@ impl<'a> Context<'a> {
     /// The following example panics by creating a `Module` with the same `name` as a previously-created `Module` in the same `Context`:
     ///
     /// ```should_panic
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -136,7 +136,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -181,7 +181,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -200,7 +200,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -223,7 +223,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -271,7 +271,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -329,7 +329,7 @@ impl<'a> Module<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -383,7 +383,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -439,7 +439,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -476,7 +476,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -520,7 +520,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -565,7 +565,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -601,7 +601,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -647,7 +647,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -693,7 +693,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -739,7 +739,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -785,7 +785,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -831,7 +831,7 @@ impl<'a> Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -943,7 +943,7 @@ impl<'a> Add for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -996,7 +996,7 @@ impl<'a> BitAnd for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -1047,7 +1047,7 @@ impl<'a> BitOr for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -1098,7 +1098,7 @@ impl<'a> BitXor for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -1145,7 +1145,7 @@ impl<'a> Not for &'a Signal<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -1227,7 +1227,7 @@ impl<'a> Instance<'a> {
     /// # Examples
     ///
     /// ```
-    /// use kaze::module::*;
+    /// use kaze::*;
     ///
     /// let c = Context::new();
     ///
@@ -1278,7 +1278,7 @@ impl<'a> Instance<'a> {
 /// # Examples
 ///
 /// ```
-/// use kaze::module::*;
+/// use kaze::*;
 ///
 /// let c = Context::new();
 ///

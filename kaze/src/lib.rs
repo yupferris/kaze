@@ -9,6 +9,8 @@
 //! [`Module`]: ./module/struct.Module.html
 
 mod code_writer;
-pub mod module;
+mod module;
 pub mod sim;
 pub mod verilog;
+
+pub use module::*;

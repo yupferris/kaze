@@ -1,4 +1,3 @@
-use kaze::module::*;
 use kaze::*;
 
 use std::env;
