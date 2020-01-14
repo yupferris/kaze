@@ -1,11 +1,3 @@
-//! `Module` graph API.
-//!
-//! TODO: This is where most of the meat should go!
-//!
-//! # Modules
-//! # Signals
-//! # Registers
-
 use typed_arena::Arena;
 
 use std::cell::RefCell;
