@@ -5,6 +5,7 @@ use crate::module;
 
 use std::io::{Result, Write};
 
+// TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<W: Write>(m: &module::Module, w: W) -> Result<()> {
     let mut w = code_writer::CodeWriter::new(w);
 

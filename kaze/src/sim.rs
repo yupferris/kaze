@@ -610,6 +610,7 @@ impl ValueType {
     }
 }
 
+// TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a module::Module<'a>, w: W) -> Result<()> {
     let mut c = Compiler::new();
 
