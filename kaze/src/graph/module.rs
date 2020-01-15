@@ -238,7 +238,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` called `name` doesn't exist in this `Context` or if creating this `Instance` would cause this `Module` definition to become recursive.
+    /// Panics if a `Module` called `name` doesn't exist in this `Context`.
     ///
     /// # Examples
     ///
