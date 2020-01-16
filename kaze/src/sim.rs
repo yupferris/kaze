@@ -2,10 +2,11 @@
 
 mod compiler;
 mod ir;
-mod stack;
 
 use compiler::*;
 use ir::*;
+
+use typed_arena::Arena;
 
 use crate::code_writer;
 use crate::graph;
@@ -14,14 +15,16 @@ use std::io::{Result, Write};
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
-    let mut c = Compiler::new();
+    let context_arena = Arena::new();
+    let root_context = context_arena.alloc(ModuleContext::new(None));
+    let mut c = Compiler::new(&context_arena);
 
     for (_, output) in m.outputs.borrow().iter() {
-        c.gather_regs(&output, &InstanceStack::new());
+        c.gather_regs(&output, root_context);
     }
 
     for (name, output) in m.outputs.borrow().iter() {
-        let expr = c.compile_signal(&output, &InstanceStack::new());
+        let expr = c.compile_signal(&output, root_context);
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,
             target_name: name.clone(),
@@ -30,11 +33,12 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     // TODO: Can we get rid of this clone?
-    for ((instance_stack, reg), names) in c.reg_names.clone().iter() {
+    for ((context, reg), names) in c.reg_names.clone().iter() {
+        let context = unsafe { &**context as &ModuleContext };
         let reg = unsafe { &**reg as &graph::Signal };
         match reg.data {
             graph::SignalData::Reg { ref next, .. } => {
-                let expr = c.compile_signal(next.borrow().unwrap(), instance_stack);
+                let expr = c.compile_signal(next.borrow().unwrap(), context);
                 c.prop_assignments.push(Assignment {
                     target_scope: TargetScope::Member,
                     target_name: names.next_name.clone(),

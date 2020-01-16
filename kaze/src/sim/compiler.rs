@@ -1,11 +1,34 @@
 use super::ir::*;
-use super::stack::*;
 
 use crate::graph;
 
+use typed_arena::Arena;
+
+use std::cell::RefCell;
 use std::collections::HashMap;
 
-pub type InstanceStack<'a> = Stack<*const graph::Instance<'a>>;
+pub struct ModuleContext<'graph, 'arena> {
+    instance_and_parent: Option<(
+        &'graph graph::Instance<'graph>,
+        &'arena ModuleContext<'graph, 'arena>,
+    )>,
+    children:
+        RefCell<HashMap<*const graph::Instance<'graph>, &'arena ModuleContext<'graph, 'arena>>>,
+}
+
+impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
+    pub fn new(
+        instance_and_parent: Option<(
+            &'graph graph::Instance<'graph>,
+            &'arena ModuleContext<'graph, 'arena>,
+        )>,
+    ) -> ModuleContext<'graph, 'arena> {
+        ModuleContext {
+            instance_and_parent,
+            children: RefCell::new(HashMap::new()),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct RegNames {
@@ -13,18 +36,36 @@ pub struct RegNames {
     pub next_name: String,
 }
 
-pub struct Compiler<'a> {
-    pub reg_names: HashMap<(InstanceStack<'a>, *const graph::Signal<'a>), RegNames>,
-    signal_exprs: HashMap<(InstanceStack<'a>, *const graph::Signal<'a>), Expr>,
+pub struct Compiler<'graph, 'arena> {
+    context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+
+    pub reg_names: HashMap<
+        (
+            *const ModuleContext<'graph, 'arena>,
+            *const graph::Signal<'graph>,
+        ),
+        RegNames,
+    >,
+    signal_exprs: HashMap<
+        (
+            *const ModuleContext<'graph, 'arena>,
+            *const graph::Signal<'graph>,
+        ),
+        Expr,
+    >,
 
     pub prop_assignments: Vec<Assignment>,
 
     local_count: u32,
 }
 
-impl<'a> Compiler<'a> {
-    pub fn new() -> Compiler<'a> {
+impl<'graph, 'arena> Compiler<'graph, 'arena> {
+    pub fn new(
+        context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+    ) -> Compiler<'graph, 'arena> {
         Compiler {
+            context_arena,
+
             reg_names: HashMap::new(),
             signal_exprs: HashMap::new(),
 
@@ -36,23 +77,22 @@ impl<'a> Compiler<'a> {
 
     pub fn gather_regs(
         &mut self,
-        signal: &'a graph::Signal<'a>,
-        instance_stack: &InstanceStack<'a>,
+        signal: &'graph graph::Signal<'graph>,
+        context: &'arena ModuleContext<'graph, 'arena>,
     ) {
         match signal.data {
             graph::SignalData::Lit { .. } => (),
 
             graph::SignalData::Input { ref name, .. } => {
-                if let Some((instance, instance_stack_tail)) = instance_stack.pop() {
-                    let instance = unsafe { &*instance };
+                if let Some((instance, parent)) = context.instance_and_parent {
                     // TODO: Report error if input isn't driven
                     //  Should we report errors for all undriven inputs here?
-                    self.gather_regs(instance.driven_inputs.borrow()[name], &instance_stack_tail);
+                    self.gather_regs(instance.driven_inputs.borrow()[name], parent);
                 }
             }
 
             graph::SignalData::Reg { ref next, .. } => {
-                let key = (instance_stack.clone(), signal as *const _);
+                let key = (context as *const _, signal as *const _);
                 if self.reg_names.contains_key(&key) {
                     return;
                 }
@@ -68,28 +108,28 @@ impl<'a> Compiler<'a> {
                 // TODO: Proper error and test(s)
                 self.gather_regs(
                     next.borrow().expect("Discovered undriven register(s)"),
-                    instance_stack,
+                    context,
                 );
             }
 
             graph::SignalData::UnOp { source, .. } => {
-                self.gather_regs(source, instance_stack);
+                self.gather_regs(source, context);
             }
             graph::SignalData::BinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs, instance_stack);
-                self.gather_regs(rhs, instance_stack);
+                self.gather_regs(lhs, context);
+                self.gather_regs(rhs, context);
             }
 
             graph::SignalData::Bits { source, .. } => {
-                self.gather_regs(source, instance_stack);
+                self.gather_regs(source, context);
             }
 
             graph::SignalData::Repeat { source, .. } => {
-                self.gather_regs(source, instance_stack);
+                self.gather_regs(source, context);
             }
             graph::SignalData::Concat { lhs, rhs } => {
-                self.gather_regs(lhs, instance_stack);
-                self.gather_regs(rhs, instance_stack);
+                self.gather_regs(lhs, context);
+                self.gather_regs(rhs, context);
             }
 
             graph::SignalData::Mux {
@@ -97,24 +137,32 @@ impl<'a> Compiler<'a> {
                 when_true,
                 when_false,
             } => {
-                self.gather_regs(cond, instance_stack);
-                self.gather_regs(when_true, instance_stack);
-                self.gather_regs(when_false, instance_stack);
+                self.gather_regs(cond, context);
+                self.gather_regs(when_true, context);
+                self.gather_regs(when_false, context);
             }
 
             graph::SignalData::InstanceOutput { instance, ref name } => {
                 let output = instance.instantiated_module.outputs.borrow()[name];
-                self.gather_regs(output, &instance_stack.push(instance));
+                let key = instance as *const _;
+                if !context.children.borrow().contains_key(&key) {
+                    let child = self
+                        .context_arena
+                        .alloc(ModuleContext::new(Some((instance, context))));
+                    context.children.borrow_mut().insert(instance, child);
+                }
+                let child = context.children.borrow()[&key];
+                self.gather_regs(output, child);
             }
         }
     }
 
     pub fn compile_signal(
         &mut self,
-        signal: &'a graph::Signal<'a>,
-        instance_stack: &InstanceStack<'a>,
+        signal: &'graph graph::Signal<'graph>,
+        context: &ModuleContext<'graph, 'arena>,
     ) -> Expr {
-        let key = (instance_stack.clone(), signal as *const _);
+        let key = (context as *const _, signal as *const _);
         if !self.signal_exprs.contains_key(&key) {
             let expr = match signal.data {
                 graph::SignalData::Lit {
@@ -143,12 +191,8 @@ impl<'a> Compiler<'a> {
                     ref name,
                     bit_width,
                 } => {
-                    if let Some((instance, instance_stack_tail)) = instance_stack.pop() {
-                        let instance = unsafe { &*instance };
-                        self.compile_signal(
-                            instance.driven_inputs.borrow()[name],
-                            &instance_stack_tail,
-                        )
+                    if let Some((instance, parent)) = context.instance_and_parent {
+                        self.compile_signal(instance.driven_inputs.borrow()[name], parent)
                     } else {
                         let target_type = ValueType::from_bit_width(bit_width);
                         let expr = Expr::Ref {
@@ -165,7 +209,7 @@ impl<'a> Compiler<'a> {
                 },
 
                 graph::SignalData::UnOp { source, op } => {
-                    let expr = self.compile_signal(source, instance_stack);
+                    let expr = self.compile_signal(source, context);
                     let expr = self.gen_temp(Expr::UnOp {
                         source: Box::new(expr),
                         op: match op {
@@ -179,8 +223,8 @@ impl<'a> Compiler<'a> {
                 }
                 graph::SignalData::BinOp { lhs, rhs, op, .. } => {
                     let source_type = ValueType::from_bit_width(lhs.bit_width());
-                    let lhs = self.compile_signal(lhs, instance_stack);
-                    let rhs = self.compile_signal(rhs, instance_stack);
+                    let lhs = self.compile_signal(lhs, context);
+                    let rhs = self.compile_signal(rhs, context);
                     let op_input_type = match (op, source_type) {
                         (graph::BinOp::Add, ValueType::Bool) => ValueType::U32,
                         _ => source_type,
@@ -221,7 +265,7 @@ impl<'a> Compiler<'a> {
                 graph::SignalData::Bits {
                     source, range_low, ..
                 } => {
-                    let expr = self.compile_signal(source, instance_stack);
+                    let expr = self.compile_signal(source, context);
                     let expr = self.gen_shift_right(expr, range_low);
                     let target_bit_width = signal.bit_width();
                     let target_type = ValueType::from_bit_width(target_bit_width);
@@ -234,7 +278,7 @@ impl<'a> Compiler<'a> {
                 }
 
                 graph::SignalData::Repeat { source, count } => {
-                    let expr = self.compile_signal(source, instance_stack);
+                    let expr = self.compile_signal(source, context);
                     let mut expr = self.gen_cast(
                         expr,
                         ValueType::from_bit_width(source.bit_width()),
@@ -261,8 +305,8 @@ impl<'a> Compiler<'a> {
                     let lhs_type = ValueType::from_bit_width(lhs.bit_width());
                     let rhs_bit_width = rhs.bit_width();
                     let rhs_type = ValueType::from_bit_width(rhs_bit_width);
-                    let lhs = self.compile_signal(lhs, instance_stack);
-                    let rhs = self.compile_signal(rhs, instance_stack);
+                    let lhs = self.compile_signal(lhs, context);
+                    let rhs = self.compile_signal(rhs, context);
                     let target_type = ValueType::from_bit_width(signal.bit_width());
                     let lhs = self.gen_cast(lhs, lhs_type, target_type);
                     let rhs = self.gen_cast(rhs, rhs_type, target_type);
@@ -279,9 +323,9 @@ impl<'a> Compiler<'a> {
                     when_true,
                     when_false,
                 } => {
-                    let cond = self.compile_signal(cond, instance_stack);
-                    let when_true = self.compile_signal(when_true, instance_stack);
-                    let when_false = self.compile_signal(when_false, instance_stack);
+                    let cond = self.compile_signal(cond, context);
+                    let when_true = self.compile_signal(when_true, context);
+                    let when_false = self.compile_signal(when_false, context);
                     self.gen_temp(Expr::Ternary {
                         cond: Box::new(cond),
                         when_true: Box::new(when_true),
@@ -291,7 +335,8 @@ impl<'a> Compiler<'a> {
 
                 graph::SignalData::InstanceOutput { instance, ref name } => {
                     let output = instance.instantiated_module.outputs.borrow()[name];
-                    self.compile_signal(output, &instance_stack.push(instance))
+                    let key = instance as *const _;
+                    self.compile_signal(output, context.children.borrow()[&key])
                 }
             };
             self.signal_exprs.insert(key.clone(), expr);
