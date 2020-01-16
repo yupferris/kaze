@@ -1,11 +1,11 @@
 //! Rust simulator code generation.
 
 mod compiler;
-mod il;
+mod ir;
 mod stack;
 
 use compiler::*;
-use il::*;
+use ir::*;
 
 use crate::code_writer;
 use crate::graph;
