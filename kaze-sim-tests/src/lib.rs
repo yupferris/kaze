@@ -215,19 +215,31 @@ mod tests {
         // Check initial value
         m.reset();
         m.prop();
-        assert_eq!(m.o, 0);
+        assert_eq!(m.o1, 0);
 
         // Register value doesn't change without clock edge
-        m.i = 0xdeadbeef;
+        m.i1 = 0xdeadbeef;
         m.prop();
-        assert_eq!(m.o, 0);
+        assert_eq!(m.o1, 0);
         m.posedge_clk();
-        assert_eq!(m.o, 0); // No propagation
+        assert_eq!(m.o1, 0); // No propagation
         m.prop();
-        assert_eq!(m.o, 0xdeadbeef);
-        m.i = 0xfadebabe;
+        assert_eq!(m.o1, 0xdeadbeef);
+        m.i1 = 0xfadebabe;
         m.prop();
-        assert_eq!(m.o, 0xdeadbeef);
+        assert_eq!(m.o1, 0xdeadbeef);
+
+        // Clock in initial value (second reg explicitly doesn't have one!)
+        m.i2 = 0xfadebabe;
+        m.prop();
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o2, 0xfadebabe);
+
+        // Register with no default value doesn't change with reset
+        m.reset();
+        m.prop();
+        assert_eq!(m.o2, 0xfadebabe);
     }
 
     #[test]

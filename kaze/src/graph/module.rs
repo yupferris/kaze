@@ -193,7 +193,7 @@ impl<'a> Module<'a> {
         self.outputs.borrow_mut().insert(name.into(), source);
     }
 
-    pub fn reg(&'a self, bit_width: u32, initial_value: Option<Value>) -> &Register<'a> {
+    pub fn reg(&'a self, bit_width: u32) -> &Register<'a> {
         // TODO: bit_width bounds checks
         // TODO: Ensure initial_value fits within bit_width bits
         let value = self.context.signal_arena.alloc(Signal {
@@ -201,7 +201,7 @@ impl<'a> Module<'a> {
             module: self,
 
             data: SignalData::Reg {
-                initial_value: initial_value.unwrap_or(Value::U32(0)),
+                initial_value: RefCell::new(None),
                 bit_width,
                 next: RefCell::new(None),
             },

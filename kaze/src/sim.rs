@@ -113,23 +113,25 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                     bit_width,
                     ..
                 } => {
-                    w.append_indent()?;
-                    w.append(&format!("self.{} = ", names.value_name))?;
-                    let type_name = ValueType::from_bit_width(bit_width).name();
-                    w.append(&match initial_value {
-                        graph::Value::Bool(value) => {
-                            if bit_width == 1 {
-                                format!("{}", value)
-                            } else {
-                                format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
+                    if let Some(ref initial_value) = *initial_value.borrow() {
+                        w.append_indent()?;
+                        w.append(&format!("self.{} = ", names.value_name))?;
+                        let type_name = ValueType::from_bit_width(bit_width).name();
+                        w.append(&match initial_value {
+                            graph::Value::Bool(value) => {
+                                if bit_width == 1 {
+                                    format!("{}", value)
+                                } else {
+                                    format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
+                                }
                             }
-                        }
-                        graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
-                        graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
-                        graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
-                    })?;
-                    w.append(";")?;
-                    w.append_newline()?;
+                            graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
+                            graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
+                            graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
+                        })?;
+                        w.append(";")?;
+                        w.append_newline()?;
+                    }
                 }
                 _ => unreachable!(),
             }

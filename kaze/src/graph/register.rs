@@ -1,4 +1,5 @@
 use super::signal::*;
+use super::value::*;
 
 #[must_use]
 pub struct Register<'a> {
@@ -6,6 +7,20 @@ pub struct Register<'a> {
 }
 
 impl<'a> Register<'a> {
+    pub fn default_value<V: Into<Value>>(&'a self, value: V) {
+        // TODO: Panic if this register already has a default value
+        // TODO: Value range check
+        let value = value.into();
+        match self.value.data {
+            SignalData::Reg {
+                ref initial_value, ..
+            } => {
+                *initial_value.borrow_mut() = Some(value);
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn drive_next(&'a self, n: &'a Signal<'a>) {
         match self.value.data {
             SignalData::Reg { ref next, .. } => {
