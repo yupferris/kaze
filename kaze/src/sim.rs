@@ -16,7 +16,11 @@ use std::ptr;
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
-    validate(m);
+    let module_stack_frame = ModuleStackFrame {
+        parent: None,
+        module: m,
+    };
+    validate_module_hierarchy(m, &module_stack_frame, m);
 
     let context_arena = Arena::new();
     let root_context = context_arena.alloc(ModuleContext::new(None));
@@ -181,11 +185,42 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     Ok(())
 }
 
-fn validate<'a>(m: &graph::Module<'a>) {
+struct ModuleStackFrame<'graph, 'frame> {
+    parent: Option<&'frame ModuleStackFrame<'graph, 'frame>>,
+    module: &'graph graph::Module<'graph>,
+}
+
+fn validate_module_hierarchy<'graph, 'frame>(
+    m: &graph::Module<'graph>,
+    module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
+    root: &graph::Module<'graph>,
+) {
     for instance in m.instances.borrow().iter() {
         if ptr::eq(instance.instantiated_module, m) {
             panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\".", m.name, instance.name);
         }
+
+        let mut frame = module_stack_frame;
+        loop {
+            if ptr::eq(instance.instantiated_module, frame.module) {
+                panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\" in module \"{}\".", root.name, instance.name, m.name);
+            }
+
+            if let Some(parent) = frame.parent {
+                frame = parent;
+            } else {
+                break;
+            }
+        }
+
+        validate_module_hierarchy(
+            instance.instantiated_module,
+            &ModuleStackFrame {
+                parent: Some(module_stack_frame),
+                module: instance.instantiated_module,
+            },
+            root,
+        );
     }
 }
 
@@ -205,6 +240,23 @@ mod tests {
         let a = c.module("a");
 
         let _ = a.instance("a", "a1");
+
+        // Panic
+        generate(a, Vec::new()).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"a\" because it has a recursive definition formed by an instance of itself called \"a1\" in module \"b\"."
+    )]
+    fn recursive_module_definition_error2() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let b = c.module("b");
+
+        let _ = a.instance("b", "b1");
+        let _ = b.instance("a", "a1");
 
         // Panic
         generate(a, Vec::new()).unwrap();

@@ -264,7 +264,6 @@ impl<'a> Module<'a> {
         module_name: &str,
         instance_name: S,
     ) -> &Instance<'a> {
-        // TODO: Error if this creates a recursive module definition (can we actually do this here?)
         // TODO: Error if instance_name already exists in this context
         match self.context.modules.borrow().get(module_name) {
             Some(instantiated_module) => {
