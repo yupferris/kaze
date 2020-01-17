@@ -16,11 +16,14 @@ use std::ptr;
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
-    let module_stack_frame = ModuleStackFrame {
-        parent: None,
-        module: m,
-    };
-    validate_module_hierarchy(m, &module_stack_frame, m);
+    validate_module_hierarchy(
+        m,
+        &ModuleStackFrame {
+            parent: None,
+            module: m,
+        },
+        m,
+    );
 
     let context_arena = Arena::new();
     let root_context = context_arena.alloc(ModuleContext::new(None));
