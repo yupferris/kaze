@@ -89,12 +89,14 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 }
             }
 
-            graph::SignalData::Reg { ref next, .. } => {
+            graph::SignalData::Reg {
+                ref name, ref next, ..
+            } => {
                 let key = (context as *const _, signal as *const _);
                 if self.reg_names.contains_key(&key) {
                     return;
                 }
-                let value_name = format!("__reg{}", self.reg_names.len());
+                let value_name = format!("__reg_{}_{}", name, self.reg_names.len());
                 let next_name = format!("{}_next", value_name);
                 self.reg_names.insert(
                     key,

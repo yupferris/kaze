@@ -38,7 +38,7 @@ impl<'a> Signal<'a> {
     ///
     /// assert_eq!(m.lit(42u32, 7).bit_width(), 7);
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
-    /// assert_eq!(m.reg(46).value.bit_width(), 46);
+    /// assert_eq!(m.reg("some_reg", 46).value.bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
     /// assert_eq!((m.lit(25u8, 8) + m.lit(42u8, 8)).bit_width(), 8);
     /// assert_eq!((m.high() & m.low()).bit_width(), 1);
@@ -533,6 +533,7 @@ pub(crate) enum SignalData<'a> {
     },
 
     Reg {
+        name: String,
         initial_value: RefCell<Option<Value>>,
         bit_width: u32,
         next: RefCell<Option<&'a Signal<'a>>>,

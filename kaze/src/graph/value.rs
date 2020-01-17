@@ -11,7 +11,7 @@
 ///
 /// let a = m.lit(true, 16);
 /// let b = m.lit(0xdeadbeefu32, 47);
-/// let c = m.reg(20);
+/// let c = m.reg("data", 20);
 /// c.default_value(5u32);
 /// let d = m.lit(42u32, 8);
 /// ```

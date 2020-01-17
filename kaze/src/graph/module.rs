@@ -195,14 +195,16 @@ impl<'a> Module<'a> {
         self.outputs.borrow_mut().insert(name.into(), source);
     }
 
-    pub fn reg(&'a self, bit_width: u32) -> &Register<'a> {
+    pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
         // TODO: bit_width bounds checks
         // TODO: Ensure initial_value fits within bit_width bits
+        // TODO: Error if name already exists in this context
         let value = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
 
             data: SignalData::Reg {
+                name: name.into(),
                 initial_value: RefCell::new(None),
                 bit_width,
                 next: RefCell::new(None),
