@@ -16,6 +16,7 @@ pub struct Module<'a> {
 
     pub(crate) inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
     pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) instances: RefCell<Vec<&'a Instance<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -27,6 +28,7 @@ impl<'a> Module<'a> {
 
             inputs: RefCell::new(BTreeMap::new()),
             outputs: RefCell::new(BTreeMap::new()),
+            instances: RefCell::new(Vec::new()),
         }
     }
 
@@ -266,14 +268,16 @@ impl<'a> Module<'a> {
         // TODO: Error if instance_name already exists in this context
         match self.context.modules.borrow().get(module_name) {
             Some(instantiated_module) => {
-                self.context.instance_arena.alloc(Instance {
+                let ret = self.context.instance_arena.alloc(Instance {
                     context: self.context,
                     module: self,
 
                     instantiated_module,
                     name: instance_name.into(),
                     driven_inputs: RefCell::new(BTreeMap::new()),
-                })
+                });
+                self.instances.borrow_mut().push(ret);
+                ret
             }
             _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
         }

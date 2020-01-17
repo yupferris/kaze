@@ -12,9 +12,12 @@ use crate::code_writer;
 use crate::graph;
 
 use std::io::{Result, Write};
+use std::ptr;
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
+    validate(m);
+
     let context_arena = Arena::new();
     let root_context = context_arena.alloc(ModuleContext::new(None));
     let mut c = Compiler::new(&context_arena);
@@ -176,4 +179,34 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_newline()?;
 
     Ok(())
+}
+
+fn validate<'a>(m: &graph::Module<'a>) {
+    for instance in m.instances.borrow().iter() {
+        if ptr::eq(instance.instantiated_module, m) {
+            panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\".", m.name, instance.name);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::*;
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"a\" because it has a recursive definition formed by an instance of itself called \"a1\"."
+    )]
+    fn recursive_module_definition_error1() {
+        let c = Context::new();
+
+        let a = c.module("a");
+
+        let _ = a.instance("a", "a1");
+
+        // Panic
+        generate(a, Vec::new()).unwrap();
+    }
 }
