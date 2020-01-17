@@ -352,13 +352,13 @@ fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o", i1 & i2);
 
     let m = c.module("instantiation_test_module_comb");
-    let i1 = m.instance("instantiation_test_module_comb_inner");
+    let i1 = m.instance("instantiation_test_module_comb_inner", "inner1");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("instantiation_test_module_comb_inner");
+    let i2 = m.instance("instantiation_test_module_comb_inner", "inner2");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("instantiation_test_module_comb_inner");
+    let i3 = m.instance("instantiation_test_module_comb_inner", "inner3");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
@@ -376,13 +376,13 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o", r.value);
 
     let m = c.module("instantiation_test_module_reg");
-    let i1 = m.instance("instantiation_test_module_reg_inner");
+    let i1 = m.instance("instantiation_test_module_reg_inner", "inner1");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("instantiation_test_module_reg_inner");
+    let i2 = m.instance("instantiation_test_module_reg_inner", "inner2");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("instantiation_test_module_reg_inner");
+    let i3 = m.instance("instantiation_test_module_reg_inner", "inner3");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));

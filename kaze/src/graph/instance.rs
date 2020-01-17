@@ -12,6 +12,7 @@ pub struct Instance<'a> {
     pub(super) module: &'a Module<'a>,
 
     pub(crate) instantiated_module: &'a Module<'a>,
+    pub(crate) name: String,
     pub(crate) driven_inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
 }
 
@@ -33,7 +34,7 @@ impl<'a> Instance<'a> {
     /// inner.output("o", inner.input("i", 32));
     ///
     /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner");
+    /// let inner_inst = outer.instance("inner", "inner_inst");
     /// // Drive inner_inst's "i" input with a 32-bit literal
     /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
@@ -89,7 +90,7 @@ mod tests {
         let i1 = m1.input("a", 1);
 
         let m2 = c.module("b");
-        let inner_inst = m2.instance("inner");
+        let inner_inst = m2.instance("inner", "inner_inst");
 
         // Panic
         inner_inst.drive_input("a", i1);
@@ -105,7 +106,7 @@ mod tests {
         let _ = c.module("inner");
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner");
+        let inner_inst = m.instance("inner", "inner_inst");
 
         // Panic
         inner_inst.drive_input("a", m.input("i", 1));
@@ -122,7 +123,7 @@ mod tests {
         let _ = inner.input("a", 1);
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner");
+        let inner_inst = m.instance("inner", "inner_inst");
 
         inner_inst.drive_input("a", m.input("i1", 1));
 
@@ -141,7 +142,7 @@ mod tests {
         let _ = inner.input("a", 1);
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner");
+        let inner_inst = m.instance("inner", "inner_inst");
 
         // Panic
         inner_inst.drive_input("a", m.input("i1", 32));

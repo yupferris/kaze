@@ -234,11 +234,11 @@ impl<'a> Module<'a> {
         })
     }
 
-    /// Instantiates the `Module` called `name` in this `Context` inside this `Module` definition, and returns the new `Instance`.
+    /// Instantiates the `Module` identified by `module_name` in this `Context` inside this `Module` definition called `instance_name`, and returns the new `Instance`.
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` called `name` doesn't exist in this `Context`.
+    /// Panics if a `Module` identified by `module_name` doesn't exist in this `Context`.
     ///
     /// # Examples
     ///
@@ -253,23 +253,29 @@ impl<'a> Module<'a> {
     ///
     /// // Outer module (wraps a single `inner` instance)
     /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner");
+    /// let inner_inst = outer.instance("inner", "inner_inst");
     /// inner_inst.drive_input("i", outer.input("i", 32));
     /// outer.output("o", inner_inst.output("o"));
     /// ```
-    pub fn instance(&'a self, name: &str) -> &Instance<'a> {
+    pub fn instance<S: Into<String>>(
+        &'a self,
+        module_name: &str,
+        instance_name: S,
+    ) -> &Instance<'a> {
         // TODO: Error if this creates a recursive module definition (can we actually do this here?)
-        match self.context.modules.borrow().get(name) {
+        // TODO: Error if instance_name already exists in this context
+        match self.context.modules.borrow().get(module_name) {
             Some(instantiated_module) => {
                 self.context.instance_arena.alloc(Instance {
                     context: self.context,
                     module: self,
 
                     instantiated_module,
+                    name: instance_name.into(),
                     driven_inputs: RefCell::new(BTreeMap::new()),
                 })
             }
-            _ => panic!("Attempted to instantiate a module with the name \"{}\", but no such module with this name exists in this context.", name)
+            _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
         }
     }
 }
@@ -398,7 +404,7 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to instantiate a module with the name \"nope\", but no such module with this name exists in this context."
+        expected = "Attempted to instantiate a module identified by \"nope\", but no such module exists in this context."
     )]
     fn instantiate_nonexistent_module_error() {
         let c = Context::new();
@@ -406,6 +412,6 @@ mod tests {
         let m = c.module("a");
 
         // Panic
-        let _ = m.instance("nope");
+        let _ = m.instance("nope", "lol");
     }
 }
