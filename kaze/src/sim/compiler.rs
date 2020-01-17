@@ -85,8 +85,6 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
             graph::SignalData::Input { ref name, .. } => {
                 if let Some((instance, parent)) = context.instance_and_parent {
-                    // TODO: Report error if input isn't driven
-                    //  Should we report errors for all undriven inputs here?
                     self.gather_regs(instance.driven_inputs.borrow()[name], parent);
                 }
             }

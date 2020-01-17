@@ -196,13 +196,15 @@ fn validate_module_hierarchy<'graph, 'frame>(
     root: &graph::Module<'graph>,
 ) {
     for instance in m.instances.borrow().iter() {
-        if ptr::eq(instance.instantiated_module, m) {
+        let instantiated_module = instance.instantiated_module;
+
+        if ptr::eq(instantiated_module, m) {
             panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\".", m.name, instance.name);
         }
 
         let mut frame = module_stack_frame;
         loop {
-            if ptr::eq(instance.instantiated_module, frame.module) {
+            if ptr::eq(instantiated_module, frame.module) {
                 panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\" in module \"{}\".", root.name, instance.name, m.name);
             }
 
@@ -213,11 +215,17 @@ fn validate_module_hierarchy<'graph, 'frame>(
             }
         }
 
+        for input_name in instantiated_module.inputs.borrow().keys() {
+            if !instance.driven_inputs.borrow().contains_key(input_name) {
+                panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an instance of module \"{}\" called \"{}\" whose input \"{}\" is not driven.", root.name, m.name, instantiated_module.name, instance.name, input_name);
+            }
+        }
+
         validate_module_hierarchy(
-            instance.instantiated_module,
+            instantiated_module,
             &ModuleStackFrame {
                 parent: Some(module_stack_frame),
-                module: instance.instantiated_module,
+                module: instantiated_module,
             },
             root,
         );
@@ -257,6 +265,23 @@ mod tests {
 
         let _ = a.instance("b", "b1");
         let _ = b.instance("a", "a1");
+
+        // Panic
+        generate(a, Vec::new()).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"a\" because module \"a\" contains an instance of module \"b\" called \"b1\" whose input \"i\" is not driven."
+    )]
+    fn undriven_instance_input_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let b = c.module("b");
+        let _ = b.input("i", 1);
+
+        let _ = a.instance("b", "b1");
 
         // Panic
         generate(a, Vec::new()).unwrap();
