@@ -1,9 +1,9 @@
 use super::context::*;
 use super::instance::*;
 use super::module::*;
+use super::register::*;
 use super::value::*;
 
-use std::cell::RefCell;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Not};
 use std::ptr;
 
@@ -60,7 +60,7 @@ impl<'a> Signal<'a> {
         match &self.data {
             SignalData::Lit { bit_width, .. } => *bit_width,
             SignalData::Input { bit_width, .. } => *bit_width,
-            SignalData::Reg { bit_width, .. } => *bit_width,
+            SignalData::Reg { data } => data.bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
             SignalData::BinOp { bit_width, .. } => *bit_width,
             SignalData::Bits {
@@ -533,10 +533,7 @@ pub(crate) enum SignalData<'a> {
     },
 
     Reg {
-        name: String,
-        initial_value: RefCell<Option<Value>>,
-        bit_width: u32,
-        next: RefCell<Option<&'a Signal<'a>>>,
+        data: &'a RegisterData<'a>,
     },
 
     UnOp {

@@ -43,20 +43,14 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     // TODO: Can we get rid of this clone?
-    for ((context, reg), names) in c.reg_names.clone().iter() {
+    for ((context, _), reg) in c.regs.clone().iter() {
         let context = unsafe { &**context as &ModuleContext };
-        let reg = unsafe { &**reg as &graph::Signal };
-        match reg.data {
-            graph::SignalData::Reg { ref next, .. } => {
-                let expr = c.compile_signal(next.borrow().unwrap(), context);
-                c.prop_assignments.push(Assignment {
-                    target_scope: TargetScope::Member,
-                    target_name: names.next_name.clone(),
-                    expr,
-                });
-            }
-            _ => unreachable!(),
-        }
+        let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context);
+        c.prop_assignments.push(Assignment {
+            target_scope: TargetScope::Member,
+            target_name: reg.next_name.clone(),
+            expr,
+        });
     }
 
     let mut w = code_writer::CodeWriter::new(w);
@@ -92,18 +86,15 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    if c.reg_names.len() > 0 {
+    if c.regs.len() > 0 {
         w.append_line("// Regs")?;
-        for ((_, reg), names) in c.reg_names.iter() {
-            let reg = unsafe { &**reg as &graph::Signal };
-            let type_name = ValueType::from_bit_width(reg.bit_width()).name();
+        for (_, reg) in c.regs.iter() {
+            let type_name = ValueType::from_bit_width(reg.data.bit_width).name();
             w.append_line(&format!(
                 "{}: {}, // {} bit(s)",
-                names.value_name,
-                type_name,
-                reg.bit_width()
+                reg.value_name, type_name, reg.data.bit_width
             ))?;
-            w.append_line(&format!("{}: {},", names.next_name, type_name))?;
+            w.append_line(&format!("{}: {},", reg.next_name, type_name))?;
         }
     }
 
@@ -114,40 +105,30 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line(&format!("impl {} {{", m.name))?;
     w.indent();
 
-    if c.reg_names.len() > 0 {
+    if c.regs.len() > 0 {
         w.append_line("pub fn reset(&mut self) {")?;
         w.indent();
 
         // TODO: Consider using assignments/exprs instead of generating statement strings
-        for ((_, reg), names) in c.reg_names.iter() {
-            let reg = unsafe { &**reg as &graph::Signal };
-            match reg.data {
-                graph::SignalData::Reg {
-                    ref initial_value,
-                    bit_width,
-                    ..
-                } => {
-                    if let Some(ref initial_value) = *initial_value.borrow() {
-                        w.append_indent()?;
-                        w.append(&format!("self.{} = ", names.value_name))?;
-                        let type_name = ValueType::from_bit_width(bit_width).name();
-                        w.append(&match initial_value {
-                            graph::Value::Bool(value) => {
-                                if bit_width == 1 {
-                                    format!("{}", value)
-                                } else {
-                                    format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
-                                }
-                            }
-                            graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
-                            graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
-                            graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
-                        })?;
-                        w.append(";")?;
-                        w.append_newline()?;
+        for (_, reg) in c.regs.iter() {
+            if let Some(ref initial_value) = *reg.data.initial_value.borrow() {
+                w.append_indent()?;
+                w.append(&format!("self.{} = ", reg.value_name))?;
+                let type_name = ValueType::from_bit_width(reg.data.bit_width).name();
+                w.append(&match initial_value {
+                    graph::Value::Bool(value) => {
+                        if reg.data.bit_width == 1 {
+                            format!("{}", value)
+                        } else {
+                            format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
+                        }
                     }
-                }
-                _ => unreachable!(),
+                    graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
+                    graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
+                    graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
+                })?;
+                w.append(";")?;
+                w.append_newline()?;
             }
         }
 
@@ -158,10 +139,10 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         w.append_line("pub fn posedge_clk(&mut self) {")?;
         w.indent();
 
-        for names in c.reg_names.values() {
+        for reg in c.regs.values() {
             w.append_line(&format!(
                 "self.{} = self.{};",
-                names.value_name, names.next_name
+                reg.value_name, reg.next_name
             ))?;
         }
 
@@ -200,11 +181,9 @@ fn validate_module_hierarchy<'graph, 'frame>(
 ) {
     for register in m.registers.borrow().iter() {
         match register.data {
-            graph::SignalData::Reg {
-                ref name, ref next, ..
-            } => {
-                if next.borrow().is_none() {
-                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a register called \"{}\" which is not driven.", root.name, m.name, name);
+            graph::SignalData::Reg { ref data } => {
+                if data.next.borrow().is_none() {
+                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a register called \"{}\" which is not driven.", root.name, m.name, data.name);
                 }
             }
             _ => unreachable!(),

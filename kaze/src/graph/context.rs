@@ -25,6 +25,7 @@ use std::collections::BTreeMap;
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
     pub(super) signal_arena: Arena<Signal<'a>>,
+    pub(super) register_data_arena: Arena<RegisterData<'a>>,
     pub(super) register_arena: Arena<Register<'a>>,
     pub(super) instance_arena: Arena<Instance<'a>>,
 
@@ -45,6 +46,7 @@ impl<'a> Context<'a> {
         Context {
             module_arena: Arena::new(),
             signal_arena: Arena::new(),
+            register_data_arena: Arena::new(),
             register_arena: Arena::new(),
             instance_arena: Arena::new(),
 

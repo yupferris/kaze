@@ -201,19 +201,20 @@ impl<'a> Module<'a> {
         // TODO: bit_width bounds checks
         // TODO: Ensure initial_value fits within bit_width bits
         // TODO: Error if name already exists in this context
+        let data = self.context.register_data_arena.alloc(RegisterData {
+            name: name.into(),
+            initial_value: RefCell::new(None),
+            bit_width,
+            next: RefCell::new(None),
+        });
         let value = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
 
-            data: SignalData::Reg {
-                name: name.into(),
-                initial_value: RefCell::new(None),
-                bit_width,
-                next: RefCell::new(None),
-            },
+            data: SignalData::Reg { data },
         });
         self.registers.borrow_mut().push(value);
-        self.context.register_arena.alloc(Register { value })
+        self.context.register_arena.alloc(Register { data, value })
     }
 
     pub fn mux(

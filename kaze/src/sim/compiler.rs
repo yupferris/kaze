@@ -31,20 +31,21 @@ impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
 }
 
 #[derive(Clone)]
-pub struct RegNames {
+pub(crate) struct CompiledRegister<'a> {
+    pub data: &'a graph::RegisterData<'a>,
     pub value_name: String,
     pub next_name: String,
 }
 
-pub struct Compiler<'graph, 'arena> {
+pub(crate) struct Compiler<'graph, 'arena> {
     context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
 
-    pub reg_names: HashMap<
+    pub regs: HashMap<
         (
             *const ModuleContext<'graph, 'arena>,
             *const graph::Signal<'graph>,
         ),
-        RegNames,
+        CompiledRegister<'graph>,
     >,
     signal_exprs: HashMap<
         (
@@ -66,7 +67,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
         Compiler {
             context_arena,
 
-            reg_names: HashMap::new(),
+            regs: HashMap::new(),
             signal_exprs: HashMap::new(),
 
             prop_assignments: Vec::new(),
@@ -89,23 +90,22 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 }
             }
 
-            graph::SignalData::Reg {
-                ref name, ref next, ..
-            } => {
+            graph::SignalData::Reg { data } => {
                 let key = (context as *const _, signal as *const _);
-                if self.reg_names.contains_key(&key) {
+                if self.regs.contains_key(&key) {
                     return;
                 }
-                let value_name = format!("__reg_{}_{}", name, self.reg_names.len());
+                let value_name = format!("__reg_{}_{}", data.name, self.regs.len());
                 let next_name = format!("{}_next", value_name);
-                self.reg_names.insert(
+                self.regs.insert(
                     key,
-                    RegNames {
+                    CompiledRegister {
+                        data,
                         value_name,
                         next_name,
                     },
                 );
-                self.gather_regs(next.borrow().unwrap(), context);
+                self.gather_regs(data.next.borrow().unwrap(), context);
             }
 
             graph::SignalData::UnOp { source, .. } => {
@@ -200,7 +200,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 }
 
                 graph::SignalData::Reg { .. } => Expr::Ref {
-                    name: self.reg_names[&key].value_name.clone(),
+                    name: self.regs[&key].value_name.clone(),
                     scope: RefScope::Member,
                 },
 
