@@ -105,11 +105,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         next_name,
                     },
                 );
-                // TODO: Proper error and test(s)
-                self.gather_regs(
-                    next.borrow().expect("Discovered undriven register(s)"),
-                    context,
-                );
+                self.gather_regs(next.borrow().unwrap(), context);
             }
 
             graph::SignalData::UnOp { source, .. } => {

@@ -16,6 +16,7 @@ pub struct Module<'a> {
 
     pub(crate) inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
     pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) registers: RefCell<Vec<&'a Signal<'a>>>,
     pub(crate) instances: RefCell<Vec<&'a Instance<'a>>>,
 }
 
@@ -28,6 +29,7 @@ impl<'a> Module<'a> {
 
             inputs: RefCell::new(BTreeMap::new()),
             outputs: RefCell::new(BTreeMap::new()),
+            registers: RefCell::new(Vec::new()),
             instances: RefCell::new(Vec::new()),
         }
     }
@@ -210,6 +212,7 @@ impl<'a> Module<'a> {
                 next: RefCell::new(None),
             },
         });
+        self.registers.borrow_mut().push(value);
         self.context.register_arena.alloc(Register { value })
     }
 

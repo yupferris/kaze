@@ -198,6 +198,19 @@ fn validate_module_hierarchy<'graph, 'frame>(
     module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
     root: &graph::Module<'graph>,
 ) {
+    for register in m.registers.borrow().iter() {
+        match register.data {
+            graph::SignalData::Reg {
+                ref name, ref next, ..
+            } => {
+                if next.borrow().is_none() {
+                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a register called \"{}\" which is not driven.", root.name, m.name, name);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
     for instance in m.instances.borrow().iter() {
         let instantiated_module = instance.instantiated_module;
 
@@ -283,6 +296,37 @@ mod tests {
         let a = c.module("a");
         let b = c.module("b");
         let _ = b.input("i", 1);
+
+        let _ = a.instance("b", "b1");
+
+        // Panic
+        generate(a, Vec::new()).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"a\" because module \"a\" contains a register called \"r\" which is not driven."
+    )]
+    fn undriven_register_error1() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let _ = a.reg("r", 1);
+
+        // Panic
+        generate(a, Vec::new()).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"a\" because module \"b\" contains a register called \"r\" which is not driven."
+    )]
+    fn undriven_register_error2() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let b = c.module("b");
+        let _ = b.reg("r", 1);
 
         let _ = a.instance("b", "b1");
 
