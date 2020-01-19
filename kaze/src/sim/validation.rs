@@ -8,7 +8,15 @@ struct ModuleStackFrame<'graph, 'frame> {
 }
 
 pub fn validate_module_hierarchy<'graph>(m: &'graph graph::Module<'graph>) {
-    validate_module_hierarchy_impl(
+    detect_recursive_definitions(
+        m,
+        &ModuleStackFrame {
+            parent: None,
+            module: m,
+        },
+        m,
+    );
+    detect_undriven_registers(
         m,
         &ModuleStackFrame {
             parent: None,
@@ -18,22 +26,11 @@ pub fn validate_module_hierarchy<'graph>(m: &'graph graph::Module<'graph>) {
     );
 }
 
-fn validate_module_hierarchy_impl<'graph, 'frame>(
+fn detect_recursive_definitions<'graph, 'frame>(
     m: &graph::Module<'graph>,
     module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
     root: &graph::Module<'graph>,
 ) {
-    for register in m.registers.borrow().iter() {
-        match register.data {
-            graph::SignalData::Reg { ref data } => {
-                if data.next.borrow().is_none() {
-                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a register called \"{}\" which is not driven.", root.name, m.name, data.name);
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-
     for instance in m.instances.borrow().iter() {
         let instantiated_module = instance.instantiated_module;
 
@@ -60,7 +57,37 @@ fn validate_module_hierarchy_impl<'graph, 'frame>(
             }
         }
 
-        validate_module_hierarchy_impl(
+        detect_recursive_definitions(
+            instantiated_module,
+            &ModuleStackFrame {
+                parent: Some(module_stack_frame),
+                module: instantiated_module,
+            },
+            root,
+        );
+    }
+}
+
+fn detect_undriven_registers<'graph, 'frame>(
+    m: &graph::Module<'graph>,
+    module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
+    root: &graph::Module<'graph>,
+) {
+    for register in m.registers.borrow().iter() {
+        match register.data {
+            graph::SignalData::Reg { ref data } => {
+                if data.next.borrow().is_none() {
+                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a register called \"{}\" which is not driven.", root.name, m.name, data.name);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    for instance in m.instances.borrow().iter() {
+        let instantiated_module = instance.instantiated_module;
+
+        detect_undriven_registers(
             instantiated_module,
             &ModuleStackFrame {
                 parent: Some(module_stack_frame),
