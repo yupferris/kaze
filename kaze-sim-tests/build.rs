@@ -36,6 +36,7 @@ fn main() -> Result<()> {
     sim::generate(&mux_test_module(&c), &mut file)?;
     sim::generate(instantiation_test_module_comb(&c), &mut file)?;
     sim::generate(instantiation_test_module_reg(&c), &mut file)?;
+    sim::generate(nested_instantiation_test_module(&c), &mut file)?;
 
     Ok(())
 }
@@ -383,6 +384,33 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
     let i3 = m.instance("instantiation_test_module_reg_inner", "inner3");
+    i3.drive_input("i1", i1.output("o"));
+    i3.drive_input("i2", i2.output("o"));
+    m.output("o", i3.output("o"));
+
+    m
+}
+
+fn nested_instantiation_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("nested_instantiation_test_module_inner_inner");
+    let i = m.input("i", 32);
+    m.output("o", i);
+
+    let m = c.module("nested_instantiation_test_module_inner");
+    let i = m.instance("nested_instantiation_test_module_inner_inner", "inner");
+    let i1 = m.input("i1", 32);
+    let i2 = m.input("i2", 32);
+    i.drive_input("i", i1 & i2);
+    m.output("o", i.output("o"));
+
+    let m = c.module("nested_instantiation_test_module");
+    let i1 = m.instance("nested_instantiation_test_module_inner", "inner1");
+    i1.drive_input("i1", m.input("i1", 32));
+    i1.drive_input("i2", m.input("i2", 32));
+    let i2 = m.instance("nested_instantiation_test_module_inner", "inner2");
+    i2.drive_input("i1", m.input("i3", 32));
+    i2.drive_input("i2", m.input("i4", 32));
+    let i3 = m.instance("nested_instantiation_test_module_inner", "inner3");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));

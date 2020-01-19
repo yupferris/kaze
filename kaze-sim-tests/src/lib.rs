@@ -575,4 +575,23 @@ mod tests {
         m.prop();
         assert_eq!(m.o, 0x000f0000u32);
     }
+
+    #[test]
+    fn nested_instantiation_test_module() {
+        let mut m = nested_instantiation_test_module::default();
+
+        m.i1 = 0xffffffff;
+        m.i2 = 0xffff0000;
+        m.i3 = 0x00ff0000;
+        m.i4 = 0x000f0000;
+        m.prop();
+        assert_eq!(m.o, 0x000f0000u32);
+
+        m.i1 = 0x00000f00;
+        m.i2 = 0xffffffff;
+        m.i3 = 0x0000ffff;
+        m.i4 = 0xffffffff;
+        m.prop();
+        assert_eq!(m.o, 0x00000f00u32);
+    }
 }
