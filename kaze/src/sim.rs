@@ -2,10 +2,12 @@
 
 mod compiler;
 mod ir;
+mod module_context;
 mod validation;
 
 use compiler::*;
 use ir::*;
+use module_context::*;
 use validation::*;
 
 use typed_arena::Arena;
@@ -247,5 +249,24 @@ mod tests {
 
         // Panic
         generate(a, Vec::new()).unwrap();
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot generate code for module \"b\" because module \"a\" contains an output called \"o\" which forms a combinational loop with itself."
+    )]
+    fn combinational_loop_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        a.output("o", a.input("i", 1));
+
+        let b = c.module("b");
+        let a_inst = b.instance("a", "a_inst");
+        let a_inst_o = a_inst.output("o");
+        a_inst.drive_input("i", a_inst_o);
+
+        // Panic
+        generate(b, Vec::new()).unwrap();
     }
 }

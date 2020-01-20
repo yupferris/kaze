@@ -1,34 +1,11 @@
 use super::ir::*;
+use super::module_context::*;
 
 use crate::graph;
 
 use typed_arena::Arena;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
-
-pub struct ModuleContext<'graph, 'arena> {
-    instance_and_parent: Option<(
-        &'graph graph::Instance<'graph>,
-        &'arena ModuleContext<'graph, 'arena>,
-    )>,
-    children:
-        RefCell<HashMap<*const graph::Instance<'graph>, &'arena ModuleContext<'graph, 'arena>>>,
-}
-
-impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
-    pub fn new(
-        instance_and_parent: Option<(
-            &'graph graph::Instance<'graph>,
-            &'arena ModuleContext<'graph, 'arena>,
-        )>,
-    ) -> ModuleContext<'graph, 'arena> {
-        ModuleContext {
-            instance_and_parent,
-            children: RefCell::new(HashMap::new()),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub(crate) struct CompiledRegister<'a> {
@@ -140,14 +117,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
             graph::SignalData::InstanceOutput { instance, ref name } => {
                 let output = instance.instantiated_module.outputs.borrow()[name];
-                let key = instance as *const _;
-                if !context.children.borrow().contains_key(&key) {
-                    let child = self
-                        .context_arena
-                        .alloc(ModuleContext::new(Some((instance, context))));
-                    context.children.borrow_mut().insert(instance, child);
-                }
-                let child = context.children.borrow()[&key];
+                let child = context.get_child(instance, self.context_arena);
                 self.gather_regs(output, child);
             }
         }

@@ -54,7 +54,6 @@ impl<'a> Instance<'a> {
         if input_bit_width != i.bit_width() {
             panic!("Attempted to drive an input called \"{}\" on an instance of \"{}\", but this input and the provided signal have different bit widths ({} and {}, respectively).", name, self.instantiated_module.name, input_bit_width, i.bit_width());
         }
-        // TODO: Should we try to detect loops and error here? Is that sufficient? Efficient?
         driven_inputs.insert(name, i);
     }
 

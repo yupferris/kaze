@@ -1,9 +1,16 @@
 use std::ptr;
 
+use super::module_context::*;
+
 use crate::graph;
 
+use typed_arena::Arena;
+
 struct ModuleStackFrame<'graph, 'frame> {
-    parent: Option<&'frame ModuleStackFrame<'graph, 'frame>>,
+    parent: Option<(
+        &'graph graph::Instance<'graph>,
+        &'frame ModuleStackFrame<'graph, 'frame>,
+    )>,
     module: &'graph graph::Module<'graph>,
 }
 
@@ -24,6 +31,9 @@ pub fn validate_module_hierarchy<'graph>(m: &'graph graph::Module<'graph>) {
         },
         m,
     );
+    let context_arena = Arena::new();
+    let root_context = context_arena.alloc(ModuleContext::new(None));
+    detect_combinational_loops(m, root_context, &context_arena, m);
 }
 
 fn detect_recursive_definitions<'graph, 'frame>(
@@ -44,7 +54,7 @@ fn detect_recursive_definitions<'graph, 'frame>(
                 panic!("Cannot generate code for module \"{}\" because it has a recursive definition formed by an instance of itself called \"{}\" in module \"{}\".", root.name, instance.name, m.name);
             }
 
-            if let Some(parent) = frame.parent {
+            if let Some((_, parent)) = frame.parent {
                 frame = parent;
             } else {
                 break;
@@ -60,7 +70,7 @@ fn detect_recursive_definitions<'graph, 'frame>(
         detect_recursive_definitions(
             instantiated_module,
             &ModuleStackFrame {
-                parent: Some(module_stack_frame),
+                parent: Some((instance, module_stack_frame)),
                 module: instantiated_module,
             },
             root,
@@ -90,10 +100,99 @@ fn detect_undriven_registers<'graph, 'frame>(
         detect_undriven_registers(
             instantiated_module,
             &ModuleStackFrame {
-                parent: Some(module_stack_frame),
+                parent: Some((instance, module_stack_frame)),
                 module: instantiated_module,
             },
             root,
         );
+    }
+}
+
+fn detect_combinational_loops<'graph, 'arena>(
+    m: &graph::Module<'graph>,
+    context: &'arena ModuleContext<'graph, 'arena>,
+    context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+    root: &graph::Module<'graph>,
+) {
+    for instance in m.instances.borrow().iter() {
+        let instantiated_module = instance.instantiated_module;
+
+        let child = context.get_child(instance, context_arena);
+
+        for (_, output) in instantiated_module.outputs.borrow().iter() {
+            trace_signal(output, child, context_arena, (child, output), root);
+        }
+
+        detect_combinational_loops(instantiated_module, child, context_arena, root);
+    }
+}
+
+fn trace_signal<'graph, 'arena>(
+    signal: &graph::Signal<'graph>,
+    context: &'arena ModuleContext<'graph, 'arena>,
+    context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+    source_output: (&ModuleContext<'graph, 'arena>, &graph::Signal<'graph>),
+    root: &graph::Module<'graph>,
+) {
+    match signal.data {
+        graph::SignalData::Lit { .. } => (),
+
+        graph::SignalData::Input { ref name, .. } => {
+            if let Some((instance, parent)) = context.instance_and_parent {
+                trace_signal(
+                    instance.driven_inputs.borrow()[name],
+                    parent,
+                    context_arena,
+                    source_output,
+                    root,
+                );
+            }
+        }
+
+        graph::SignalData::Reg { .. } => (),
+
+        graph::SignalData::UnOp { ref source, .. } => {
+            trace_signal(source, context, context_arena, source_output, root);
+        }
+        graph::SignalData::BinOp {
+            ref lhs, ref rhs, ..
+        } => {
+            trace_signal(lhs, context, context_arena, source_output, root);
+            trace_signal(rhs, context, context_arena, source_output, root);
+        }
+
+        graph::SignalData::Bits { ref source, .. } => {
+            trace_signal(source, context, context_arena, source_output, root);
+        }
+
+        graph::SignalData::Repeat { ref source, .. } => {
+            trace_signal(source, context, context_arena, source_output, root);
+        }
+        graph::SignalData::Concat {
+            ref lhs, ref rhs, ..
+        } => {
+            trace_signal(lhs, context, context_arena, source_output, root);
+            trace_signal(rhs, context, context_arena, source_output, root);
+        }
+
+        graph::SignalData::Mux {
+            ref cond,
+            ref when_true,
+            ref when_false,
+        } => {
+            trace_signal(cond, context, context_arena, source_output, root);
+            trace_signal(when_true, context, context_arena, source_output, root);
+            trace_signal(when_false, context, context_arena, source_output, root);
+        }
+
+        graph::SignalData::InstanceOutput { instance, ref name } => {
+            let instantiated_module = instance.instantiated_module;
+            let output = instantiated_module.outputs.borrow()[name];
+            let child = context.get_child(instance, context_arena);
+            if ptr::eq(child, source_output.0) && ptr::eq(output, source_output.1) {
+                panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
+            }
+            trace_signal(output, child, context_arena, source_output, root);
+        }
     }
 }
