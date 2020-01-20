@@ -22,7 +22,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     validate_module_hierarchy(m);
 
     let context_arena = Arena::new();
-    let root_context = context_arena.alloc(ModuleContext::new(None));
+    let root_context = context_arena.alloc(ModuleContext::new());
     let mut c = Compiler::new(&context_arena);
 
     for (_, output) in m.outputs.borrow().iter() {

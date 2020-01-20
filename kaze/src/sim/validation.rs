@@ -32,7 +32,7 @@ pub fn validate_module_hierarchy<'graph>(m: &'graph graph::Module<'graph>) {
         m,
     );
     let context_arena = Arena::new();
-    let root_context = context_arena.alloc(ModuleContext::new(None));
+    let root_context = context_arena.alloc(ModuleContext::new());
     detect_combinational_loops(m, root_context, &context_arena, m);
 }
 

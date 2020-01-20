@@ -15,14 +15,9 @@ pub struct ModuleContext<'graph, 'arena> {
 }
 
 impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
-    pub fn new(
-        instance_and_parent: Option<(
-            &'graph graph::Instance<'graph>,
-            &'arena ModuleContext<'graph, 'arena>,
-        )>,
-    ) -> ModuleContext<'graph, 'arena> {
+    pub fn new() -> ModuleContext<'graph, 'arena> {
         ModuleContext {
-            instance_and_parent,
+            instance_and_parent: None,
             children: RefCell::new(HashMap::new()),
         }
     }
@@ -34,7 +29,10 @@ impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
     ) -> &'arena ModuleContext<'graph, 'arena> {
         let key = instance as *const _;
         if !self.children.borrow().contains_key(&key) {
-            let child = arena.alloc(ModuleContext::new(Some((instance, self))));
+            let child = arena.alloc(ModuleContext {
+                instance_and_parent: Some((instance, self)),
+                children: RefCell::new(HashMap::new()),
+            });
             self.children.borrow_mut().insert(instance, child);
         }
         self.children.borrow()[&key]
