@@ -117,8 +117,8 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
             graph::SignalData::InstanceOutput { instance, ref name } => {
                 let output = instance.instantiated_module.outputs.borrow()[name];
-                let child = context.get_child(instance, self.context_arena);
-                self.gather_regs(output, child);
+                let context = context.get_child(instance, self.context_arena);
+                self.gather_regs(output, context);
             }
         }
     }

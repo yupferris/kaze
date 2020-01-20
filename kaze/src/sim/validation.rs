@@ -117,13 +117,13 @@ fn detect_combinational_loops<'graph, 'arena>(
     for instance in m.instances.borrow().iter() {
         let instantiated_module = instance.instantiated_module;
 
-        let child = context.get_child(instance, context_arena);
+        let context = context.get_child(instance, context_arena);
 
         for (_, output) in instantiated_module.outputs.borrow().iter() {
-            trace_signal(output, child, context_arena, (child, output), root);
+            trace_signal(output, context, context_arena, (context, output), root);
         }
 
-        detect_combinational_loops(instantiated_module, child, context_arena, root);
+        detect_combinational_loops(instantiated_module, context, context_arena, root);
     }
 }
 
@@ -188,11 +188,11 @@ fn trace_signal<'graph, 'arena>(
         graph::SignalData::InstanceOutput { instance, ref name } => {
             let instantiated_module = instance.instantiated_module;
             let output = instantiated_module.outputs.borrow()[name];
-            let child = context.get_child(instance, context_arena);
-            if ptr::eq(child, source_output.0) && ptr::eq(output, source_output.1) {
+            let context = context.get_child(instance, context_arena);
+            if ptr::eq(context, source_output.0) && ptr::eq(output, source_output.1) {
                 panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
             }
-            trace_signal(output, child, context_arena, source_output, root);
+            trace_signal(output, context, context_arena, source_output, root);
         }
     }
 }
