@@ -26,8 +26,8 @@ use std::ptr;
 /// outer.output("o", inner_inst.output("o"));
 /// ```
 ///
-/// [`Module`]: ./struct.Module.html
 /// [`instance`]: ./struct.Module.html#method.instance
+/// [`Module`]: ./struct.Module.html
 #[must_use]
 pub struct Instance<'a> {
     pub(super) context: &'a Context<'a>,
@@ -39,11 +39,11 @@ pub struct Instance<'a> {
 }
 
 impl<'a> Instance<'a> {
-    /// Drives the input of this `Module` `Instance` specified by `name` with the given `Signal`.
+    /// Drives the input of this [`Module`] `Instance` specified by `name` with the given [`Signal`].
     ///
     /// # Panics
     ///
-    /// Panics if `i` is from a different module than `self`, if `name` specifies an input that doesn't exist on this `Instance`'s `Module`, if this input is already driven on this `Instance`, or if `i`'s bit width differs from that of the input.
+    /// Panics if `i` is from a different [`Module`] than `self`, if `name` specifies an input that doesn't exist on this `Instance`'s [`Module`], if this input is already driven on this `Instance`, or if `i`'s bit width differs from that of the input.
     ///
     /// # Examples
     ///
@@ -60,6 +60,9 @@ impl<'a> Instance<'a> {
     /// // Drive inner_inst's "i" input with a 32-bit literal
     /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    /// [`Signal`]: ./struct.Signal.html
     pub fn drive_input<S: Into<String>>(&'a self, name: S, i: &'a Signal<'a>) {
         let name = name.into();
         let mut driven_inputs = self.driven_inputs.borrow_mut();
@@ -83,7 +86,7 @@ impl<'a> Instance<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `name` specifies an output that doesn't exist on this `Instance`'s `Module`.
+    /// Panics if `name` specifies an output that doesn't exist on this `Instance`'s [`Module`].
     ///
     /// # Examples
     ///
@@ -101,6 +104,7 @@ impl<'a> Instance<'a> {
     /// outer.output("o", inner_inst.output("o"));
     /// ```
     ///
+    /// [`Module`]: ./struct.Module.html
     /// [`Signal`]: ./struct.Signal.html
     pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
         let name = name.into();
