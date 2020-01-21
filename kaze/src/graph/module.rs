@@ -234,7 +234,7 @@ impl<'a> Module<'a> {
     /// let m = c.module("my_module");
     ///
     /// let my_reg = m.reg("my_reg", 32);
-    /// my_reg.default_value(0xfadebabeu32);
+    /// my_reg.default_value(0xfadebabeu32); // Optional
     /// my_reg.drive_next(!my_reg.value);
     /// m.output("my_output", my_reg.value);
     /// ```
