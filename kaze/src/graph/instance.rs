@@ -81,6 +81,10 @@ impl<'a> Instance<'a> {
 
     /// Creates a [`Signal`] that represents this `Instance`'s output called `name`.
     ///
+    /// # Panics
+    ///
+    /// Panics if `name` specifies an output that doesn't exist on this `Instance`'s `Module`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -99,14 +103,22 @@ impl<'a> Instance<'a> {
     ///
     /// [`Signal`]: ./struct.Signal.html
     pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
-        // TODO: Error if there's no output called `name` on this module
+        let name = name.into();
+        if !self
+            .instantiated_module
+            .outputs
+            .borrow()
+            .contains_key(&name)
+        {
+            panic!("Attempted to create a signal for an output called \"{}\" on an instance of \"{}\", but no such output with this name exists on this module.", name, self.instantiated_module.name);
+        }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,
 
             data: SignalData::InstanceOutput {
                 instance: self,
-                name: name.into(),
+                name,
             },
         })
     }
@@ -186,5 +198,21 @@ mod tests {
 
         // Panic
         inner_inst.drive_input("a", m.input("i1", 32));
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to create a signal for an output called \"nope\" on an instance of \"inner\", but no such output with this name exists on this module."
+    )]
+    fn output_nonexistent_output_error() {
+        let c = Context::new();
+
+        let _ = c.module("inner");
+
+        let m = c.module("a");
+        let inner_inst = m.instance("inner", "inner_inst");
+
+        // Panic
+        let _ = inner_inst.output("nope");
     }
 }
