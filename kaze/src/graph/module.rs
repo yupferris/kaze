@@ -280,7 +280,7 @@ impl<'a> Module<'a> {
         })
     }
 
-    /// Instantiates the `Module` identified by `module_name` in this [`Context`] inside this `Module` definition called `instance_name`, and returns the new [`Instance`].
+    /// Creates an [`Instance`] the `Module` identified by `module_name` in this [`Context`] inside this `Module` definition called `instance_name`.
     ///
     /// # Panics
     ///
