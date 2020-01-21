@@ -1,4 +1,6 @@
-/// A container for different types of constant values.
+/// A container for different types of integer constant values.
+///
+/// This type isn't typically used explicitly, as the graph API always takes `Value` parameters as `Into<Value>`, and `Value` implements `From` for most of Rust's unsigned integer types. If an API entry point requires a `Value`, prefer passing integer values/literals directly.
 ///
 /// # Examples
 ///
