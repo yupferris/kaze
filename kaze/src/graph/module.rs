@@ -280,7 +280,7 @@ impl<'a> Module<'a> {
         })
     }
 
-    /// Creates an [`Instance`] the `Module` identified by `module_name` in this [`Context`] inside this `Module` definition called `instance_name`.
+    /// Creates an [`Instance`] called `instance_name` of the `Module` identified by `module_name` in this [`Context`] inside this `Module` definition.
     ///
     /// # Panics
     ///
@@ -299,7 +299,7 @@ impl<'a> Module<'a> {
     ///
     /// // Outer module (wraps a single `inner` instance)
     /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner", "inner_inst");
+    /// let inner_inst = outer.instance("inner_inst", "inner");
     /// inner_inst.drive_input("i", outer.input("i", 32));
     /// outer.output("o", inner_inst.output("o"));
     /// ```
@@ -308,8 +308,8 @@ impl<'a> Module<'a> {
     /// [`Instance`]: ./struct.Instance.html
     pub fn instance<S: Into<String>>(
         &'a self,
-        module_name: &str,
         instance_name: S,
+        module_name: &str,
     ) -> &Instance<'a> {
         // TODO: Error if instance_name already exists in this context
         match self.context.modules.borrow().get(module_name) {
@@ -462,6 +462,6 @@ mod tests {
         let m = c.module("a");
 
         // Panic
-        let _ = m.instance("nope", "lol");
+        let _ = m.instance("lol", "nope");
     }
 }

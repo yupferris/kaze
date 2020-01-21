@@ -21,7 +21,7 @@ use std::ptr;
 ///
 /// // Outer module (wraps a single `inner` instance)
 /// let outer = c.module("outer");
-/// let inner_inst = outer.instance("inner", "inner_inst");
+/// let inner_inst = outer.instance("inner_inst", "inner");
 /// inner_inst.drive_input("i", outer.input("i", 32));
 /// outer.output("o", inner_inst.output("o"));
 /// ```
@@ -56,7 +56,7 @@ impl<'a> Instance<'a> {
     /// inner.output("o", inner.input("i", 32));
     ///
     /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner", "inner_inst");
+    /// let inner_inst = outer.instance("inner_inst", "inner");
     /// // Drive inner_inst's "i" input with a 32-bit literal
     /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
@@ -99,7 +99,7 @@ impl<'a> Instance<'a> {
     /// inner.output("o", inner.lit(true, 1));
     ///
     /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner", "inner_inst");
+    /// let inner_inst = outer.instance("inner_inst", "inner");
     /// // Forward inner_inst's "o" output to a new output on outer with the same name
     /// outer.output("o", inner_inst.output("o"));
     /// ```
@@ -146,7 +146,7 @@ mod tests {
         let i1 = m1.input("a", 1);
 
         let m2 = c.module("b");
-        let inner_inst = m2.instance("inner", "inner_inst");
+        let inner_inst = m2.instance("inner_inst", "inner");
 
         // Panic
         inner_inst.drive_input("a", i1);
@@ -162,7 +162,7 @@ mod tests {
         let _ = c.module("inner");
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner", "inner_inst");
+        let inner_inst = m.instance("inner_inst", "inner");
 
         // Panic
         inner_inst.drive_input("a", m.input("i", 1));
@@ -179,7 +179,7 @@ mod tests {
         let _ = inner.input("a", 1);
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner", "inner_inst");
+        let inner_inst = m.instance("inner_inst", "inner");
 
         inner_inst.drive_input("a", m.input("i1", 1));
 
@@ -198,7 +198,7 @@ mod tests {
         let _ = inner.input("a", 1);
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner", "inner_inst");
+        let inner_inst = m.instance("inner_inst", "inner");
 
         // Panic
         inner_inst.drive_input("a", m.input("i1", 32));
@@ -214,7 +214,7 @@ mod tests {
         let _ = c.module("inner");
 
         let m = c.module("a");
-        let inner_inst = m.instance("inner", "inner_inst");
+        let inner_inst = m.instance("inner_inst", "inner");
 
         // Panic
         let _ = inner_inst.output("nope");

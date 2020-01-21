@@ -180,7 +180,7 @@ mod tests {
 
         let a = c.module("a");
 
-        let _ = a.instance("a", "a1");
+        let _ = a.instance("a1", "a");
 
         // Panic
         generate(a, Vec::new()).unwrap();
@@ -196,8 +196,8 @@ mod tests {
         let a = c.module("a");
         let b = c.module("b");
 
-        let _ = a.instance("b", "b1");
-        let _ = b.instance("a", "a1");
+        let _ = a.instance("b1", "b");
+        let _ = b.instance("a1", "a");
 
         // Panic
         generate(a, Vec::new()).unwrap();
@@ -214,7 +214,7 @@ mod tests {
         let b = c.module("b");
         let _ = b.input("i", 1);
 
-        let _ = a.instance("b", "b1");
+        let _ = a.instance("b1", "b");
 
         // Panic
         generate(a, Vec::new()).unwrap();
@@ -245,7 +245,7 @@ mod tests {
         let b = c.module("b");
         let _ = b.reg("r", 1);
 
-        let _ = a.instance("b", "b1");
+        let _ = a.instance("b1", "b");
 
         // Panic
         generate(a, Vec::new()).unwrap();
@@ -262,7 +262,7 @@ mod tests {
         a.output("o", a.input("i", 1));
 
         let b = c.module("b");
-        let a_inst = b.instance("a", "a_inst");
+        let a_inst = b.instance("a_inst", "a");
         let a_inst_o = a_inst.output("o");
         a_inst.drive_input("i", a_inst_o);
 

@@ -353,13 +353,13 @@ fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o", i1 & i2);
 
     let m = c.module("instantiation_test_module_comb");
-    let i1 = m.instance("instantiation_test_module_comb_inner", "inner1");
+    let i1 = m.instance("inner1", "instantiation_test_module_comb_inner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("instantiation_test_module_comb_inner", "inner2");
+    let i2 = m.instance("inner2", "instantiation_test_module_comb_inner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("instantiation_test_module_comb_inner", "inner3");
+    let i3 = m.instance("inner3", "instantiation_test_module_comb_inner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
@@ -377,13 +377,13 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o", r.value);
 
     let m = c.module("instantiation_test_module_reg");
-    let i1 = m.instance("instantiation_test_module_reg_inner", "inner1");
+    let i1 = m.instance("inner1", "instantiation_test_module_reg_inner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("instantiation_test_module_reg_inner", "inner2");
+    let i2 = m.instance("inner2", "instantiation_test_module_reg_inner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("instantiation_test_module_reg_inner", "inner3");
+    let i3 = m.instance("inner3", "instantiation_test_module_reg_inner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
@@ -397,20 +397,20 @@ fn nested_instantiation_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output("o", i);
 
     let m = c.module("nested_instantiation_test_module_inner");
-    let i = m.instance("nested_instantiation_test_module_inner_inner", "inner");
+    let i = m.instance("inner", "nested_instantiation_test_module_inner_inner");
     let i1 = m.input("i1", 32);
     let i2 = m.input("i2", 32);
     i.drive_input("i", i1 & i2);
     m.output("o", i.output("o"));
 
     let m = c.module("nested_instantiation_test_module");
-    let i1 = m.instance("nested_instantiation_test_module_inner", "inner1");
+    let i1 = m.instance("inner1", "nested_instantiation_test_module_inner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("nested_instantiation_test_module_inner", "inner2");
+    let i2 = m.instance("inner2", "nested_instantiation_test_module_inner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("nested_instantiation_test_module_inner", "inner3");
+    let i3 = m.instance("inner3", "nested_instantiation_test_module_inner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
