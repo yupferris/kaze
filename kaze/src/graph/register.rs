@@ -5,6 +5,14 @@ use std::cell::RefCell;
 
 /// A hardware register, created by the [`Module`]::[`reg`] method.
 ///
+/// A `Register` is a stateful component that behaves like a [D flip-flop](https://en.wikipedia.org/wiki/Flip-flop_(electronics)#D_flip-flop) (more precisely as a [positive-edge-triggered D flip-flop](https://en.wikipedia.org/wiki/Flip-flop_(electronics)#Classical_positive-edge-triggered_D_flip-flop)).
+///
+/// It always has a current value represented by the [`value`] field (often referred to as `Q`) and a next value specified by the [`drive_next`] method (often referred to as `D`).
+/// It will hold its [`value`] until a positive edge of its [`Module`]'s implicit clock occurs, at which point [`value`] will be updated to reflect the next value.
+///
+/// Optionally, it also has a default value specified by the [`default_value`] method. If at any time its [`Module`]'s implicit reset is driven low, the register's [`value`] will reflect the default value.
+/// Default values are used to provide a known register state on system power-on and reset, but are often omitted to reduce combinational logic (which ultimately is how default values are typically implemented), especially for registers on timing-critical data paths.
+///
 /// # Examples
 ///
 /// ```
@@ -20,8 +28,11 @@ use std::cell::RefCell;
 /// m.output("my_output", my_reg.value);
 /// ```
 ///
+/// [`default_value`]: #method.default_value
+/// [`drive_next`]: #method.drive_next
 /// [`Module`]: ./struct.Module.html
 /// [`reg`]: ./struct.Module.html#method.reg
+/// [`value`]: #structfield.value
 #[must_use]
 pub struct Register<'a> {
     pub(crate) data: &'a RegisterData<'a>,
