@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 
 /// A top-level container/owner object for a module graph.
 ///
-/// A `Context` owns all parts of a module graph, and provides an API for creating `Module` objects.
+/// A `Context` owns all parts of a module graph, and provides an API for creating [`Module`] objects.
 ///
 /// # Examples
 ///
@@ -21,6 +21,8 @@ use std::collections::BTreeMap;
 /// let m = c.module("my_module");
 /// m.output("out", m.input("in", 1));
 /// ```
+///
+/// [`Module`]: ./struct.Module.html
 #[must_use]
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
@@ -54,13 +56,13 @@ impl<'a> Context<'a> {
         }
     }
 
-    /// Creates a new `Module` called `name` in this `Context`.
+    /// Creates a new [`Module`] called `name` in this `Context`.
     ///
     /// Conventionally, `name` should be `snake_case`, though this is not enforced.
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` with the same `name` already exists in this `Context`.
+    /// Panics if a [`Module`] with the same `name` already exists in this `Context`.
     ///
     /// # Examples
     ///
@@ -85,6 +87,8 @@ impl<'a> Context<'a> {
     ///
     /// let _ = c.module("a"); // Non-unique name, panic!
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn module<S: Into<String>>(&'a self, name: S) -> &Module {
         let name = name.into();
         let mut modules = self.modules.borrow_mut();
