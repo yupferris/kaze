@@ -1,8 +1,8 @@
+use super::constant::*;
 use super::context::*;
 use super::instance::*;
 use super::module::*;
 use super::register::*;
-use super::value::*;
 
 use std::ops::{Add, BitAnd, BitOr, BitXor, Not};
 use std::ptr;
@@ -523,7 +523,7 @@ impl<'a> Signal<'a> {
 
 pub(crate) enum SignalData<'a> {
     Lit {
-        value: Value,
+        value: Constant,
         bit_width: u32,
     },
 

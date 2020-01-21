@@ -1,5 +1,5 @@
+use super::constant::*;
 use super::signal::*;
-use super::value::*;
 
 use std::cell::RefCell;
 
@@ -43,9 +43,9 @@ pub struct Register<'a> {
 }
 
 impl<'a> Register<'a> {
-    pub fn default_value<V: Into<Value>>(&'a self, value: V) {
+    pub fn default_value<C: Into<Constant>>(&'a self, value: C) {
         // TODO: Panic if this register already has a default value
-        // TODO: Value range check
+        // TODO: value range check
         let value = value.into();
         *self.data.initial_value.borrow_mut() = Some(value);
     }
@@ -60,7 +60,7 @@ impl<'a> Register<'a> {
 
 pub(crate) struct RegisterData<'a> {
     pub name: String,
-    pub initial_value: RefCell<Option<Value>>,
+    pub initial_value: RefCell<Option<Constant>>,
     pub bit_width: u32,
     pub next: RefCell<Option<&'a Signal<'a>>>,
 }

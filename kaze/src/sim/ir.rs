@@ -43,6 +43,9 @@ pub enum Expr {
         source: Box<Expr>,
         target_type: ValueType,
     },
+    Constant {
+        value: Constant,
+    },
     Ref {
         name: String,
         scope: RefScope,
@@ -55,9 +58,6 @@ pub enum Expr {
     UnOp {
         source: Box<Expr>,
         op: UnOp,
-    },
-    Value {
-        value: Value,
     },
 }
 
@@ -101,6 +101,14 @@ impl Expr {
                 source.write(w)?;
                 w.append(&format!(" as {}", target_type.name()))?;
             }
+            Expr::Constant { value } => {
+                w.append(&match value {
+                    Constant::Bool(value) => format!("{}", value),
+                    Constant::U32(value) => format!("0x{:x}u32", value),
+                    Constant::U64(value) => format!("0x{:x}u64", value),
+                    Constant::U128(value) => format!("0x{:x}u128", value),
+                })?;
+            }
             Expr::Ref { name, scope } => {
                 if let RefScope::Member = scope {
                     w.append("self.")?;
@@ -125,14 +133,6 @@ impl Expr {
                     UnOp::Not => "!",
                 })?;
                 source.write(w)?;
-            }
-            Expr::Value { value } => {
-                w.append(&match value {
-                    Value::Bool(value) => format!("{}", value),
-                    Value::U32(value) => format!("0x{:x}u32", value),
-                    Value::U64(value) => format!("0x{:x}u64", value),
-                    Value::U128(value) => format!("0x{:x}u128", value),
-                })?;
             }
         }
 
@@ -168,7 +168,7 @@ pub enum RefScope {
 }
 
 #[derive(Clone)]
-pub enum Value {
+pub enum Constant {
     Bool(bool),
     U32(u32),
     U64(u64),

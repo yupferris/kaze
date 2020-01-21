@@ -1,8 +1,8 @@
+use super::constant::*;
 use super::context::*;
 use super::instance::*;
 use super::register::*;
 use super::signal::*;
-use super::value::*;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -51,7 +51,7 @@ impl<'a> Module<'a> {
 
     /// Creates a [`Signal`] that represents the constant literal specified by `value` with `bit_width` bits.
     ///
-    /// The bit width of the type provided by `value` doesn't need to match `bit_width`. but the value represented by `value` must fit into `bit_width` bits.
+    /// The bit width of the type provided by `value` doesn't need to match `bit_width`, but the value represented by `value` must fit into `bit_width` bits.
     ///
     /// # Panics
     ///
@@ -74,7 +74,7 @@ impl<'a> Module<'a> {
     /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     /// [`Signal`]: ./struct.Signal.html
-    pub fn lit<V: Into<Value>>(&'a self, value: V, bit_width: u32) -> &Signal<'a> {
+    pub fn lit<C: Into<Constant>>(&'a self, value: C, bit_width: u32) -> &Signal<'a> {
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a literal with {} bit(s). Signals must not be narrower than {} bit(s).",

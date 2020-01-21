@@ -112,16 +112,16 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 w.append(&format!("self.{} = ", reg.value_name))?;
                 let type_name = ValueType::from_bit_width(reg.data.bit_width).name();
                 w.append(&match initial_value {
-                    graph::Value::Bool(value) => {
+                    graph::Constant::Bool(value) => {
                         if reg.data.bit_width == 1 {
                             format!("{}", value)
                         } else {
                             format!("0x{:x}{}", if *value { 1 } else { 0 }, type_name)
                         }
                     }
-                    graph::Value::U32(value) => format!("0x{:x}{}", value, type_name),
-                    graph::Value::U64(value) => format!("0x{:x}{}", value, type_name),
-                    graph::Value::U128(value) => format!("0x{:x}{}", value, type_name),
+                    graph::Constant::U32(value) => format!("0x{:x}{}", value, type_name),
+                    graph::Constant::U64(value) => format!("0x{:x}{}", value, type_name),
+                    graph::Constant::U128(value) => format!("0x{:x}{}", value, type_name),
                 })?;
                 w.append(";")?;
                 w.append_newline()?;

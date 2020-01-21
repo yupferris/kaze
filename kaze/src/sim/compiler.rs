@@ -136,19 +136,19 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     bit_width,
                 } => {
                     let value = match value {
-                        graph::Value::Bool(value) => *value as u128,
-                        graph::Value::U32(value) => *value as u128,
-                        graph::Value::U64(value) => *value as u128,
-                        graph::Value::U128(value) => *value,
+                        graph::Constant::Bool(value) => *value as u128,
+                        graph::Constant::U32(value) => *value as u128,
+                        graph::Constant::U64(value) => *value as u128,
+                        graph::Constant::U128(value) => *value,
                     };
 
                     let target_type = ValueType::from_bit_width(bit_width);
-                    Expr::Value {
+                    Expr::Constant {
                         value: match target_type {
-                            ValueType::Bool => Value::Bool(value != 0),
-                            ValueType::U32 => Value::U32(value as _),
-                            ValueType::U64 => Value::U64(value as _),
-                            ValueType::U128 => Value::U128(value),
+                            ValueType::Bool => Constant::Bool(value != 0),
+                            ValueType::U32 => Constant::U32(value as _),
+                            ValueType::U64 => Constant::U64(value as _),
+                            ValueType::U128 => Constant::U128(value),
                         },
                     }
                 }
@@ -333,12 +333,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
         let mask = (1u128 << bit_width) - 1;
         self.gen_temp(Expr::BinOp {
             lhs: Box::new(expr),
-            rhs: Box::new(Expr::Value {
+            rhs: Box::new(Expr::Constant {
                 value: match target_type {
                     ValueType::Bool => unreachable!(),
-                    ValueType::U32 => Value::U32(mask as _),
-                    ValueType::U64 => Value::U64(mask as _),
-                    ValueType::U128 => Value::U128(mask),
+                    ValueType::U32 => Constant::U32(mask as _),
+                    ValueType::U64 => Constant::U64(mask as _),
+                    ValueType::U128 => Constant::U128(mask),
                 },
             }),
             op: BinOp::BitAnd,
@@ -352,8 +352,8 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
         self.gen_temp(Expr::BinOp {
             lhs: Box::new(expr),
-            rhs: Box::new(Expr::Value {
-                value: Value::U32(shift),
+            rhs: Box::new(Expr::Constant {
+                value: Constant::U32(shift),
             }),
             op: BinOp::Shl,
         })
@@ -366,8 +366,8 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
         self.gen_temp(Expr::BinOp {
             lhs: Box::new(expr),
-            rhs: Box::new(Expr::Value {
-                value: Value::U32(shift),
+            rhs: Box::new(Expr::Constant {
+                value: Constant::U32(shift),
             }),
             op: BinOp::Shr,
         })
@@ -382,12 +382,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             let expr = self.gen_mask(expr, 1, source_type);
             return self.gen_temp(Expr::BinOp {
                 lhs: Box::new(expr),
-                rhs: Box::new(Expr::Value {
+                rhs: Box::new(Expr::Constant {
                     value: match source_type {
                         ValueType::Bool => unreachable!(),
-                        ValueType::U32 => Value::U32(0),
-                        ValueType::U64 => Value::U64(0),
-                        ValueType::U128 => Value::U128(0),
+                        ValueType::U32 => Constant::U32(0),
+                        ValueType::U64 => Constant::U64(0),
+                        ValueType::U128 => Constant::U128(0),
                     },
                 }),
                 op: BinOp::NotEqual,
