@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
 
-/// Represents an instance of a [`Module`], created by the [`Module`]::[`instance`] method.
+/// An instance of a [`Module`], created by the [`Module`]::[`instance`] method.
 ///
 /// # Examples
 ///

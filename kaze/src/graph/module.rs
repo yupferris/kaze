@@ -8,6 +8,21 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
 
+/// A self-contained and potentially-reusable hardware design unit, created by the [`Context`]::[`module`] method.
+///
+/// # Examples
+///
+/// ```
+/// use kaze::*;
+///
+/// let c = Context::new();
+///
+/// let m = c.module("my_module");
+/// m.output("out", m.input("in", 1));
+/// ```
+///
+/// [`Context`]: ./struct.Context.html
+/// [`module`]: ./struct.Context.html#method.module
 #[must_use]
 pub struct Module<'a> {
     context: &'a Context<'a>,

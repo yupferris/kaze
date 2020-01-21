@@ -8,7 +8,7 @@ use typed_arena::Arena;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-/// A top-level container/owner object for a module graph.
+/// A top-level container/owner object for a [`Module`] graph.
 ///
 /// A `Context` owns all parts of a module graph, and provides an API for creating [`Module`] objects.
 ///
@@ -18,6 +18,7 @@ use std::collections::BTreeMap;
 /// use kaze::*;
 ///
 /// let c = Context::new();
+///
 /// let m = c.module("my_module");
 /// m.output("out", m.input("in", 1));
 /// ```
