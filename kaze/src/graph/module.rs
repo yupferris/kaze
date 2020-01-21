@@ -220,6 +220,10 @@ impl<'a> Module<'a> {
 
     /// Creates a [`Register`] in this `Module` called `name` with `bit_width` bits.
     ///
+    /// # Panics
+    ///
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    ///
     /// # Examples
     ///
     /// ```
@@ -235,10 +239,23 @@ impl<'a> Module<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     ///
+    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     /// [`Register`]: ./struct.Register.html
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
-        // TODO: bit_width bounds checks
         // TODO: Error if name already exists in this context
+        if bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a register with {} bit(s). Signals must not be narrower than {} bit(s).",
+                bit_width, MIN_SIGNAL_BIT_WIDTH
+            );
+        }
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a register with {} bit(s). Signals must not be wider than {} bit(s).",
+                bit_width, MAX_SIGNAL_BIT_WIDTH
+            );
+        }
         let data = self.context.register_data_arena.alloc(RegisterData {
             name: name.into(),
             initial_value: RefCell::new(None),
@@ -450,6 +467,32 @@ mod tests {
 
         // Panic
         m1.output("a", i);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a register with 0 bit(s). Signals must not be narrower than 1 bit(s)."
+    )]
+    fn reg_bit_width_lt_min_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.reg("r", 0);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a register with 129 bit(s). Signals must not be wider than 128 bit(s)."
+    )]
+    fn reg_bit_width_gt_max_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+
+        // Panic
+        let _ = m.reg("r", 129);
     }
 
     #[test]
