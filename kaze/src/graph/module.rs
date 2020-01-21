@@ -218,9 +218,26 @@ impl<'a> Module<'a> {
         self.outputs.borrow_mut().insert(name.into(), source);
     }
 
+    /// Creates a [`Register`] in this `Module` called `name` with `bit_width` bits.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let my_reg = m.reg("my_reg", 32);
+    /// my_reg.default_value(0xfadebabeu32);
+    /// my_reg.drive_next(!my_reg.value);
+    /// m.output("my_output", my_reg.value);
+    /// ```
+    ///
+    /// [`Register`]: ./struct.Register.html
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
         // TODO: bit_width bounds checks
-        // TODO: Ensure initial_value fits within bit_width bits
         // TODO: Error if name already exists in this context
         let data = self.context.register_data_arena.alloc(RegisterData {
             name: name.into(),
