@@ -10,7 +10,7 @@ pub struct ModuleContext<'graph, 'arena> {
         &'graph graph::Instance<'graph>,
         &'arena ModuleContext<'graph, 'arena>,
     )>,
-    pub children:
+    children:
         RefCell<HashMap<*const graph::Instance<'graph>, &'arena ModuleContext<'graph, 'arena>>>,
 }
 

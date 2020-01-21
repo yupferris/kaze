@@ -126,7 +126,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
     pub fn compile_signal(
         &mut self,
         signal: &'graph graph::Signal<'graph>,
-        context: &ModuleContext<'graph, 'arena>,
+        context: &'arena ModuleContext<'graph, 'arena>,
     ) -> Expr {
         let key = (context as *const _, signal as *const _);
         if !self.signal_exprs.contains_key(&key) {
@@ -301,8 +301,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
                 graph::SignalData::InstanceOutput { instance, ref name } => {
                     let output = instance.instantiated_module.outputs.borrow()[name];
-                    let key = instance as *const _;
-                    self.compile_signal(output, context.children.borrow()[&key])
+                    self.compile_signal(output, context.get_child(instance, self.context_arena))
                 }
             };
             self.signal_exprs.insert(key.clone(), expr);
