@@ -79,6 +79,25 @@ impl<'a> Instance<'a> {
         driven_inputs.insert(name, i);
     }
 
+    /// Creates a [`Signal`] that represents this `Instance`'s output called `name`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let inner = c.module("inner");
+    /// inner.output("o", inner.lit(true, 1));
+    ///
+    /// let outer = c.module("outer");
+    /// let inner_inst = outer.instance("inner", "inner_inst");
+    /// // Forward inner_inst's "o" output to a new output on outer with the same name
+    /// outer.output("o", inner_inst.output("o"));
+    /// ```
+    ///
+    /// [`Signal`]: ./struct.Signal.html
     pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
         // TODO: Error if there's no output called `name` on this module
         self.context.signal_arena.alloc(Signal {
