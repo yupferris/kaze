@@ -6,6 +6,28 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
 
+/// Represents an instance of a [`Module`], created by the [`Module`]::[`instance`] method.
+///
+/// # Examples
+///
+/// ```
+/// use kaze::*;
+///
+/// let c = Context::new();
+///
+/// // Inner module (simple pass-through)
+/// let inner = c.module("inner");
+/// inner.output("o", inner.input("i", 32));
+///
+/// // Outer module (wraps a single `inner` instance)
+/// let outer = c.module("outer");
+/// let inner_inst = outer.instance("inner", "inner_inst");
+/// inner_inst.drive_input("i", outer.input("i", 32));
+/// outer.output("o", inner_inst.output("o"));
+/// ```
+///
+/// [`Module`]: ./struct.Module.html
+/// [`instance`]: ./struct.Module.html#method.instance
 #[must_use]
 pub struct Instance<'a> {
     pub(super) context: &'a Context<'a>,
