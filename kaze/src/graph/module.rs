@@ -34,7 +34,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    /// Creates a `Signal` that represents the constant literal specified by `value` with `bit_width` bits.
+    /// Creates a [`Signal`] that represents the constant literal specified by `value` with `bit_width` bits.
     ///
     /// The bit width of the type provided by `value` doesn't need to match `bit_width`. but the value represented by `value` must fit into `bit_width` bits.
     ///
@@ -58,6 +58,7 @@ impl<'a> Module<'a> {
     ///
     /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    /// [`Signal`]: ./struct.Signal.html
     pub fn lit<V: Into<Value>>(&'a self, value: V, bit_width: u32) -> &Signal<'a> {
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
@@ -85,7 +86,7 @@ impl<'a> Module<'a> {
         })
     }
 
-    /// Convenience method to create a `Signal` that represents a single `0` bit.
+    /// Convenience method to create a [`Signal`] that represents a single `0` bit.
     ///
     /// # Examples
     ///
@@ -100,11 +101,13 @@ impl<'a> Module<'a> {
     /// let low1 = m.low();
     /// let low2 = m.lit(false, 1);
     /// ```
+    ///
+    /// [`Signal`]: ./struct.Signal.html
     pub fn low(&'a self) -> &Signal<'a> {
         self.lit(false, 1)
     }
 
-    /// Convenience method to create a `Signal` that represents a single `1` bit.
+    /// Convenience method to create a [`Signal`] that represents a single `1` bit.
     ///
     /// # Examples
     ///
@@ -119,11 +122,13 @@ impl<'a> Module<'a> {
     /// let high1 = m.high();
     /// let high2 = m.lit(true, 1);
     /// ```
+    ///
+    /// [`Signal`]: ./struct.Signal.html
     pub fn high(&'a self) -> &Signal<'a> {
         self.lit(true, 1)
     }
 
-    /// Creates an input for this `Module` called `name` with `bit_width` bits, and returns a `Signal` that represents the value of this input.
+    /// Creates an input for this `Module` called `name` with `bit_width` bits, and returns a [`Signal`] that represents the value of this input.
     ///
     /// # Panics
     ///
@@ -143,6 +148,7 @@ impl<'a> Module<'a> {
     ///
     /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    /// [`Signal`]: ./struct.Signal.html
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
@@ -242,11 +248,11 @@ impl<'a> Module<'a> {
         })
     }
 
-    /// Instantiates the `Module` identified by `module_name` in this `Context` inside this `Module` definition called `instance_name`, and returns the new `Instance`.
+    /// Instantiates the `Module` identified by `module_name` in this [`Context`] inside this `Module` definition called `instance_name`, and returns the new [`Instance`].
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` identified by `module_name` doesn't exist in this `Context`.
+    /// Panics if a `Module` identified by `module_name` doesn't exist in this [`Context`].
     ///
     /// # Examples
     ///
@@ -265,6 +271,9 @@ impl<'a> Module<'a> {
     /// inner_inst.drive_input("i", outer.input("i", 32));
     /// outer.output("o", inner_inst.output("o"));
     /// ```
+    ///
+    /// [`Context`]: ./struct.Context.html
+    /// [`Instance`]: ./struct.Instance.html
     pub fn instance<S: Into<String>>(
         &'a self,
         module_name: &str,
