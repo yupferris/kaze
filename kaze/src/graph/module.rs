@@ -257,6 +257,8 @@ impl<'a> Module<'a> {
             );
         }
         let data = self.context.register_data_arena.alloc(RegisterData {
+            module: self,
+
             name: name.into(),
             initial_value: RefCell::new(None),
             bit_width,
