@@ -10,6 +10,10 @@ use std::ptr;
 
 /// A self-contained and potentially-reusable hardware design unit, created by the [`Context`]::[`module`] method.
 ///
+/// Once a `Module` is specified, it can be [instantiated](#method.instance) in another `Module` to form a hierarchy, or it can be used to generate [Rust simulator code](sim/fn.generate.html) or a [verilog module](verilog/fn.generate.html).
+///
+/// All `Module`s in kaze have an implicit reset and clock. These are only visible in generated code. It's assumed that all kaze modules operate in the same clock domain.
+///
 /// # Examples
 ///
 /// ```
