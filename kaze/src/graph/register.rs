@@ -47,13 +47,13 @@ pub struct Register<'a> {
 impl<'a> Register<'a> {
     /// Specifies the default value for this `Register`.
     ///
-    /// This `Register`'s `value` will reflect this default value when this `Register`'s [`Module`]'s implicit reset is asserted.
+    /// This `Register`'s [`value`] will reflect this default value when this `Register`'s [`Module`]'s implicit reset is asserted.
     ///
-    /// By default, a `Register` does not have a default value, and it is not required to specify one. If a default value is not specified, then this `Register`'s `value` will not change when its [`Module`]'s implicit reset is asserted.
+    /// By default, a `Register` does not have a default value, and it is not required to specify one. If a default value is not specified, then this `Register`'s [`value`] will not change when its [`Module`]'s implicit reset is asserted.
     ///
     /// # Panics
     ///
-    /// Panics if this `Register` already has a default value specified, or if the specified `value` doesn't fit into this `Register`'s bit width.
+    /// Panics if this `Register` already has a default value specified, or if the specified [`value`] doesn't fit into this `Register`'s bit width.
     ///
     /// # Examples
     ///
@@ -71,6 +71,7 @@ impl<'a> Register<'a> {
     /// ```
     ///
     /// [`Module`]: ./struct.Module.html
+    /// [`value`]: #structfield.value
     pub fn default_value<C: Into<Constant>>(&'a self, value: C) {
         if self.data.initial_value.borrow().is_some() {
             panic!("Attempted to specify a default value for register \"{}\" in module \"{}\", but this register already has a default value.", self.data.name, self.data.module.name);
