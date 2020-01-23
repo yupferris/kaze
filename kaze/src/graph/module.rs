@@ -278,6 +278,26 @@ impl<'a> Module<'a> {
         self.context.register_arena.alloc(Register { data, value })
     }
 
+    /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `cond` is high, and `when_false`'s value when `cond` is low.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `cond`, `when_true`, or `when_false` belong to a different `Module` than `self`, if `cond`'s bit width is not 1, or if the bit widths of `when_true` and `when_false` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let cond = m.input("cond", 1);
+    /// let a = m.input("a", 8);
+    /// let b = m.input("b", 8);
+    /// m.output("my_output", m.mux(cond, a, b)); // Outputs a when cond is high, b otherwise
+    /// ```
     pub fn mux(
         &'a self,
         cond: &'a Signal<'a>,
@@ -289,8 +309,25 @@ impl<'a> Module<'a> {
             return when_true;
         }
 
-        // TODO: Ensure when_true and when_false have the same bit widths
-        // TODO: Ensure sel is 1 bit wide
+        if !ptr::eq(self, cond.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if !ptr::eq(self, when_true.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if !ptr::eq(self, when_false.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if cond.bit_width() != 1 {
+            panic!("Multiplexer conditionals can only be 1 bit wide.");
+        }
+        if when_true.bit_width() != when_false.bit_width() {
+            panic!(
+                "Cannot multiplex signals with different bit widths ({} and {}, respectively).",
+                when_true.bit_width(),
+                when_false.bit_width()
+            );
+        }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self,
@@ -499,6 +536,84 @@ mod tests {
 
         // Panic
         let _ = m.reg("r", 129);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_cond_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(false, 1);
+
+        let b = c.module("b");
+        let l2 = b.lit(32u8, 8);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = b.mux(l1, l2, l3);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_when_true_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(32u8, 8);
+
+        let b = c.module("b");
+        let l2 = b.lit(true, 1);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = b.mux(l2, l1, l3);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_when_false_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(32u8, 8);
+
+        let b = c.module("b");
+        let l2 = b.lit(true, 1);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = b.mux(l2, l3, l1);
+    }
+
+    #[test]
+    #[should_panic(expected = "Multiplexer conditionals can only be 1 bit wide.")]
+    fn mux_cond_bit_width_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(2u8, 2);
+        let l2 = a.lit(32u8, 8);
+        let l3 = a.lit(32u8, 8);
+
+        // Panic
+        let _ = a.mux(l1, l2, l3);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot multiplex signals with different bit widths (3 and 5, respectively)."
+    )]
+    fn mux_true_false_bit_width_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(false, 1);
+        let l2 = a.lit(3u8, 3);
+        let l3 = a.lit(3u8, 5);
+
+        // Panic
+        let _ = a.mux(l1, l2, l3);
     }
 
     #[test]
