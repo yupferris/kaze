@@ -1,4 +1,3 @@
-// TODO: Better name?
 #[macro_export(local_inner_macros)]
 macro_rules! kaze_sugar {
     ($($contents:tt)*) => {
@@ -8,6 +7,7 @@ macro_rules! kaze_sugar {
 
 #[doc(hidden)]
 #[macro_export]
+// TODO: This formulation can generate a lot of extra mux's with the same or similar conditions, and should be revisited!
 macro_rules! kaze_sugar_impl {
     // [selector], [token stream]
 
