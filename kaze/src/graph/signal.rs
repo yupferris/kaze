@@ -272,7 +272,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -290,6 +290,8 @@ impl<'a> Signal<'a> {
     /// let eq_3 = lit_a.eq(lit_b); // Equivalent to m.low()
     /// let eq_4 = lit_b.eq(lit_a); // Equivalent to m.low()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn eq(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -318,7 +320,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -336,6 +338,8 @@ impl<'a> Signal<'a> {
     /// let ne_3 = lit_a.ne(lit_b); // Equivalent to m.high()
     /// let ne_4 = lit_b.ne(lit_a); // Equivalent to m.high()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn ne(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -364,7 +368,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -382,6 +386,8 @@ impl<'a> Signal<'a> {
     /// let lt_3 = lit_a.lt(lit_b); // Equivalent to m.high()
     /// let lt_4 = lit_b.lt(lit_a); // Equivalent to m.low()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn lt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -410,7 +416,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -428,6 +434,8 @@ impl<'a> Signal<'a> {
     /// let le_3 = lit_a.le(lit_b); // Equivalent to m.high()
     /// let le_4 = lit_b.le(lit_a); // Equivalent to m.low()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn le(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -456,7 +464,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -474,6 +482,8 @@ impl<'a> Signal<'a> {
     /// let gt_3 = lit_a.gt(lit_b); // Equivalent to m.low()
     /// let gt_4 = lit_b.gt(lit_a); // Equivalent to m.high()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn gt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -502,7 +512,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -520,6 +530,8 @@ impl<'a> Signal<'a> {
     /// let ge_3 = lit_a.ge(lit_b); // Equivalent to m.low()
     /// let ge_4 = lit_b.ge(lit_a); // Equivalent to m.high()
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     pub fn ge(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -544,6 +556,30 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `self` is high, and `when_false`'s value when `self` is low.
+    ///
+    /// This is a convenience wrapper for [`Module::mux`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if `when_true` or `when_false` belong to a different `Module` than `self`, if `self`'s bit width is not 1, or if the bit widths of `when_true` and `when_false` aren't equal.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let cond = m.input("cond", 1);
+    /// let a = m.input("a", 8);
+    /// let b = m.input("b", 8);
+    /// m.output("my_output", cond.mux(a, b)); // Outputs a when cond is high, b otherwise
+    /// ```
+    ///
+    /// [`Module::mux`]: ./struct.Module.html#method.mux
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
@@ -608,11 +644,11 @@ impl<'a> Add for &'a Signal<'a> {
 
     /// Combines two `Signal`s, producing a new `Signal` that represents the sum of the original two `Signal`s.
     ///
-    /// The sum is truncated to the `Signal`'s `bit_width`. If a carry bit is desired, the operands can be `concat`enated with a `0` bit before the operation.
+    /// The sum is truncated to the `Signal`'s `bit_width`. If a carry bit is desired, the operands can be [`concat`]enated with a `0` bit before the operation.
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -627,12 +663,15 @@ impl<'a> Add for &'a Signal<'a> {
     /// let rhs = m.lit(2u32, 32);
     /// let sum = lhs + rhs; // Equivalent to m.lit(3u32, 32)
     ///
-    /// let lhs = m.low().concat(m.lit(0xffffffffu32, 32));
+    /// let lhs = m.low().concat(m.lit(0xffffffffu32, 32)); // Concat 0 bits with operands for carry
     /// let rhs = m.low().concat(m.lit(0x00000001u32, 32));
     /// let carry_sum = lhs + rhs; // Equivalent to m.lit(0x100000000u64, 33)
     /// let sum = carry_sum.bits(31, 0); // Equivalent to m.lit(0u32, 32)
     /// let carry = carry_sum.bit(32); // Equivalent to m.lit(true, 1)
     /// ```
+    ///
+    /// [`concat`]: #method.concat
+    /// [`Module`]: ./struct.Module.html
     fn add(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -665,7 +704,7 @@ impl<'a> BitAnd for &'a Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -684,6 +723,8 @@ impl<'a> BitAnd for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitand = lhs & rhs;
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     fn bitand(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -716,7 +757,7 @@ impl<'a> BitOr for &'a Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -735,6 +776,8 @@ impl<'a> BitOr for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitor = lhs | rhs;
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     fn bitor(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -767,7 +810,7 @@ impl<'a> BitXor for &'a Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different `Module`s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -786,6 +829,8 @@ impl<'a> BitXor for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitxor = lhs ^ rhs;
     /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
     fn bitxor(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1135,6 +1180,84 @@ mod tests {
 
         // Panic
         let _ = i1.ge(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_cond_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(false, 1);
+
+        let b = c.module("b");
+        let l2 = b.lit(32u8, 8);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = l1.mux(l2, l3);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_when_true_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(32u8, 8);
+
+        let b = c.module("b");
+        let l2 = b.lit(true, 1);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = l2.mux(l1, l3);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mux_when_false_separate_module_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(32u8, 8);
+
+        let b = c.module("b");
+        let l2 = b.lit(true, 1);
+        let l3 = b.lit(32u8, 8);
+
+        // Panic
+        let _ = l2.mux(l3, l1);
+    }
+
+    #[test]
+    #[should_panic(expected = "Multiplexer conditionals can only be 1 bit wide.")]
+    fn mux_cond_bit_width_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(2u8, 2);
+        let l2 = a.lit(32u8, 8);
+        let l3 = a.lit(32u8, 8);
+
+        // Panic
+        let _ = l1.mux(l2, l3);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot multiplex signals with different bit widths (3 and 5, respectively)."
+    )]
+    fn mux_true_false_bit_width_error() {
+        let c = Context::new();
+
+        let a = c.module("a");
+        let l1 = a.lit(false, 1);
+        let l2 = a.lit(3u8, 3);
+        let l3 = a.lit(3u8, 5);
+
+        // Panic
+        let _ = a.mux(l1, l2, l3);
     }
 
     #[test]
