@@ -7,15 +7,43 @@ use super::register::*;
 use std::ops::{Add, BitAnd, BitOr, BitXor, Not};
 use std::ptr;
 
-/// The minimum allowed bit width for any given `Signal`.
+/// The minimum allowed bit width for any given [`Signal`].
 ///
 /// This is currently set to `1`, and is not likely to change in future versions of this library.
+///
+/// [`Signal`]: ./struct.Signal.html
 pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
-/// The maximum allowed bit width for any given `Signal`.
+/// The maximum allowed bit width for any given [`Signal`].
 ///
 /// This is currently set to `128` to simplify simulator code generation, since it allows the generated code to rely purely on native integer types provided by Rust's standard library for storage, arithmetic, etc. Larger widths may be supported in a future version of this library.
+///
+/// [`Signal`]: ./struct.Signal.html
 pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 
+/// Represents a collection of 1 or more bits driven by some source.
+///
+/// A `Signal` can be created by several [`Module`] methods (eg. [`lit`]) or as a result of combining existing `Signal`s (eg. [`concat`]). `Signal`s are local to their respective [`Module`]s.
+///
+/// A `Signal` behaves similarly to a `wire` in verilog, except that it's always driven.
+///
+/// # Examples
+///
+/// ```
+/// use kaze::*;
+///
+/// let c = Context::new();
+///
+/// let m = c.module("my_module");
+/// let a = m.lit(0xffu8, 8); // 8-bit signal
+/// let b = m.input("my_input", 27); // 27-bit signal
+/// let c = b.bits(7, 0); // 8-bit signal
+/// let d = a + c; // 8-bit signal
+/// m.output("my_output", d); // 8-bit output driven by d
+/// ```
+///
+/// [`concat`]: #method.concat
+/// [`lit`]: ./struct.Module.html#method.lit
+/// [`Module`]: ./struct.Module.html
 #[must_use]
 pub struct Signal<'a> {
     pub(super) context: &'a Context<'a>,
