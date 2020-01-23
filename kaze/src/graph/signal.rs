@@ -227,6 +227,7 @@ impl<'a> Signal<'a> {
     ///
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn concat(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        // TODO: Ensure rhs is from the same module as self
         let target_bit_width = self.bit_width() + rhs.bit_width();
         if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
             panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
