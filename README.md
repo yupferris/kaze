@@ -31,7 +31,7 @@ fn main() -> std::io::Result<()> {
     // Create a module
     let inverter = c.module("inverter");
     let i = inverter.input("i", 1); // 1-bit input
-    inverter.output("o", !i); // 1-bit output, representing inverted input
+    inverter.output("o", !i); // Output inverted input
 
     // Generate Rust simulator code
     sim::generate(inverter, std::io::stdout())?;
