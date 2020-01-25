@@ -45,7 +45,7 @@ fn main() -> std::io::Result<()> {
 
 ## Releases
 
-See [changelog](https://github.com/emoon/rust_minifb/blob/master/CHANGELOG.md) for release information.
+See [changelog](https://github.com/yupferris/kaze/blob/master/CHANGELOG.md) for release information.
 
 ## License
 
