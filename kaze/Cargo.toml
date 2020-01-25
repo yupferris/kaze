@@ -6,7 +6,7 @@ edition = "2018"
 description = "An HDL embedded in Rust"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/yupferris/kaze"
-readme = "README.md"
+readme = "../README.md"
 keywords = ["hdl"]
 categories = ["development-tools", "emulators", "simulation"]
 
