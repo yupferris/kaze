@@ -2,9 +2,9 @@
 
 An [HDL](https://en.wikipedia.org/wiki/Hardware_description_language) embedded in [Rust](https://www.rust-lang.org/).
 
-[![Latest version](https://img.shields.io/crates/v/kaze.svg)](https://crates.io/crates/kaze)
+[![Latest version](https://img.shields.io/crates/v/kaze)](https://crates.io/crates/kaze)
 [![Documentation](https://docs.rs/kaze/badge.svg)](https://docs.rs/kaze)
-![License](https://img.shields.io/crates/l/kaze.svg)
+![License](https://img.shields.io/crates/l/kaze)
 
 kaze provides an API to describe `Module`s composed of `Signal`s, which can then be used to generate Rust simulator code or verilog modules.
 
