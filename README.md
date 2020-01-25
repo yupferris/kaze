@@ -12,8 +12,6 @@ kaze's API is designed to be as minimal as possible while still being expressive
 It's designed to keep the user from being able to describe buggy or incorrect hardware as much as possible.
 This enables a user to hack on designs fearlessly, while the API and generators ensure that these designs are sound.
 
-[Changelog](https://github.com/emoon/rust_minifb/blob/master/CHANGELOG.md)
-
 ## Usage
 
 ```toml
@@ -44,6 +42,10 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 ```
+
+## Releases
+
+See [changelog](https://github.com/emoon/rust_minifb/blob/master/CHANGELOG.md) for release information.
 
 ## License
 
