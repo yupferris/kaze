@@ -101,6 +101,13 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line(&format!("impl {} {{", m.name))?;
     w.indent();
 
+    w.append_line(&format!("pub fn new() -> {} {{", m.name))?;
+    w.indent();
+    w.append_line(&format!("{}::default()", m.name))?;
+    w.unindent()?;
+    w.append_line("}")?;
+    w.append_newline()?;
+
     if c.regs.len() > 0 {
         w.append_line("pub fn reset(&mut self) {")?;
         w.indent();
