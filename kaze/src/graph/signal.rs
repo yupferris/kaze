@@ -558,11 +558,11 @@ impl<'a> Signal<'a> {
 
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `self` is high, and `when_false`'s value when `self` is low.
     ///
-    /// This is a convenience wrapper for [`Module::mux`].
+    /// This is a convenience wrapper for [`Module`]::[`mux`].
     ///
     /// # Panics
     ///
-    /// Panics if `when_true` or `when_false` belong to a different `Module` than `self`, if `self`'s bit width is not 1, or if the bit widths of `when_true` and `when_false` aren't equal.
+    /// Panics if `when_true` or `when_false` belong to a different [`Module`] than `self`, if `self`'s bit width is not 1, or if the bit widths of `when_true` and `when_false` aren't equal.
     ///
     /// # Examples
     ///
@@ -579,7 +579,8 @@ impl<'a> Signal<'a> {
     /// m.output("my_output", cond.mux(a, b)); // Outputs a when cond is high, b otherwise
     /// ```
     ///
-    /// [`Module::mux`]: ./struct.Module.html#method.mux
+    /// [`Module`]: ./struct.Module.html
+    /// [`mux`]: ./struct.Module.html#method.mux
     // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
