@@ -255,7 +255,9 @@ impl<'a> Signal<'a> {
     ///
     /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn concat(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        // TODO: Ensure rhs is from the same module as self
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
         let target_bit_width = self.bit_width() + rhs.bit_width();
         if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
             panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
@@ -998,6 +1000,21 @@ mod tests {
 
         // Panic
         let _ = i.repeat(129);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn concat_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.concat(i2);
     }
 
     #[test]
