@@ -33,6 +33,10 @@ fn main() -> Result<()> {
     sim::generate(le_test_module(&c), &mut file)?;
     sim::generate(gt_test_module(&c), &mut file)?;
     sim::generate(ge_test_module(&c), &mut file)?;
+    sim::generate(lt_signed_test_module(&c), &mut file)?;
+    sim::generate(le_signed_test_module(&c), &mut file)?;
+    sim::generate(gt_signed_test_module(&c), &mut file)?;
+    sim::generate(ge_signed_test_module(&c), &mut file)?;
     sim::generate(mux_test_module(&c), &mut file)?;
     sim::generate(instantiation_test_module_comb(&c), &mut file)?;
     sim::generate(instantiation_test_module_reg(&c), &mut file)?;
@@ -312,6 +316,50 @@ fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i2 = m.input("i2", 4);
     m.output("o1", i1.ge(i2));
     m.output("o2", i1.bit(0).ge(i2.bit(0)));
+
+    m
+}
+
+fn lt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("lt_signed_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.lt_signed(i2));
+    m.output("o2", i1.bits(1, 0).lt_signed(i2.bits(1, 0)));
+
+    m
+}
+
+fn le_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("le_signed_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.le_signed(i2));
+    m.output("o2", i1.bits(1, 0).le_signed(i2.bits(1, 0)));
+
+    m
+}
+
+fn gt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("gt_signed_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.gt_signed(i2));
+    m.output("o2", i1.bits(1, 0).gt_signed(i2.bits(1, 0)));
+
+    m
+}
+
+fn ge_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("ge_signed_test_module");
+
+    let i1 = m.input("i1", 4);
+    let i2 = m.input("i2", 4);
+    m.output("o1", i1.ge_signed(i2));
+    m.output("o2", i1.bits(1, 0).ge_signed(i2.bits(1, 0)));
 
     m
 }

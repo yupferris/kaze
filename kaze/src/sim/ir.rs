@@ -178,6 +178,9 @@ pub enum Constant {
 #[derive(Clone, Copy, PartialEq)]
 pub enum ValueType {
     Bool,
+    I32,
+    I64,
+    I128,
     U32,
     U64,
     U128,
@@ -198,9 +201,21 @@ impl ValueType {
         }
     }
 
+    pub fn to_signed(&self) -> ValueType {
+        match self {
+            ValueType::Bool | ValueType::I32 | ValueType::I64 | ValueType::I128 => unreachable!(),
+            ValueType::U32 => ValueType::I32,
+            ValueType::U64 => ValueType::I64,
+            ValueType::U128 => ValueType::I128,
+        }
+    }
+
     pub fn name(&self) -> &'static str {
         match self {
             ValueType::Bool => "bool",
+            ValueType::I32 => "i32",
+            ValueType::I64 => "i64",
+            ValueType::I128 => "i128",
             ValueType::U32 => "u32",
             ValueType::U64 => "u64",
             ValueType::U128 => "u128",
@@ -210,9 +225,9 @@ impl ValueType {
     pub fn bit_width(&self) -> u32 {
         match self {
             ValueType::Bool => 1,
-            ValueType::U32 => 32,
-            ValueType::U64 => 64,
-            ValueType::U128 => 128,
+            ValueType::I32 | ValueType::U32 => 32,
+            ValueType::I64 | ValueType::U64 => 64,
+            ValueType::I128 | ValueType::U128 => 128,
         }
     }
 }

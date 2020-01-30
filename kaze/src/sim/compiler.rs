@@ -146,6 +146,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     Expr::Constant {
                         value: match target_type {
                             ValueType::Bool => Constant::Bool(value != 0),
+                            ValueType::I32 | ValueType::I64 | ValueType::I128 => unreachable!(),
                             ValueType::U32 => Constant::U32(value as _),
                             ValueType::U64 => Constant::U64(value as _),
                             ValueType::U128 => Constant::U128(value),
@@ -188,15 +189,37 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     self.gen_mask(expr, bit_width, target_type)
                 }
                 graph::SignalData::BinOp { lhs, rhs, op, .. } => {
-                    let source_type = ValueType::from_bit_width(lhs.bit_width());
+                    let source_bit_width = lhs.bit_width();
+                    let source_type = ValueType::from_bit_width(source_bit_width);
                     let lhs = self.compile_signal(lhs, context);
                     let rhs = self.compile_signal(rhs, context);
                     let op_input_type = match (op, source_type) {
                         (graph::BinOp::Add, ValueType::Bool) => ValueType::U32,
                         _ => source_type,
                     };
-                    let lhs = self.gen_cast(lhs, source_type, op_input_type);
-                    let rhs = self.gen_cast(rhs, source_type, op_input_type);
+                    let mut lhs = self.gen_cast(lhs, source_type, op_input_type);
+                    let mut rhs = self.gen_cast(rhs, source_type, op_input_type);
+                    match op {
+                        graph::BinOp::GreaterThanEqualSigned
+                        | graph::BinOp::GreaterThanSigned
+                        | graph::BinOp::LessThanEqualSigned
+                        | graph::BinOp::LessThanSigned => {
+                            let op_input_type_signed = op_input_type.to_signed();
+                            lhs = self.gen_cast(lhs, op_input_type, op_input_type_signed);
+                            rhs = self.gen_cast(rhs, op_input_type, op_input_type_signed);
+                            lhs = self.gen_sign_extend_shifts(
+                                lhs,
+                                source_bit_width,
+                                op_input_type_signed,
+                            );
+                            rhs = self.gen_sign_extend_shifts(
+                                rhs,
+                                source_bit_width,
+                                op_input_type_signed,
+                            );
+                        }
+                        _ => (),
+                    }
                     let expr = self.gen_temp(Expr::BinOp {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -207,10 +230,17 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             graph::BinOp::BitXor => BinOp::BitXor,
                             graph::BinOp::Equal => BinOp::Equal,
                             graph::BinOp::NotEqual => BinOp::NotEqual,
-                            graph::BinOp::LessThan => BinOp::LessThan,
-                            graph::BinOp::LessThanEqual => BinOp::LessThanEqual,
-                            graph::BinOp::GreaterThan => BinOp::GreaterThan,
-                            graph::BinOp::GreaterThanEqual => BinOp::GreaterThanEqual,
+                            graph::BinOp::LessThan | graph::BinOp::LessThanSigned => {
+                                BinOp::LessThan
+                            }
+                            graph::BinOp::LessThanEqual | graph::BinOp::LessThanEqualSigned => {
+                                BinOp::LessThanEqual
+                            }
+                            graph::BinOp::GreaterThan | graph::BinOp::GreaterThanSigned => {
+                                BinOp::GreaterThan
+                            }
+                            graph::BinOp::GreaterThanEqual
+                            | graph::BinOp::GreaterThanEqualSigned => BinOp::GreaterThanEqual,
                         },
                     });
                     let op_output_type = match op {
@@ -218,8 +248,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         | graph::BinOp::NotEqual
                         | graph::BinOp::LessThan
                         | graph::BinOp::LessThanEqual
+                        | graph::BinOp::LessThanEqualSigned
+                        | graph::BinOp::LessThanSigned
                         | graph::BinOp::GreaterThan
-                        | graph::BinOp::GreaterThanEqual => ValueType::Bool,
+                        | graph::BinOp::GreaterThanEqual
+                        | graph::BinOp::GreaterThanEqualSigned
+                        | graph::BinOp::GreaterThanSigned => ValueType::Bool,
                         _ => op_input_type,
                     };
                     let target_bit_width = signal.bit_width();
@@ -335,7 +369,9 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             lhs: Box::new(expr),
             rhs: Box::new(Expr::Constant {
                 value: match target_type {
-                    ValueType::Bool => unreachable!(),
+                    ValueType::Bool | ValueType::I32 | ValueType::I64 | ValueType::I128 => {
+                        unreachable!()
+                    }
                     ValueType::U32 => Constant::U32(mask as _),
                     ValueType::U64 => Constant::U64(mask as _),
                     ValueType::U128 => Constant::U128(mask),
@@ -384,7 +420,9 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 lhs: Box::new(expr),
                 rhs: Box::new(Expr::Constant {
                     value: match source_type {
-                        ValueType::Bool => unreachable!(),
+                        ValueType::Bool | ValueType::I32 | ValueType::I64 | ValueType::I128 => {
+                            unreachable!()
+                        }
                         ValueType::U32 => Constant::U32(0),
                         ValueType::U64 => Constant::U64(0),
                         ValueType::U128 => Constant::U128(0),
@@ -398,5 +436,16 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             source: Box::new(expr),
             target_type,
         })
+    }
+
+    fn gen_sign_extend_shifts(
+        &mut self,
+        expr: Expr,
+        source_bit_width: u32,
+        target_type: ValueType,
+    ) -> Expr {
+        let shift = target_type.bit_width() - source_bit_width;
+        let expr = self.gen_shift_left(expr, shift);
+        self.gen_shift_right(expr, shift)
     }
 }

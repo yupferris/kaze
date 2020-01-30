@@ -274,7 +274,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -322,7 +322,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -370,7 +370,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -418,7 +418,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -466,7 +466,7 @@ impl<'a> Signal<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -510,11 +510,11 @@ impl<'a> Signal<'a> {
         })
     }
 
-    /// Creates a `Signal` that represents the single-bit resugt of an unsigned `>=` comparison between `self` and `rhs`.
+    /// Creates a `Signal` that represents the single-bit result of an unsigned `>=` comparison between `self` and `rhs`.
     ///
     /// # Panics
     ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, or if the bit widths of `self` and `rhs` aren't equal.
     ///
     /// # Examples
     ///
@@ -554,6 +554,210 @@ impl<'a> Signal<'a> {
                 lhs: self,
                 rhs,
                 op: BinOp::GreaterThanEqual,
+            },
+        })
+    }
+
+    /// Creates a `Signal` that represents the single-bit result of a signed `<` comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, if the bit widths of `self` and `rhs` aren't equal, or if the bit widths of `self` and `rhs` are 1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
+    /// let lt_signed_1 = lit_a.lt_signed(lit_a); // Equivalent to m.low()
+    /// let lt_signed_2 = lit_b.lt_signed(lit_b); // Equivalent to m.low()
+    /// let lt_signed_3 = lit_a.lt_signed(lit_b); // Equivalent to m.high()
+    /// let lt_signed_4 = lit_b.lt_signed(lit_a); // Equivalent to m.low()
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn lt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        if self.bit_width() == 1 {
+            panic!("Cannot perform signed comparison of 1-bit signals.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::LessThanSigned,
+            },
+        })
+    }
+
+    /// Creates a `Signal` that represents the single-bit result of a signed `<=` comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, if the bit widths of `self` and `rhs` aren't equal, or if the bit widths of `self` and `rhs` are 1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
+    /// let le_signed_1 = lit_a.le_signed(lit_a); // Equivalent to m.high()
+    /// let le_signed_2 = lit_b.le_signed(lit_b); // Equivalent to m.high()
+    /// let le_signed_3 = lit_a.le_signed(lit_b); // Equivalent to m.high()
+    /// let le_signed_4 = lit_b.le_signed(lit_a); // Equivalent to m.low()
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn le_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        if self.bit_width() == 1 {
+            panic!("Cannot perform signed comparison of 1-bit signals.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::LessThanEqualSigned,
+            },
+        })
+    }
+
+    /// Creates a `Signal` that represents the single-bit result of a signed `>` comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, if the bit widths of `self` and `rhs` aren't equal, or if the bit widths of `self` and `rhs` are 1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
+    /// let gt_signed_1 = lit_a.gt_signed(lit_a); // Equivalent to m.low()
+    /// let gt_signed_2 = lit_b.gt_signed(lit_b); // Equivalent to m.low()
+    /// let gt_signed_3 = lit_a.gt_signed(lit_b); // Equivalent to m.low()
+    /// let gt_signed_4 = lit_b.gt_signed(lit_a); // Equivalent to m.high()
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn gt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        if self.bit_width() == 1 {
+            panic!("Cannot perform signed comparison of 1-bit signals.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::GreaterThanSigned,
+            },
+        })
+    }
+
+    /// Creates a `Signal` that represents the single-bit result of a signed `>=` comparison between `self` and `rhs`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self` and `rhs` belong to different [`Module`]s, if the bit widths of `self` and `rhs` aren't equal, or if the bit widths of `self` and `rhs` are 1.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("my_module");
+    ///
+    /// let lit_a = m.lit(0xau32, 4);
+    /// let lit_b = m.lit(0xbu32, 4);
+    /// let ge_signed_1 = lit_a.ge_signed(lit_a); // Equivalent to m.high()
+    /// let ge_signed_2 = lit_b.ge_signed(lit_b); // Equivalent to m.high()
+    /// let ge_signed_3 = lit_a.ge_signed(lit_b); // Equivalent to m.low()
+    /// let ge_signed_4 = lit_b.ge_signed(lit_a); // Equivalent to m.high()
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn ge_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        if self.bit_width() != rhs.bit_width() {
+            panic!(
+                "Signals have different bit widths ({} and {}, respectively).",
+                self.bit_width(),
+                rhs.bit_width()
+            );
+        }
+        if self.bit_width() == 1 {
+            panic!("Cannot perform signed comparison of 1-bit signals.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::BinOp {
+                bit_width: 1,
+                lhs: self,
+                rhs,
+                op: BinOp::GreaterThanEqualSigned,
             },
         })
     }
@@ -906,8 +1110,12 @@ pub(crate) enum BinOp {
     Equal,
     GreaterThan,
     GreaterThanEqual,
+    GreaterThanEqualSigned,
+    GreaterThanSigned,
     LessThan,
     LessThanEqual,
+    LessThanEqualSigned,
+    LessThanSigned,
     NotEqual,
 }
 
@@ -1198,6 +1406,170 @@ mod tests {
 
         // Panic
         let _ = i1.ge(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn lt_signed_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.lt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn lt_signed_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1.lt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot perform signed comparison of 1-bit signals.")]
+    fn lt_signed_bit_width_1_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 1);
+        let i2 = m.input("b", 1);
+
+        // Panic
+        let _ = i1.lt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn le_signed_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.le_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn le_signed_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1.le_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot perform signed comparison of 1-bit signals.")]
+    fn le_signed_bit_width_1_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 1);
+        let i2 = m.input("b", 1);
+
+        // Panic
+        let _ = i1.le_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn gt_signed_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.gt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn gt_signed_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1.gt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot perform signed comparison of 1-bit signals.")]
+    fn gt_signed_bit_width_1_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 1);
+        let i2 = m.input("b", 1);
+
+        // Panic
+        let _ = i1.gt_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn ge_signed_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("a");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("b");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.ge_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Signals have different bit widths (3 and 5, respectively).")]
+    fn ge_signed_incompatible_bit_widths_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 3);
+        let i2 = m.input("b", 5);
+
+        // Panic
+        let _ = i1.ge_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot perform signed comparison of 1-bit signals.")]
+    fn ge_signed_bit_width_1_error() {
+        let c = Context::new();
+
+        let m = c.module("a");
+        let i1 = m.input("a", 1);
+        let i2 = m.input("b", 1);
+
+        // Panic
+        let _ = i1.ge_signed(i2);
     }
 
     #[test]

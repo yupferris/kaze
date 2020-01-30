@@ -489,6 +489,74 @@ mod tests {
     }
 
     #[test]
+    fn lt_signed_test_module() {
+        let mut m = lt_signed_test_module::new();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, false);
+    }
+
+    #[test]
+    fn le_signed_test_module() {
+        let mut m = le_signed_test_module::new();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, false);
+    }
+
+    #[test]
+    fn gt_signed_test_module() {
+        let mut m = gt_signed_test_module::new();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
+    fn ge_signed_test_module() {
+        let mut m = ge_signed_test_module::new();
+
+        m.i1 = 0xa;
+        m.i2 = 0xb;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+
+        m.i1 = 0b01;
+        m.i2 = 0b11;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
     fn mux_test_module() {
         let mut m = mux_test_module::new();
 
