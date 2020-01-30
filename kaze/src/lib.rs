@@ -40,7 +40,7 @@
 //! [`Signal`]: ./graph/struct.Signal.html
 
 // Must be kept up-to-date with version in Cargo.toml
-#![doc(html_root_url = "https://docs.rs/kaze/0.1.0")]
+#![doc(html_root_url = "https://docs.rs/kaze/0.1.1")]
 
 mod code_writer;
 mod graph;
