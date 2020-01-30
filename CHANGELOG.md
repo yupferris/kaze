@@ -8,9 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.1] - 2020-01-30
 ### Added
-- Add signed comparison ops to `Signal` API (`lt_signed`, `le_signed`, `gt_signed`, `ge_signed`)
-- Add error check for `concat` to ensure its input `Signal`s belong to the same `Module`
-- Add this changelog
+- Signed comparison ops to `Signal` API (`lt_signed`, `le_signed`, `gt_signed`, `ge_signed`)
+- Error check for `concat` to ensure its input `Signal`s belong to the same `Module`
+- This changelog
 
 ### Changed
 - Small typo/link fixes in API docs
@@ -21,5 +21,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2020-01-25 (Initial release)
 
 [Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/yupferris/kaze/compare/v0.1.1..v0.1.0
+[0.1.1]: https://github.com/yupferris/kaze/compare/v0.1.0..v0.1.1
 [0.1.0]: https://github.com/yupferris/kaze/releases/tag/v0.1.0
