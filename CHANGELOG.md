@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Implement Eq/PartialEq/Hash for `Signal` (note that these are not documented/tested, which we might want to revisit later)
+
+### Changed
+- Switched naming convention for `Module`s from `snake_case` to `CamelCase`
+- Redesigned entire (unstable) sugar API
+- Small changelog formatting fixes
+
+### Fixed
+- Removed the last remaining `unsafe` block in the API impl
 
 ## [0.1.1] - 2020-01-30
 ### Added
