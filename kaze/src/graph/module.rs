@@ -21,7 +21,7 @@ use std::ptr;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 /// m.output("out", m.input("in", 1));
 /// ```
 ///
@@ -68,7 +68,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let eight_bit_const = m.lit(0xffu32, 8);
     /// let one_bit_const = m.lit(0u32, 1);
@@ -114,7 +114,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// // The following two signals are semantically equivalent:
     /// let low1 = m.low();
@@ -135,7 +135,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// // The following two signals are semantically equivalent:
     /// let high1 = m.high();
@@ -160,7 +160,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let my_input = m.input("my_input", 80);
     /// ```
@@ -209,7 +209,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let some_signal = m.high();
     /// m.output("my_output", some_signal);
@@ -235,7 +235,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let my_reg = m.reg("my_reg", 32);
     /// my_reg.default_value(0xfadebabeu32); // Optional
@@ -291,7 +291,7 @@ impl<'a> Module<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let cond = m.input("cond", 1);
     /// let a = m.input("a", 8);
@@ -354,12 +354,12 @@ impl<'a> Module<'a> {
     /// let c = Context::new();
     ///
     /// // Inner module (simple pass-through)
-    /// let inner = c.module("inner");
+    /// let inner = c.module("Inner");
     /// inner.output("o", inner.input("i", 32));
     ///
     /// // Outer module (wraps a single `inner` instance)
-    /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner_inst", "inner");
+    /// let outer = c.module("Outer");
+    /// let inner_inst = outer.instance("inner_inst", "Inner");
     /// inner_inst.drive_input("i", outer.input("i", 32));
     /// outer.output("o", inner_inst.output("o"));
     /// ```
@@ -401,7 +401,7 @@ mod tests {
     fn lit_bit_width_lt_min_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(false, 0);
@@ -414,7 +414,7 @@ mod tests {
     fn lit_bit_width_gt_max_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(false, 129);
@@ -427,7 +427,7 @@ mod tests {
     fn lit_value_cannot_bit_into_bit_width_error_1() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(128u32, 7);
@@ -440,7 +440,7 @@ mod tests {
     fn lit_value_cannot_bit_into_bit_width_error_2() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(128u64, 2);
@@ -453,7 +453,7 @@ mod tests {
     fn lit_value_cannot_bit_into_bit_width_error_3() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(1023u128, 4);
@@ -466,7 +466,7 @@ mod tests {
     fn lit_value_cannot_bit_into_bit_width_error_4() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.lit(65536u32, 1);
@@ -479,7 +479,7 @@ mod tests {
     fn input_width_lt_min_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.input("i", 0);
@@ -492,7 +492,7 @@ mod tests {
     fn input_width_gt_max_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.input("i", 129);
@@ -503,9 +503,9 @@ mod tests {
     fn output_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i = m2.high();
 
         // Panic
@@ -519,7 +519,7 @@ mod tests {
     fn reg_bit_width_lt_min_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.reg("r", 0);
@@ -532,7 +532,7 @@ mod tests {
     fn reg_bit_width_gt_max_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.reg("r", 129);
@@ -543,10 +543,10 @@ mod tests {
     fn mux_cond_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(false, 1);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(32u8, 8);
         let l3 = b.lit(32u8, 8);
 
@@ -559,10 +559,10 @@ mod tests {
     fn mux_when_true_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -575,10 +575,10 @@ mod tests {
     fn mux_when_false_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -591,7 +591,7 @@ mod tests {
     fn mux_cond_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(2u8, 2);
         let l2 = a.lit(32u8, 8);
         let l3 = a.lit(32u8, 8);
@@ -607,7 +607,7 @@ mod tests {
     fn mux_true_false_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(false, 1);
         let l2 = a.lit(3u8, 3);
         let l3 = a.lit(3u8, 5);
@@ -623,7 +623,7 @@ mod tests {
     fn instantiate_nonexistent_module_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
 
         // Panic
         let _ = m.instance("lol", "nope");

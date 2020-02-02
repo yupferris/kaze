@@ -33,7 +33,7 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 /// let a = m.lit(0xffu8, 8); // 8-bit signal
 /// let b = m.input("my_input", 27); // 27-bit signal
 /// let c = b.bits(7, 0); // 8-bit signal
@@ -62,7 +62,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// assert_eq!(m.lit(42u32, 7).bit_width(), 7);
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
@@ -118,7 +118,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit = m.lit(0b0110u32, 4);
     /// let bit_0 = lit.bit(0); // Represents 0
@@ -155,7 +155,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit = m.lit(0b0110u32, 4);
     /// let bits_210 = lit.bits(2, 0); // Represents 0b110
@@ -199,7 +199,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit = m.lit(0xau32, 4);
     /// let repeat_1 = lit.repeat(1); // Equivalent to just lit
@@ -244,7 +244,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xffu32, 8);
@@ -283,7 +283,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -331,7 +331,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -379,7 +379,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -427,7 +427,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -475,7 +475,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -523,7 +523,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -571,7 +571,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -622,7 +622,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -673,7 +673,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -724,7 +724,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -777,7 +777,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let cond = m.input("cond", 1);
     /// let a = m.input("a", 8);
@@ -864,7 +864,7 @@ impl<'a> Add for &'a Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lhs = m.lit(1u32, 32);
     /// let rhs = m.lit(2u32, 32);
@@ -920,7 +920,7 @@ impl<'a> BitAnd for &'a Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lhs = m.low();
     /// let rhs = m.high();
@@ -973,7 +973,7 @@ impl<'a> BitOr for &'a Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lhs = m.low();
     /// let rhs = m.high();
@@ -1026,7 +1026,7 @@ impl<'a> BitXor for &'a Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let lhs = m.low();
     /// let rhs = m.high();
@@ -1075,7 +1075,7 @@ impl<'a> Not for &'a Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let input1 = m.input("input1", 1);
     /// let single_not = !input1;
@@ -1130,7 +1130,7 @@ mod tests {
     fn bit_index_oob_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 3);
 
         let _ = i.bit(0); // OK
@@ -1147,7 +1147,7 @@ mod tests {
     fn bits_range_low_oob_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1161,7 +1161,7 @@ mod tests {
     fn bits_range_high_oob_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1175,7 +1175,7 @@ mod tests {
     fn bits_range_low_gt_high_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1189,7 +1189,7 @@ mod tests {
     fn repeat_count_zero_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 1);
 
         // Panic
@@ -1203,7 +1203,7 @@ mod tests {
     fn repeat_count_oob_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i = m.input("i", 1);
 
         // Panic
@@ -1215,10 +1215,10 @@ mod tests {
     fn concat_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1232,7 +1232,7 @@ mod tests {
     fn concat_oob_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("i1", 128);
         let i2 = m.input("i2", 1);
 
@@ -1245,10 +1245,10 @@ mod tests {
     fn eq_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1260,7 +1260,7 @@ mod tests {
     fn eq_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1273,10 +1273,10 @@ mod tests {
     fn ne_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1288,7 +1288,7 @@ mod tests {
     fn ne_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1301,10 +1301,10 @@ mod tests {
     fn lt_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1316,7 +1316,7 @@ mod tests {
     fn lt_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1329,10 +1329,10 @@ mod tests {
     fn le_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1344,7 +1344,7 @@ mod tests {
     fn le_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1357,10 +1357,10 @@ mod tests {
     fn gt_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1372,7 +1372,7 @@ mod tests {
     fn gt_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1385,10 +1385,10 @@ mod tests {
     fn ge_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1400,7 +1400,7 @@ mod tests {
     fn ge_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1413,10 +1413,10 @@ mod tests {
     fn lt_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1428,7 +1428,7 @@ mod tests {
     fn lt_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1441,7 +1441,7 @@ mod tests {
     fn lt_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1454,10 +1454,10 @@ mod tests {
     fn le_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1469,7 +1469,7 @@ mod tests {
     fn le_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1482,7 +1482,7 @@ mod tests {
     fn le_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1495,10 +1495,10 @@ mod tests {
     fn gt_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1510,7 +1510,7 @@ mod tests {
     fn gt_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1523,7 +1523,7 @@ mod tests {
     fn gt_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1536,10 +1536,10 @@ mod tests {
     fn ge_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1551,7 +1551,7 @@ mod tests {
     fn ge_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1564,7 +1564,7 @@ mod tests {
     fn ge_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1577,10 +1577,10 @@ mod tests {
     fn mux_cond_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(false, 1);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(32u8, 8);
         let l3 = b.lit(32u8, 8);
 
@@ -1593,10 +1593,10 @@ mod tests {
     fn mux_when_true_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -1609,10 +1609,10 @@ mod tests {
     fn mux_when_false_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("b");
+        let b = c.module("B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -1625,7 +1625,7 @@ mod tests {
     fn mux_cond_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(2u8, 2);
         let l2 = a.lit(32u8, 8);
         let l3 = a.lit(32u8, 8);
@@ -1641,7 +1641,7 @@ mod tests {
     fn mux_true_false_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("a");
+        let a = c.module("A");
         let l1 = a.lit(false, 1);
         let l2 = a.lit(3u8, 3);
         let l3 = a.lit(3u8, 5);
@@ -1655,10 +1655,10 @@ mod tests {
     fn add_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1670,7 +1670,7 @@ mod tests {
     fn add_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1683,10 +1683,10 @@ mod tests {
     fn bitand_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1698,7 +1698,7 @@ mod tests {
     fn bitand_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1711,10 +1711,10 @@ mod tests {
     fn bitor_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1726,7 +1726,7 @@ mod tests {
     fn bitor_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1739,10 +1739,10 @@ mod tests {
     fn bitxor_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
+        let m2 = c.module("B");
         let i2 = m2.high();
 
         // Panic
@@ -1754,7 +1754,7 @@ mod tests {
     fn bitxor_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 

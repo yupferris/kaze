@@ -8,7 +8,7 @@ mod tests {
 
     #[test]
     fn input_masking() {
-        let mut m = input_masking::new();
+        let mut m = InputMasking::new();
 
         m.i = 0xffffffff;
         m.prop();
@@ -17,7 +17,7 @@ mod tests {
 
     #[test]
     fn widest_input() {
-        let mut m = widest_input::new();
+        let mut m = WidestInput::new();
 
         m.i = 0xfadebabedeadbeefabad1deabadc0de5;
         m.prop();
@@ -26,7 +26,7 @@ mod tests {
 
     #[test]
     fn add_test_module() {
-        let mut m = add_test_module::new();
+        let mut m = AddTestModule::new();
 
         m.i1 = false;
         m.i2 = false;
@@ -95,8 +95,8 @@ mod tests {
     }
 
     #[test]
-    fn bitand_test_module() {
-        let mut m = bitand_test_module::new();
+    fn bit_and_test_module() {
+        let mut m = BitAndTestModule::new();
 
         m.i1 = false;
         m.i2 = false;
@@ -126,8 +126,8 @@ mod tests {
     }
 
     #[test]
-    fn bitor_test_module() {
-        let mut m = bitor_test_module::new();
+    fn bit_or_test_module() {
+        let mut m = BitOrTestModule::new();
 
         m.i1 = false;
         m.i2 = false;
@@ -157,8 +157,8 @@ mod tests {
     }
 
     #[test]
-    fn bitxor_test_module() {
-        let mut m = bitxor_test_module::new();
+    fn bit_xor_test_module() {
+        let mut m = BitXorTestModule::new();
 
         m.i1 = false;
         m.i2 = false;
@@ -189,7 +189,7 @@ mod tests {
 
     #[test]
     fn not_test_module() {
-        let mut m = not_test_module::new();
+        let mut m = NotTestModule::new();
 
         m.i = 0;
         m.prop();
@@ -210,7 +210,7 @@ mod tests {
 
     #[test]
     fn reg_test_module() {
-        let mut m = reg_test_module::new();
+        let mut m = RegTestModule::new();
 
         // Check initial value
         m.reset();
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn simple_reg_delay() {
-        let mut m = simple_reg_delay::new();
+        let mut m = SimpleRegDelay::new();
 
         // Check initial value
         m.reset();
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn bit_test_module_0() {
-        let mut m = bit_test_module_0::new();
+        let mut m = BitTestModule0::new();
 
         m.i = false;
         m.prop();
@@ -281,7 +281,7 @@ mod tests {
 
     #[test]
     fn bit_test_module_1() {
-        let mut m = bit_test_module_1::new();
+        let mut m = BitTestModule1::new();
 
         m.i = 0b0110;
         m.prop();
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn bits_test_module_0() {
-        let mut m = bits_test_module_0::new();
+        let mut m = BitsTestModule0::new();
 
         m.i = 0b0110;
         m.prop();
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn bits_test_module_1() {
-        let mut m = bits_test_module_1::new();
+        let mut m = BitsTestModule1::new();
 
         m.i = 0xfadebabedeadbeefabad1deabadc0de5;
         m.prop();
@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn repeat_test_module() {
-        let mut m = repeat_test_module::new();
+        let mut m = RepeatTestModule::new();
 
         m.i = 0xa;
         m.prop();
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn concat_test_module() {
-        let mut m = concat_test_module::new();
+        let mut m = ConcatTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0x5;
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn eq_test_module() {
-        let mut m = eq_test_module::new();
+        let mut m = EqTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xa;
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn ne_test_module() {
-        let mut m = ne_test_module::new();
+        let mut m = NeTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xa;
@@ -422,7 +422,7 @@ mod tests {
 
     #[test]
     fn lt_test_module() {
-        let mut m = lt_test_module::new();
+        let mut m = LtTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn le_test_module() {
-        let mut m = le_test_module::new();
+        let mut m = LeTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn gt_test_module() {
-        let mut m = gt_test_module::new();
+        let mut m = GtTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -473,7 +473,7 @@ mod tests {
 
     #[test]
     fn ge_test_module() {
-        let mut m = ge_test_module::new();
+        let mut m = GeTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn lt_signed_test_module() {
-        let mut m = lt_signed_test_module::new();
+        let mut m = LtSignedTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -507,7 +507,7 @@ mod tests {
 
     #[test]
     fn le_signed_test_module() {
-        let mut m = le_signed_test_module::new();
+        let mut m = LeSignedTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn gt_signed_test_module() {
-        let mut m = gt_signed_test_module::new();
+        let mut m = GtSignedTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -541,7 +541,7 @@ mod tests {
 
     #[test]
     fn ge_signed_test_module() {
-        let mut m = ge_signed_test_module::new();
+        let mut m = GeSignedTestModule::new();
 
         m.i1 = 0xa;
         m.i2 = 0xb;
@@ -558,7 +558,7 @@ mod tests {
 
     #[test]
     fn mux_test_module() {
-        let mut m = mux_test_module::new();
+        let mut m = MuxTestModule::new();
 
         m.i1 = false;
         m.invert = false;
@@ -603,7 +603,7 @@ mod tests {
 
     #[test]
     fn instantiation_test_module_comb() {
-        let mut m = instantiation_test_module_comb::new();
+        let mut m = InstantiationTestModuleComb::new();
 
         m.i1 = 0xffffffff;
         m.i2 = 0xffff0000;
@@ -622,7 +622,7 @@ mod tests {
 
     #[test]
     fn instantiation_test_module_reg() {
-        let mut m = instantiation_test_module_reg::new();
+        let mut m = InstantiationTestModuleReg::new();
 
         // Check initial value
         m.reset();
@@ -646,7 +646,7 @@ mod tests {
 
     #[test]
     fn nested_instantiation_test_module() {
-        let mut m = nested_instantiation_test_module::new();
+        let mut m = NestedInstantiationTestModule::new();
 
         m.i1 = 0xffffffff;
         m.i2 = 0xffff0000;

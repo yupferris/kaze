@@ -19,7 +19,7 @@ use std::collections::BTreeMap;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 /// m.output("out", m.input("in", 1));
 /// ```
 ///
@@ -59,7 +59,7 @@ impl<'a> Context<'a> {
 
     /// Creates a new [`Module`] called `name` in this `Context`.
     ///
-    /// Conventionally, `name` should be `snake_case`, though this is not enforced.
+    /// Conventionally, `name` should be `CamelCase`, though this is not enforced.
     ///
     /// # Panics
     ///
@@ -72,8 +72,8 @@ impl<'a> Context<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let my_module = c.module("my_module");
-    /// let another_mod = c.module("another_mod");
+    /// let my_module = c.module("MyModule");
+    /// let another_mod = c.module("AnotherMod");
     /// ```
     ///
     /// The following example panics by creating a `Module` with the same `name` as a previously-created `Module` in the same `Context`:
@@ -83,10 +83,10 @@ impl<'a> Context<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let _ = c.module("a"); // Unique name, OK
-    /// let _ = c.module("b"); // Unique name, OK
+    /// let _ = c.module("A"); // Unique name, OK
+    /// let _ = c.module("B"); // Unique name, OK
     ///
-    /// let _ = c.module("a"); // Non-unique name, panic!
+    /// let _ = c.module("A"); // Non-unique name, panic!
     /// ```
     ///
     /// [`Module`]: ./struct.Module.html
@@ -110,14 +110,14 @@ mod tests {
     use super::*;
 
     #[test]
-    #[should_panic(expected = "A module with the name \"a\" already exists in this context.")]
+    #[should_panic(expected = "A module with the name \"A\" already exists in this context.")]
     fn unique_module_names() {
         let c = Context::new();
 
-        let _ = c.module("a"); // Unique name, OK
-        let _ = c.module("b"); // Unique name, OK
+        let _ = c.module("A"); // Unique name, OK
+        let _ = c.module("B"); // Unique name, OK
 
         // Panic
-        let _ = c.module("a");
+        let _ = c.module("A");
     }
 }

@@ -9,7 +9,7 @@
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 ///
 /// let a = m.lit(true, 16);
 /// let b = m.lit(0xdeadbeefu32, 47);

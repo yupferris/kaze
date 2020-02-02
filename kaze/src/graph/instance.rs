@@ -16,12 +16,12 @@ use std::ptr;
 /// let c = Context::new();
 ///
 /// // Inner module (simple pass-through)
-/// let inner = c.module("inner");
+/// let inner = c.module("Inner");
 /// inner.output("o", inner.input("i", 32));
 ///
-/// // Outer module (wraps a single `inner` instance)
-/// let outer = c.module("outer");
-/// let inner_inst = outer.instance("inner_inst", "inner");
+/// // Outer module (wraps a single `Inner` instance)
+/// let outer = c.module("Outer");
+/// let inner_inst = outer.instance("inner_inst", "Inner");
 /// inner_inst.drive_input("i", outer.input("i", 32));
 /// outer.output("o", inner_inst.output("o"));
 /// ```
@@ -52,11 +52,11 @@ impl<'a> Instance<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let inner = c.module("inner");
+    /// let inner = c.module("Inner");
     /// inner.output("o", inner.input("i", 32));
     ///
-    /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner_inst", "inner");
+    /// let outer = c.module("Outer");
+    /// let inner_inst = outer.instance("inner_inst", "Inner");
     /// // Drive inner_inst's "i" input with a 32-bit literal
     /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
@@ -95,11 +95,11 @@ impl<'a> Instance<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let inner = c.module("inner");
+    /// let inner = c.module("Inner");
     /// inner.output("o", inner.lit(true, 1));
     ///
-    /// let outer = c.module("outer");
-    /// let inner_inst = outer.instance("inner_inst", "inner");
+    /// let outer = c.module("Outer");
+    /// let inner_inst = outer.instance("inner_inst", "Inner");
     /// // Forward inner_inst's "o" output to a new output on outer with the same name
     /// outer.output("o", inner_inst.output("o"));
     /// ```
@@ -139,14 +139,14 @@ mod tests {
     fn drive_input_different_module_error() {
         let c = Context::new();
 
-        let inner = c.module("inner");
+        let inner = c.module("Inner");
         let _ = inner.input("a", 1);
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("b");
-        let inner_inst = m2.instance("inner_inst", "inner");
+        let m2 = c.module("B");
+        let inner_inst = m2.instance("inner_inst", "Inner");
 
         // Panic
         inner_inst.drive_input("a", i1);
@@ -154,15 +154,15 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to drive an input called \"a\" on an instance of \"inner\", but no such input with this name exists on this module."
+        expected = "Attempted to drive an input called \"a\" on an instance of \"Inner\", but no such input with this name exists on this module."
     )]
     fn drive_input_nonexistent_input_error() {
         let c = Context::new();
 
-        let _ = c.module("inner");
+        let _ = c.module("Inner");
 
-        let m = c.module("a");
-        let inner_inst = m.instance("inner_inst", "inner");
+        let m = c.module("A");
+        let inner_inst = m.instance("inner_inst", "Inner");
 
         // Panic
         inner_inst.drive_input("a", m.input("i", 1));
@@ -170,16 +170,16 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to drive an input called \"a\" on an instance of \"inner\", but this input is already driven for this instance."
+        expected = "Attempted to drive an input called \"a\" on an instance of \"Inner\", but this input is already driven for this instance."
     )]
     fn drive_input_already_driven_error() {
         let c = Context::new();
 
-        let inner = c.module("inner");
+        let inner = c.module("Inner");
         let _ = inner.input("a", 1);
 
-        let m = c.module("a");
-        let inner_inst = m.instance("inner_inst", "inner");
+        let m = c.module("A");
+        let inner_inst = m.instance("inner_inst", "Inner");
 
         inner_inst.drive_input("a", m.input("i1", 1));
 
@@ -189,16 +189,16 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to drive an input called \"a\" on an instance of \"inner\", but this input and the provided signal have different bit widths (1 and 32, respectively)."
+        expected = "Attempted to drive an input called \"a\" on an instance of \"Inner\", but this input and the provided signal have different bit widths (1 and 32, respectively)."
     )]
     fn drive_input_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let inner = c.module("inner");
+        let inner = c.module("Inner");
         let _ = inner.input("a", 1);
 
-        let m = c.module("a");
-        let inner_inst = m.instance("inner_inst", "inner");
+        let m = c.module("A");
+        let inner_inst = m.instance("inner_inst", "Inner");
 
         // Panic
         inner_inst.drive_input("a", m.input("i1", 32));
@@ -206,15 +206,15 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to create a signal for an output called \"nope\" on an instance of \"inner\", but no such output with this name exists on this module."
+        expected = "Attempted to create a signal for an output called \"nope\" on an instance of \"Inner\", but no such output with this name exists on this module."
     )]
     fn output_nonexistent_output_error() {
         let c = Context::new();
 
-        let _ = c.module("inner");
+        let _ = c.module("Inner");
 
-        let m = c.module("a");
-        let inner_inst = m.instance("inner_inst", "inner");
+        let m = c.module("A");
+        let inner_inst = m.instance("inner_inst", "Inner");
 
         // Panic
         let _ = inner_inst.output("nope");

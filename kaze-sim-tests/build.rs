@@ -15,9 +15,9 @@ fn main() -> Result<()> {
     sim::generate(input_masking(&c), &mut file)?;
     sim::generate(widest_input(&c), &mut file)?;
     sim::generate(add_test_module(&c), &mut file)?;
-    sim::generate(bitand_test_module(&c), &mut file)?;
-    sim::generate(bitor_test_module(&c), &mut file)?;
-    sim::generate(bitxor_test_module(&c), &mut file)?;
+    sim::generate(bit_and_test_module(&c), &mut file)?;
+    sim::generate(bit_or_test_module(&c), &mut file)?;
+    sim::generate(bit_xor_test_module(&c), &mut file)?;
     sim::generate(not_test_module(&c), &mut file)?;
     sim::generate(reg_test_module(&c), &mut file)?;
     sim::generate(simple_reg_delay(&c), &mut file)?;
@@ -46,7 +46,7 @@ fn main() -> Result<()> {
 }
 
 fn input_masking<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("input_masking");
+    let m = c.module("InputMasking");
 
     m.output("o", m.input("i", 27));
 
@@ -54,7 +54,7 @@ fn input_masking<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn widest_input<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("widest_input");
+    let m = c.module("WidestInput");
 
     m.output("o", m.input("i", 128));
 
@@ -62,7 +62,7 @@ fn widest_input<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn add_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("add_test_module");
+    let m = c.module("AddTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -91,8 +91,8 @@ fn add_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bitand_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bitand_test_module");
+fn bit_and_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("BitAndTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -101,8 +101,8 @@ fn bitand_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bitor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bitor_test_module");
+fn bit_or_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("BitOrTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -111,8 +111,8 @@ fn bitor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bitxor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bitxor_test_module");
+fn bit_xor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("BitXorTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -122,7 +122,7 @@ fn bitxor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn not_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("not_test_module");
+    let m = c.module("NotTestModule");
 
     let i = m.input("i", 4);
     m.output("o", !i);
@@ -131,7 +131,7 @@ fn not_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("reg_test_module");
+    let m = c.module("RegTestModule");
 
     let r1 = m.reg("r1", 32);
     r1.default_value(0u32);
@@ -146,7 +146,7 @@ fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("simple_reg_delay");
+    let m = c.module("SimpleRegDelay");
 
     let r1 = m.reg("r1", 100);
     r1.default_value(0u32);
@@ -163,7 +163,7 @@ fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn bit_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bit_test_module_0");
+    let m = c.module("BitTestModule0");
 
     let i = m.input("i", 1);
     m.output("o", i.bit(0));
@@ -172,7 +172,7 @@ fn bit_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn bit_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bit_test_module_1");
+    let m = c.module("BitTestModule1");
 
     let i = m.input("i", 4);
     m.output("o0", i.bit(0));
@@ -184,7 +184,7 @@ fn bit_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn bits_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bits_test_module_0");
+    let m = c.module("BitsTestModule0");
 
     let i = m.input("i", 4);
 
@@ -198,7 +198,7 @@ fn bits_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("bits_test_module_1");
+    let m = c.module("BitsTestModule1");
 
     let i = m.input("i", 128);
 
@@ -219,7 +219,7 @@ fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("repeat_test_module");
+    let m = c.module("RepeatTestModule");
 
     let i = m.input("i", 4);
 
@@ -237,7 +237,7 @@ fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn concat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("concat_test_module");
+    let m = c.module("ConcatTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -255,7 +255,7 @@ fn concat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn eq_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("eq_test_module");
+    let m = c.module("EqTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -266,7 +266,7 @@ fn eq_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn ne_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ne_test_module");
+    let m = c.module("NeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -277,7 +277,7 @@ fn ne_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn lt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("lt_test_module");
+    let m = c.module("LtTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -288,7 +288,7 @@ fn lt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn le_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("le_test_module");
+    let m = c.module("LeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -299,7 +299,7 @@ fn le_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("gt_test_module");
+    let m = c.module("GtTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -310,7 +310,7 @@ fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ge_test_module");
+    let m = c.module("GeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -321,7 +321,7 @@ fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn lt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("lt_signed_test_module");
+    let m = c.module("LtSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -332,7 +332,7 @@ fn lt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn le_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("le_signed_test_module");
+    let m = c.module("LeSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -343,7 +343,7 @@ fn le_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn gt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("gt_signed_test_module");
+    let m = c.module("GtSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -354,7 +354,7 @@ fn gt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn ge_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ge_signed_test_module");
+    let m = c.module("GeSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -365,7 +365,7 @@ fn ge_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("mux_test_module");
+    let m = c.module("MuxTestModule");
 
     let invert = m.input("invert", 1);
 
@@ -397,19 +397,19 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("instantiation_test_module_comb_inner");
+    let m = c.module("InstantiationTestModuleCombInner");
     let i1 = m.input("i1", 32);
     let i2 = m.input("i2", 32);
     m.output("o", i1 & i2);
 
-    let m = c.module("instantiation_test_module_comb");
-    let i1 = m.instance("inner1", "instantiation_test_module_comb_inner");
+    let m = c.module("InstantiationTestModuleComb");
+    let i1 = m.instance("inner1", "InstantiationTestModuleCombInner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "instantiation_test_module_comb_inner");
+    let i2 = m.instance("inner2", "InstantiationTestModuleCombInner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "instantiation_test_module_comb_inner");
+    let i3 = m.instance("inner3", "InstantiationTestModuleCombInner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
@@ -418,7 +418,7 @@ fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("instantiation_test_module_reg_inner");
+    let m = c.module("InstantiationTestModuleRegInner");
     let i1 = m.input("i1", 32);
     let i2 = m.input("i2", 32);
     let r = m.reg("r", 32);
@@ -426,14 +426,14 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
     r.drive_next(i1 & i2);
     m.output("o", r.value);
 
-    let m = c.module("instantiation_test_module_reg");
-    let i1 = m.instance("inner1", "instantiation_test_module_reg_inner");
+    let m = c.module("InstantiationTestModuleReg");
+    let i1 = m.instance("inner1", "InstantiationTestModuleRegInner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "instantiation_test_module_reg_inner");
+    let i2 = m.instance("inner2", "InstantiationTestModuleRegInner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "instantiation_test_module_reg_inner");
+    let i3 = m.instance("inner3", "InstantiationTestModuleRegInner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
@@ -442,25 +442,25 @@ fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
 }
 
 fn nested_instantiation_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("nested_instantiation_test_module_inner_inner");
+    let m = c.module("NestedInstantiationTestModuleInnerInner");
     let i = m.input("i", 32);
     m.output("o", i);
 
-    let m = c.module("nested_instantiation_test_module_inner");
-    let i = m.instance("inner", "nested_instantiation_test_module_inner_inner");
+    let m = c.module("NestedInstantiationTestModuleInner");
+    let i = m.instance("inner", "NestedInstantiationTestModuleInnerInner");
     let i1 = m.input("i1", 32);
     let i2 = m.input("i2", 32);
     i.drive_input("i", i1 & i2);
     m.output("o", i.output("o"));
 
-    let m = c.module("nested_instantiation_test_module");
-    let i1 = m.instance("inner1", "nested_instantiation_test_module_inner");
+    let m = c.module("NestedInstantiationTestModule");
+    let i1 = m.instance("inner1", "NestedInstantiationTestModuleInner");
     i1.drive_input("i1", m.input("i1", 32));
     i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "nested_instantiation_test_module_inner");
+    let i2 = m.instance("inner2", "NestedInstantiationTestModuleInner");
     i2.drive_input("i1", m.input("i3", 32));
     i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "nested_instantiation_test_module_inner");
+    let i3 = m.instance("inner3", "NestedInstantiationTestModuleInner");
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));

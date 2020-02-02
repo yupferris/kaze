@@ -13,7 +13,7 @@ use super::signal::*;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 /// let i = m.input("i", 1);
 /// let invert = m.input("invert", 1);
 /// let o = if_(invert, {

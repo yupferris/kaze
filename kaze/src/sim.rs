@@ -51,7 +51,6 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     let mut w = code_writer::CodeWriter::new(w);
 
-    w.append_line("#[allow(non_camel_case_types)]")?;
     w.append_line("#[derive(Default)]")?;
     w.append_line(&format!("pub struct {} {{", m.name))?;
     w.indent();

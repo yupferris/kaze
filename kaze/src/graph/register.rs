@@ -22,7 +22,7 @@ use std::ptr;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("my_module");
+/// let m = c.module("MyModule");
 ///
 /// let my_reg = m.reg("my_reg", 32);
 /// my_reg.default_value(0xfadebabeu32); // Optional
@@ -62,7 +62,7 @@ impl<'a> Register<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let my_reg = m.reg("my_reg", 32);
     /// my_reg.default_value(0xfadebabeu32); // Optional
@@ -100,7 +100,7 @@ impl<'a> Register<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("my_module");
+    /// let m = c.module("MyModule");
     ///
     /// let my_reg = m.reg("my_reg", 32);
     /// my_reg.default_value(0xfadebabeu32); // Optional
@@ -139,12 +139,12 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to specify a default value for register \"r\" in module \"a\", but this register already has a default value."
+        expected = "Attempted to specify a default value for register \"r\" in module \"A\", but this register already has a default value."
     )]
     fn default_value_already_specified_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 32);
 
         r.default_value(0xfadebabeu32);
@@ -160,7 +160,7 @@ mod tests {
     fn default_value_cannot_bit_into_bit_width_error_1() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 7);
 
         // Panic
@@ -174,7 +174,7 @@ mod tests {
     fn default_value_cannot_bit_into_bit_width_error_2() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 2);
 
         // Panic
@@ -188,7 +188,7 @@ mod tests {
     fn default_value_cannot_bit_into_bit_width_error_3() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 4);
 
         // Panic
@@ -202,7 +202,7 @@ mod tests {
     fn default_value_cannot_bit_into_bit_width_error_4() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 1);
 
         // Panic
@@ -216,7 +216,7 @@ mod tests {
     fn drive_next_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("a");
+        let m1 = c.module("A");
         let l = m1.lit(true, 1);
 
         let m2 = c.module("b");
@@ -233,7 +233,7 @@ mod tests {
     fn drive_next_incompatible_bit_width_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 3);
         let i = m.input("i", 5);
 
@@ -243,12 +243,12 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Attempted to drive register \"r\"'s next value in module \"a\", but this register's next value is already driven."
+        expected = "Attempted to drive register \"r\"'s next value in module \"A\", but this register's next value is already driven."
     )]
     fn drive_next_already_driven_error() {
         let c = Context::new();
 
-        let m = c.module("a");
+        let m = c.module("A");
         let r = m.reg("r", 32);
         let i = m.input("i", 32);
 
