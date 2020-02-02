@@ -29,7 +29,7 @@ fn main() -> std::io::Result<()> {
     let c = Context::new();
 
     // Create a module
-    let inverter = c.module("inverter");
+    let inverter = c.module("Inverter");
     let i = inverter.input("i", 1); // 1-bit input
     inverter.output("o", !i); // Output inverted input
 
