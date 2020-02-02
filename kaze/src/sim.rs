@@ -40,7 +40,6 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     // TODO: Can we get rid of this clone?
     for ((context, _), reg) in c.regs.clone().iter() {
-        let context = unsafe { &**context as &ModuleContext };
         let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context);
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,

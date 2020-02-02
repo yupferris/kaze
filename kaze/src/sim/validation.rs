@@ -131,7 +131,10 @@ fn trace_signal<'graph, 'arena>(
     signal: &graph::Signal<'graph>,
     context: &'arena ModuleContext<'graph, 'arena>,
     context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
-    source_output: (&ModuleContext<'graph, 'arena>, &graph::Signal<'graph>),
+    source_output: (
+        &'arena ModuleContext<'graph, 'arena>,
+        &'graph graph::Signal<'graph>,
+    ),
     root: &graph::Module<'graph>,
 ) {
     match signal.data {
@@ -189,7 +192,7 @@ fn trace_signal<'graph, 'arena>(
             let instantiated_module = instance.instantiated_module;
             let output = instantiated_module.outputs.borrow()[name];
             let context = context.get_child(instance, context_arena);
-            if ptr::eq(context, source_output.0) && ptr::eq(output, source_output.1) {
+            if context == source_output.0 && output == source_output.1 {
                 panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
             }
             trace_signal(output, context, context_arena, source_output, root);

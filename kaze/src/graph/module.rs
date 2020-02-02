@@ -305,7 +305,7 @@ impl<'a> Module<'a> {
         when_false: &'a Signal<'a>,
     ) -> &Signal<'a> {
         // TODO: This is an optimization to support sugar; if that doesn't go well, remove this
-        if ptr::eq(when_true, when_false) {
+        if when_true == when_false {
             return when_true;
         }
 

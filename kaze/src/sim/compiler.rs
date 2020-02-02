@@ -19,15 +19,15 @@ pub(crate) struct Compiler<'graph, 'arena> {
 
     pub regs: HashMap<
         (
-            *const ModuleContext<'graph, 'arena>,
-            *const graph::Signal<'graph>,
+            &'arena ModuleContext<'graph, 'arena>,
+            &'graph graph::Signal<'graph>,
         ),
         CompiledRegister<'graph>,
     >,
     signal_exprs: HashMap<
         (
-            *const ModuleContext<'graph, 'arena>,
-            *const graph::Signal<'graph>,
+            &'arena ModuleContext<'graph, 'arena>,
+            &'graph graph::Signal<'graph>,
         ),
         Expr,
     >,
@@ -68,7 +68,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             }
 
             graph::SignalData::Reg { data } => {
-                let key = (context as *const _, signal as *const _);
+                let key = (context, signal);
                 if self.regs.contains_key(&key) {
                     return;
                 }
@@ -128,7 +128,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
         signal: &'graph graph::Signal<'graph>,
         context: &'arena ModuleContext<'graph, 'arena>,
     ) -> Expr {
-        let key = (context as *const _, signal as *const _);
+        let key = (context, signal);
         if !self.signal_exprs.contains_key(&key) {
             let expr = match signal.data {
                 graph::SignalData::Lit {

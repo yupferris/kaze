@@ -4,6 +4,7 @@ use super::instance::*;
 use super::module::*;
 use super::register::*;
 
+use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Not};
 use std::ptr;
 
@@ -1060,6 +1061,20 @@ impl<'a> BitXor for &'a Signal<'a> {
                 op: BinOp::BitXor,
             },
         })
+    }
+}
+
+impl<'a> Eq for &'a Signal<'a> {}
+
+impl<'a> Hash for &'a Signal<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(*self as *const _ as usize)
+    }
+}
+
+impl<'a> PartialEq for &'a Signal<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(*self, *other)
     }
 }
 
