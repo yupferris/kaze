@@ -1,8 +1,10 @@
+use super::signal::*;
+
 /// **UNSTABLE:** Provides a convenient way to write conditional combinational logic.
 ///
 /// # Panics
 ///
-/// Since this macro rewrites the referenced variable assignments using [`mux`], any panic conditions from that method apply to the generated code as well.
+/// Since this construct wraps the returned values with [`mux`], any panic conditions from that method apply to the generated code as well.
 ///
 /// # Examples
 ///
@@ -14,49 +16,574 @@
 /// let m = c.module("my_module");
 /// let i = m.input("i", 1);
 /// let invert = m.input("invert", 1);
-/// let mut o = i;
-/// kaze_sugar! {
-///     if (invert) {
-///         o = !o; // Equivalent to `o = invert.mux(!o, o);`
-///     }
-/// }
+/// let o = if_(invert, {
+///     !i
+/// }).else_({
+///     i
+/// });
 /// m.output("o", o);
 /// ```
 ///
 /// [`mux`]: ./struct.Signal.html#method.mux
-#[macro_export(local_inner_macros)]
-macro_rules! kaze_sugar {
-    ($($contents:tt)*) => {
-        kaze_sugar_impl!([], [ $($contents)* ])
-    };
+// TODO: Can we constrain T more than this to make sure it's only a supported type?
+pub fn if_<'a, T>(cond: &'a Signal<'a>, when_true: T) -> If<'a, T> {
+    If::new(cond, when_true)
 }
 
 #[doc(hidden)]
-#[macro_export]
-// TODO: This formulation can generate a lot of extra mux's with the same or similar conditions, and should be revisited!
-macro_rules! kaze_sugar_impl {
-    // [selector], [token stream]
+pub struct If<'a, T> {
+    cond: &'a Signal<'a>,
+    when_true: T,
+}
 
-    // No selector cases
-    ([], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
-        $name = $value;
-        kaze_sugar_impl!([], [ $($rest)* ]);
-    };
-    ([], [ if ($sel:expr) { $($inner:tt)* } $($rest:tt)* ]) => {
-        kaze_sugar_impl!([ $sel ], [ $($inner)* ]);
-        kaze_sugar_impl!([], [ $($rest)* ]);
-    };
-    ([], []) => {};
+impl<'a, T> If<'a, T> {
+    fn new(cond: &'a Signal<'a>, when_true: T) -> If<'a, T> {
+        If { cond, when_true }
+    }
 
-    // Selector cases
-    ([ $sel:expr ], [ $name:ident = $value:expr; $($rest:tt)* ]) => {
-        let prev = $name;
-        kaze_sugar_impl!([ $sel ], [ $($rest)* ]);
-        $name = $sel.mux($value, prev)
-    };
-    ([ $prev_sel:expr ], [ if ($sel:expr) { $($inner:tt)* } $($rest:tt)* ]) => {
-        kaze_sugar_impl!([ $prev_sel & $sel ], [ $($inner)* ]);
-        kaze_sugar_impl!([ $prev_sel ], [ $($rest)* ]);
-    };
-    ([ $_:expr ], []) => {};
+    pub fn else_if(self, cond: &'a Signal<'a>, when_true: T) -> ElseIf<'a, T> {
+        ElseIf {
+            parent: ElseIfParent::If(self),
+            cond,
+            when_true,
+        }
+    }
+}
+
+impl<'a> If<'a, &'a Signal<'a>> {
+    pub fn else_(self, when_false: &'a Signal<'a>) -> &Signal<'a> {
+        self.cond.mux(self.when_true, when_false)
+    }
+}
+
+// TODO: Come up with a nice way to generate these definitions with macros
+impl<'a> If<'a, (&'a Signal<'a>,)> {
+    pub fn else_(self, when_false: (&'a Signal<'a>,)) -> (&Signal<'a>,) {
+        (self.cond.mux(self.when_true.0, when_false.0),)
+    }
+}
+
+impl<'a> If<'a, (&'a Signal<'a>, &'a Signal<'a>)> {
+    pub fn else_(self, when_false: (&'a Signal<'a>, &'a Signal<'a>)) -> (&Signal<'a>, &Signal<'a>) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+        )
+    }
+}
+
+impl<'a> If<'a, (&'a Signal<'a>, &'a Signal<'a>, &'a Signal<'a>)> {
+    pub fn else_(
+        self,
+        when_false: (&'a Signal<'a>, &'a Signal<'a>, &'a Signal<'a>),
+    ) -> (&Signal<'a>, &Signal<'a>, &Signal<'a>) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+        )
+    }
+}
+
+impl<'a>
+    If<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (&Signal<'a>, &Signal<'a>, &Signal<'a>, &Signal<'a>) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+        )
+    }
+}
+
+impl<'a>
+    If<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+        )
+    }
+}
+
+impl<'a>
+    If<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+        )
+    }
+}
+
+impl<'a>
+    If<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+            self.cond.mux(self.when_true.6, when_false.6),
+        )
+    }
+}
+
+impl<'a>
+    If<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+            self.cond.mux(self.when_true.6, when_false.6),
+            self.cond.mux(self.when_true.7, when_false.7),
+        )
+    }
+}
+
+enum ElseIfParent<'a, T> {
+    If(If<'a, T>),
+    ElseIf(Box<ElseIf<'a, T>>),
+}
+
+#[doc(hidden)]
+pub struct ElseIf<'a, T> {
+    parent: ElseIfParent<'a, T>,
+    cond: &'a Signal<'a>,
+    when_true: T,
+}
+
+impl<'a, T> ElseIf<'a, T> {
+    pub fn else_if(self, cond: &'a Signal<'a>, when_true: T) -> ElseIf<'a, T> {
+        ElseIf {
+            parent: ElseIfParent::ElseIf(Box::new(self)),
+            cond,
+            when_true,
+        }
+    }
+}
+
+impl<'a> ElseIf<'a, &'a Signal<'a>> {
+    pub fn else_(self, when_false: &'a Signal<'a>) -> &Signal<'a> {
+        let ret = self.cond.mux(self.when_true, when_false);
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+// TODO: Come up with a nice way to generate these definitions with macros
+impl<'a> ElseIf<'a, (&'a Signal<'a>,)> {
+    pub fn else_(self, when_false: (&'a Signal<'a>,)) -> (&Signal<'a>,) {
+        let ret = (self.cond.mux(self.when_true.0, when_false.0),);
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a> ElseIf<'a, (&'a Signal<'a>, &'a Signal<'a>)> {
+    pub fn else_(self, when_false: (&'a Signal<'a>, &'a Signal<'a>)) -> (&Signal<'a>, &Signal<'a>) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a> ElseIf<'a, (&'a Signal<'a>, &'a Signal<'a>, &'a Signal<'a>)> {
+    pub fn else_(
+        self,
+        when_false: (&'a Signal<'a>, &'a Signal<'a>, &'a Signal<'a>),
+    ) -> (&Signal<'a>, &Signal<'a>, &Signal<'a>) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a>
+    ElseIf<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (&Signal<'a>, &Signal<'a>, &Signal<'a>, &Signal<'a>) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a>
+    ElseIf<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a>
+    ElseIf<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a>
+    ElseIf<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+            self.cond.mux(self.when_true.6, when_false.6),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
+}
+
+impl<'a>
+    ElseIf<
+        'a,
+        (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    >
+{
+    pub fn else_(
+        self,
+        when_false: (
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+            &'a Signal<'a>,
+        ),
+    ) -> (
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+        &Signal<'a>,
+    ) {
+        let ret = (
+            self.cond.mux(self.when_true.0, when_false.0),
+            self.cond.mux(self.when_true.1, when_false.1),
+            self.cond.mux(self.when_true.2, when_false.2),
+            self.cond.mux(self.when_true.3, when_false.3),
+            self.cond.mux(self.when_true.4, when_false.4),
+            self.cond.mux(self.when_true.5, when_false.5),
+            self.cond.mux(self.when_true.6, when_false.6),
+            self.cond.mux(self.when_true.7, when_false.7),
+        );
+        match self.parent {
+            ElseIfParent::If(parent) => parent.else_(ret),
+            ElseIfParent::ElseIf(parent) => parent.else_(ret),
+        }
+    }
 }

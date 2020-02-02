@@ -369,24 +369,26 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 
     let invert = m.input("invert", 1);
 
-    let mut i1 = m.input("i1", 1);
-    let mut i2 = m.input("i2", 1);
+    let i1 = m.input("i1", 1);
+    let i2 = m.input("i2", 1);
 
-    kaze_sugar! {
-        i1 = !i1;
-        i1 = i1;
-        i1 = !i1;
-        if (invert) {
-            i2 = i2;
-            if (!m.low()) {
-                i1 = !i1;
-                i1 = i1;
-                i2 = !i2;
-            }
-            i1 = i1;
-        }
-        i2 = i2;
-    }
+    let (i1, i2) = if_(m.high(), {
+        let i1 = !i1;
+        let i1 = i1;
+        let i1 = !i1;
+        if_(invert, {
+            let i2 = i2;
+            if_(!m.low(), {
+                let i1 = !i1;
+                let i1 = i1;
+                let i2 = !i2;
+                (i1, i2)
+            })
+            .else_({ (i1, i2) })
+        })
+        .else_({ (i1, i2) })
+    })
+    .else_({ (m.low(), m.low()) });
 
     m.output("o1", i1);
     m.output("o2", i2);

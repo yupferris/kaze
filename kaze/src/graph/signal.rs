@@ -787,7 +787,7 @@ impl<'a> Signal<'a> {
     ///
     /// [`Module`]: ./struct.Module.html
     /// [`mux`]: ./struct.Module.html#method.mux
-    // TODO: This is currently only used to support macro conditional syntax; if it doesn't work out, remove this
+    // TODO: This is currently only used to support sugar; if it doesn't work out, remove this
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
     }
