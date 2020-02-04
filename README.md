@@ -1,4 +1,4 @@
-# kaze
+# kaze [風](https://jisho.org/search/%E9%A2%A8%20%23kanji)
 
 An [HDL](https://en.wikipedia.org/wiki/Hardware_description_language) embedded in [Rust](https://www.rust-lang.org/).
 
