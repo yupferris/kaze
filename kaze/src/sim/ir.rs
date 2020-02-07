@@ -72,11 +72,16 @@ impl Expr {
                         rhs.write(w)?;
                         w.append(")")?;
                     }
+                    BinOp::Sub => {
+                        w.append(".wrapping_sub(")?;
+                        rhs.write(w)?;
+                        w.append(")")?;
+                    }
                     _ => {
                         w.append(&format!(
                             " {} ",
                             match op {
-                                BinOp::Add => unreachable!(),
+                                BinOp::Add | BinOp::Sub => unreachable!(),
                                 BinOp::BitAnd => "&",
                                 BinOp::BitOr => "|",
                                 BinOp::BitXor => "^",
@@ -159,6 +164,7 @@ pub enum BinOp {
     GreaterThanEqual,
     Shl,
     Shr,
+    Sub,
 }
 
 #[derive(Clone)]

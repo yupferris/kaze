@@ -194,7 +194,8 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     let lhs = self.compile_signal(lhs, context);
                     let rhs = self.compile_signal(rhs, context);
                     let op_input_type = match (op, source_type) {
-                        (graph::BinOp::Add, ValueType::Bool) => ValueType::U32,
+                        (graph::BinOp::Add, ValueType::Bool)
+                        | (graph::BinOp::Sub, ValueType::Bool) => ValueType::U32,
                         _ => source_type,
                     };
                     let mut lhs = self.gen_cast(lhs, source_type, op_input_type);
@@ -241,6 +242,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             }
                             graph::BinOp::GreaterThanEqual
                             | graph::BinOp::GreaterThanEqualSigned => BinOp::GreaterThanEqual,
+                            graph::BinOp::Sub => BinOp::Sub,
                         },
                     });
                     let op_output_type = match op {
