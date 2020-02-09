@@ -758,7 +758,7 @@ impl<'a> Signal<'a> {
 
     /// Combines two `Signal`s, producing a new `Signal` that represents `self` arithmetically shifted right by `rhs` bits.
     ///
-    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be all `1` bits.
+    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be all `self`'s top bit repeated `self`'s `bit_width` times.
     ///
     /// # Panics
     ///
