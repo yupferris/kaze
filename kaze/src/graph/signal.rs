@@ -1139,7 +1139,6 @@ impl<'a> Shl for &'a Signal<'a> {
     /// let shifted = lhs << rhs; // Equivalent to m.lit(12u32, 32)
     /// ```
     ///
-    /// [`concat`]: #method.concat
     /// [`Module`]: ./struct.Module.html
     fn shl(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
@@ -1183,7 +1182,6 @@ impl<'a> Shr for &'a Signal<'a> {
     /// let shifted = lhs >> rhs; // Equivalent to m.lit(3u32, 32)
     /// ```
     ///
-    /// [`concat`]: #method.concat
     /// [`Module`]: ./struct.Module.html
     fn shr(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
@@ -1932,6 +1930,36 @@ mod tests {
 
         // Panic
         let _ = i1 ^ i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn shl_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("A");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("B");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 << i2;
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn shr_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("A");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("B");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1 >> i2;
     }
 
     #[test]
