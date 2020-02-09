@@ -5,7 +5,7 @@ use super::module::*;
 use super::register::*;
 
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, BitAnd, BitOr, BitXor, Not, Shl, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Not, Shl, Shr, Sub};
 use std::ptr;
 
 /// The minimum allowed bit width for any given [`Signal`].
@@ -1158,6 +1158,50 @@ impl<'a> Shl for &'a Signal<'a> {
     }
 }
 
+impl<'a> Shr for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted right by `rhs` bits.
+    ///
+    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let lhs = m.lit(12u32, 32);
+    /// let rhs = m.lit(2u32, 2);
+    /// let shifted = lhs >> rhs; // Equivalent to m.lit(3u32, 32)
+    /// ```
+    ///
+    /// [`concat`]: #method.concat
+    /// [`Module`]: ./struct.Module.html
+    fn shr(self, rhs: Self) -> Self {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::ShiftBinOp {
+                lhs: self,
+                rhs,
+                op: ShiftBinOp::Shr,
+            },
+        })
+    }
+}
+
 impl<'a> Sub for &'a Signal<'a> {
     type Output = Self;
 
@@ -1244,6 +1288,7 @@ pub(crate) enum AdditiveBinOp {
 #[derive(Clone, Copy)]
 pub(crate) enum ShiftBinOp {
     Shl,
+    Shr,
 }
 
 #[cfg(test)]

@@ -322,6 +322,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         target: Box::new(lhs),
                         name: match op {
                             graph::ShiftBinOp::Shl => "checked_shl".into(),
+                            graph::ShiftBinOp::Shr => "checked_shr".into(),
                         },
                         arg: Box::new(rhs),
                     };
