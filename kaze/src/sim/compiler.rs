@@ -297,6 +297,19 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         _ => lhs_source_type,
                     };
                     let lhs = self.gen_cast(lhs, lhs_source_type, lhs_op_input_type);
+                    let lhs = match op {
+                        graph::ShiftBinOp::Shl | graph::ShiftBinOp::Shr => lhs,
+                        graph::ShiftBinOp::ShrArithmetic => {
+                            let lhs_op_input_type_signed = lhs_op_input_type.to_signed();
+                            let lhs =
+                                self.gen_cast(lhs, lhs_op_input_type, lhs_op_input_type_signed);
+                            self.gen_sign_extend_shifts(
+                                lhs,
+                                lhs_source_bit_width,
+                                lhs_op_input_type_signed,
+                            )
+                        }
+                    };
                     let rhs_op_input_type = match rhs_source_type {
                         ValueType::Bool => ValueType::U32,
                         _ => rhs_source_type,
@@ -319,29 +332,47 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     };
                     let rhs = self.gen_cast(rhs, lhs_op_input_type, ValueType::U32);
                     let expr = Expr::UnaryMemberCall {
-                        target: Box::new(lhs),
+                        target: Box::new(lhs.clone()),
                         name: match op {
                             graph::ShiftBinOp::Shl => "checked_shl".into(),
-                            graph::ShiftBinOp::Shr => "checked_shr".into(),
+                            graph::ShiftBinOp::Shr | graph::ShiftBinOp::ShrArithmetic => {
+                                "checked_shr".into()
+                            }
                         },
                         arg: Box::new(rhs),
                     };
                     let expr = self.gen_temp(Expr::UnaryMemberCall {
                         target: Box::new(expr),
                         name: "unwrap_or".into(),
-                        arg: Box::new(Expr::Constant {
-                            value: match lhs_op_input_type {
-                                ValueType::Bool
-                                | ValueType::I32
-                                | ValueType::I64
-                                | ValueType::I128 => unreachable!(),
-                                ValueType::U32 => Constant::U32(0),
-                                ValueType::U64 => Constant::U64(0),
-                                ValueType::U128 => Constant::U128(0),
+                        arg: Box::new(match op {
+                            graph::ShiftBinOp::Shl | graph::ShiftBinOp::Shr => Expr::Constant {
+                                value: match lhs_op_input_type {
+                                    ValueType::Bool
+                                    | ValueType::I32
+                                    | ValueType::I64
+                                    | ValueType::I128 => unreachable!(),
+                                    ValueType::U32 => Constant::U32(0),
+                                    ValueType::U64 => Constant::U64(0),
+                                    ValueType::U128 => Constant::U128(0),
+                                },
+                            },
+                            graph::ShiftBinOp::ShrArithmetic => Expr::InfixBinOp {
+                                lhs: Box::new(lhs),
+                                rhs: Box::new(Expr::Constant {
+                                    value: Constant::U32(lhs_op_input_type.bit_width() - 1),
+                                }),
+                                op: InfixBinOp::Shr,
                             },
                         }),
                     });
                     let op_output_type = lhs_op_input_type;
+                    let expr = match op {
+                        graph::ShiftBinOp::Shl | graph::ShiftBinOp::Shr => expr,
+                        graph::ShiftBinOp::ShrArithmetic => {
+                            let lhs_op_output_type_signed = op_output_type.to_signed();
+                            self.gen_cast(expr, lhs_op_output_type_signed, op_output_type)
+                        }
+                    };
                     let target_bit_width = signal.bit_width();
                     let target_type = ValueType::from_bit_width(target_bit_width);
                     let expr = self.gen_cast(expr, op_output_type, target_type);

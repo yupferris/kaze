@@ -18,6 +18,7 @@ fn main() -> Result<()> {
     sim::generate(sub_test_module(&c), &mut file)?;
     sim::generate(shl_test_module(&c), &mut file)?;
     sim::generate(shr_test_module(&c), &mut file)?;
+    sim::generate(shr_arithmetic_test_module(&c), &mut file)?;
     sim::generate(bit_and_test_module(&c), &mut file)?;
     sim::generate(bit_or_test_module(&c), &mut file)?;
     sim::generate(bit_xor_test_module(&c), &mut file)?;
@@ -204,6 +205,48 @@ fn shr_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i17 = m.input("i17", 128);
     let i18 = m.input("i18", 1);
     m.output("o9", i17 >> i18);
+
+    m
+}
+
+fn shr_arithmetic_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("ShrArithmeticTestModule");
+
+    let i1 = m.input("i1", 1);
+    let i2 = m.input("i2", 1);
+    m.output("o1", i1.shr_arithmetic(i2));
+
+    let i3 = m.input("i3", 16);
+    let i4 = m.input("i4", 6);
+    m.output("o2", i3.shr_arithmetic(i4));
+
+    let i5 = m.input("i5", 32);
+    let i6 = m.input("i6", 32);
+    m.output("o3", i5.shr_arithmetic(i6));
+
+    let i7 = m.input("i7", 64);
+    let i8_ = m.input("i8", 64);
+    m.output("o4", i7.shr_arithmetic(i8_));
+
+    let i9 = m.input("i9", 128);
+    let i10 = m.input("i10", 128);
+    m.output("o5", i9.shr_arithmetic(i10));
+
+    let i11 = m.input("i11", 7);
+    let i12 = m.input("i12", 7);
+    m.output("o6", i11.shr_arithmetic(i12));
+
+    let i13 = m.input("i13", 32);
+    let i14 = m.input("i14", 1);
+    m.output("o7", i13.shr_arithmetic(i14));
+
+    let i15 = m.input("i15", 64);
+    let i16_ = m.input("i16", 1);
+    m.output("o8", i15.shr_arithmetic(i16_));
+
+    let i17 = m.input("i17", 128);
+    let i18 = m.input("i18", 1);
+    m.output("o9", i17.shr_arithmetic(i18));
 
     m
 }

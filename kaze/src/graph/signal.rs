@@ -756,6 +756,45 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Combines two `Signal`s, producing a new `Signal` that represents `self` arithmetically shifted right by `rhs` bits.
+    ///
+    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be all `1` bits.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let lhs = m.lit(0x80000000u32, 32);
+    /// let rhs = m.lit(1u32, 1);
+    /// let shifted = lhs.shr_arithmetic(rhs); // Equivalent to m.lit(0xc0000000u32, 32)
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn shr_arithmetic(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::ShiftBinOp {
+                lhs: self,
+                rhs,
+                op: ShiftBinOp::ShrArithmetic,
+            },
+        })
+    }
+
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `self` is high, and `when_false`'s value when `self` is low.
     ///
     /// This is a convenience wrapper for [`Module`]::[`mux`].
@@ -1287,6 +1326,7 @@ pub(crate) enum AdditiveBinOp {
 pub(crate) enum ShiftBinOp {
     Shl,
     Shr,
+    ShrArithmetic,
 }
 
 #[cfg(test)]
@@ -1740,6 +1780,21 @@ mod tests {
 
         // Panic
         let _ = i1.ge_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn shr_arithmetic_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("A");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("B");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.shr_arithmetic(i2);
     }
 
     #[test]
