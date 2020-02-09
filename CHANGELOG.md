@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2020-02-09
+### Added
+- Subtraction and shift ops to `Signal` API (`sub`, `shl`, `shr`, `shr_arithmetic`)
+
+### Changed
+- Small readme edits/link fixes
+
+### Fixed
+- Module naming convention in top-level docs
+
 ## [0.1.2] - 2020-02-02
 ### Added
 - Implement Eq/PartialEq/Hash for `Signal` (note that these are not documented/tested, which we might want to revisit later)
@@ -32,7 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/yupferris/kaze/compare/v0.1.2..v0.1.3
 [0.1.2]: https://github.com/yupferris/kaze/compare/v0.1.1..v0.1.2
 [0.1.1]: https://github.com/yupferris/kaze/compare/v0.1.0..v0.1.1
 [0.1.0]: https://github.com/yupferris/kaze/releases/tag/v0.1.0
