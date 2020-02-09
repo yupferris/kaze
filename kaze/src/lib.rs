@@ -36,8 +36,8 @@
 //! # }
 //! ```
 //!
-//! [`Module`]: ./graph/struct.Module.html
-//! [`Signal`]: ./graph/struct.Signal.html
+//! [`Module`]: ./struct.Module.html
+//! [`Signal`]: ./struct.Signal.html
 
 // Must be kept up-to-date with version in Cargo.toml
 #![doc(html_root_url = "https://docs.rs/kaze/0.1.3")]
