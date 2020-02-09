@@ -165,6 +165,161 @@ mod tests {
     }
 
     #[test]
+    fn shl_test_module() {
+        let mut m = ShlTestModule::new();
+
+        m.i1 = false;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, false);
+
+        m.i1 = true;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, true);
+
+        m.i1 = false;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, false);
+
+        m.i1 = true;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, false);
+
+        m.i3 = 0xffff;
+        m.i4 = 0;
+        m.prop();
+        assert_eq!(m.o2, 0xffff);
+
+        m.i3 = 0xffff;
+        m.i4 = 4;
+        m.prop();
+        assert_eq!(m.o2, 0xfff0);
+
+        m.i3 = 0xffff;
+        m.i4 = 8;
+        m.prop();
+        assert_eq!(m.o2, 0xff00);
+
+        m.i3 = 0xffff;
+        m.i4 = 16;
+        m.prop();
+        assert_eq!(m.o2, 0);
+
+        m.i3 = 0xffff;
+        m.i4 = 3;
+        m.prop();
+        assert_eq!(m.o2, 0xfff8);
+
+        m.i3 = 0xffff;
+        m.i4 = 31;
+        m.prop();
+        assert_eq!(m.o2, 0);
+
+        m.i3 = 0xffff;
+        m.i4 = 32;
+        m.prop();
+        assert_eq!(m.o2, 0);
+
+        m.i5 = 0xfadebabe;
+        m.i6 = 4;
+        m.prop();
+        assert_eq!(m.o3, 0xadebabe0);
+
+        m.i5 = 0xdeadbeef;
+        m.i6 = 16;
+        m.prop();
+        assert_eq!(m.o3, 0xbeef0000);
+
+        m.i5 = 0xdeadbeef;
+        m.i6 = std::u32::MAX;
+        m.prop();
+        assert_eq!(m.o3, 0);
+
+        m.i7 = 0xfadebabedeadbeef;
+        m.i8 = 4;
+        m.prop();
+        assert_eq!(m.o4, 0xadebabedeadbeef0);
+
+        m.i7 = 0xfadebabedeadbeef;
+        m.i8 = 16;
+        m.prop();
+        assert_eq!(m.o4, 0xbabedeadbeef0000);
+
+        m.i7 = 0xfadebabedeadbeef;
+        m.i8 = std::u64::MAX;
+        m.prop();
+        assert_eq!(m.o4, 0);
+
+        m.i9 = 0xaaaaaaaa55555555fadebabedeadbeef;
+        m.i10 = 4;
+        m.prop();
+        assert_eq!(m.o5, 0xaaaaaaa55555555fadebabedeadbeef0);
+
+        m.i9 = 0xaaaaaaaa55555555fadebabedeadbeef;
+        m.i10 = 16;
+        m.prop();
+        assert_eq!(m.o5, 0xaaaa55555555fadebabedeadbeef0000);
+
+        m.i9 = 0xaaaaaaaa55555555fadebabedeadbeef;
+        m.i10 = std::u128::MAX;
+        m.prop();
+        assert_eq!(m.o5, 0);
+
+        m.i11 = 0x7f;
+        m.i12 = 1;
+        m.prop();
+        assert_eq!(m.o6, 0x7e);
+
+        m.i11 = 0x7f;
+        m.i12 = 4;
+        m.prop();
+        assert_eq!(m.o6, 0x70);
+
+        m.i11 = 0x7f;
+        m.i12 = 6;
+        m.prop();
+        assert_eq!(m.o6, 0x40);
+
+        m.i11 = 0x7f;
+        m.i12 = 7;
+        m.prop();
+        assert_eq!(m.o6, 0);
+
+        m.i13 = 0xdeadbeef;
+        m.i14 = false;
+        m.prop();
+        assert_eq!(m.o7, 0xdeadbeef);
+
+        m.i13 = 0xdeadbeef;
+        m.i14 = true;
+        m.prop();
+        assert_eq!(m.o7, 0xbd5b7dde);
+
+        m.i15 = 0xfadebabedeadbeef;
+        m.i16 = false;
+        m.prop();
+        assert_eq!(m.o8, 0xfadebabedeadbeef);
+
+        m.i15 = 0xfadebabedeadbeef;
+        m.i16 = true;
+        m.prop();
+        assert_eq!(m.o8, 0xf5bd757dbd5b7dde);
+
+        m.i17 = 0xaaaaaaaa55555555fadebabedeadbeef;
+        m.i18 = false;
+        m.prop();
+        assert_eq!(m.o9, 0xaaaaaaaa55555555fadebabedeadbeef);
+
+        m.i17 = 0xaaaaaaaa55555555fadebabedeadbeef;
+        m.i18 = true;
+        m.prop();
+        assert_eq!(m.o9, 0x55555554aaaaaaabf5bd757dbd5b7dde);
+    }
+
+    #[test]
     fn bit_and_test_module() {
         let mut m = BitAndTestModule::new();
 

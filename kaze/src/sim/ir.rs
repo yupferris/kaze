@@ -38,6 +38,11 @@ pub enum Expr {
         source: Box<Expr>,
         target_type: ValueType,
     },
+    BinaryFunctionCall {
+        name: String,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     Constant {
         value: Constant,
     },
@@ -75,6 +80,13 @@ impl Expr {
             } => {
                 source.write(w)?;
                 w.append(&format!(" as {}", target_type.name()))?;
+            }
+            Expr::BinaryFunctionCall { name, lhs, rhs } => {
+                w.append(&format!("{}(", name))?;
+                lhs.write(w)?;
+                w.append(", ")?;
+                rhs.write(w)?;
+                w.append(")")?;
             }
             Expr::Constant { value } => {
                 w.append(&match value {

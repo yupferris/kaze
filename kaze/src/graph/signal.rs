@@ -5,7 +5,7 @@ use super::module::*;
 use super::register::*;
 
 use std::hash::{Hash, Hasher};
-use std::ops::{Add, BitAnd, BitOr, BitXor, Not, Sub};
+use std::ops::{Add, BitAnd, BitOr, BitXor, Not, Shl, Sub};
 use std::ptr;
 
 /// The minimum allowed bit width for any given [`Signal`].
@@ -94,6 +94,7 @@ impl<'a> Signal<'a> {
             SignalData::SimpleBinOp { lhs, .. } => lhs.bit_width(),
             SignalData::AdditiveBinOp { lhs, .. } => lhs.bit_width(),
             SignalData::ComparisonBinOp { .. } => 1,
+            SignalData::ShiftBinOp { lhs, .. } => lhs.bit_width(),
             SignalData::Bits {
                 range_high,
                 range_low,
@@ -820,6 +821,11 @@ pub(crate) enum SignalData<'a> {
         rhs: &'a Signal<'a>,
         op: ComparisonBinOp,
     },
+    ShiftBinOp {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
+        op: ShiftBinOp,
+    },
 
     Bits {
         source: &'a Signal<'a>,
@@ -1108,6 +1114,50 @@ impl<'a> Not for &'a Signal<'a> {
     }
 }
 
+impl<'a> Shl for &'a Signal<'a> {
+    type Output = Self;
+
+    /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted left by `rhs` bits.
+    ///
+    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let lhs = m.lit(3u32, 32);
+    /// let rhs = m.lit(2u32, 2);
+    /// let shifted = lhs << rhs; // Equivalent to m.lit(12u32, 32)
+    /// ```
+    ///
+    /// [`concat`]: #method.concat
+    /// [`Module`]: ./struct.Module.html
+    fn shl(self, rhs: Self) -> Self {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::ShiftBinOp {
+                lhs: self,
+                rhs,
+                op: ShiftBinOp::Shl,
+            },
+        })
+    }
+}
+
 impl<'a> Sub for &'a Signal<'a> {
     type Output = Self;
 
@@ -1189,6 +1239,11 @@ pub(crate) enum ComparisonBinOp {
 pub(crate) enum AdditiveBinOp {
     Add,
     Sub,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum ShiftBinOp {
+    Shl,
 }
 
 #[cfg(test)]

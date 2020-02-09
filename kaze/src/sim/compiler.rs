@@ -100,6 +100,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 self.gather_regs(lhs, context);
                 self.gather_regs(rhs, context);
             }
+            graph::SignalData::ShiftBinOp { lhs, rhs, .. } => {
+                self.gather_regs(lhs, context);
+                self.gather_regs(rhs, context);
+            }
 
             graph::SignalData::Bits { source, .. } => {
                 self.gather_regs(source, context);
@@ -280,6 +284,67 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             }
                         },
                     })
+                }
+                graph::SignalData::ShiftBinOp { lhs, rhs, op } => {
+                    let lhs_source_bit_width = lhs.bit_width();
+                    let lhs_source_type = ValueType::from_bit_width(lhs_source_bit_width);
+                    let rhs_source_bit_width = rhs.bit_width();
+                    let rhs_source_type = ValueType::from_bit_width(rhs_source_bit_width);
+                    let lhs = self.compile_signal(lhs, context);
+                    let rhs = self.compile_signal(rhs, context);
+                    let lhs_op_input_type = match lhs_source_type {
+                        ValueType::Bool => ValueType::U32,
+                        _ => lhs_source_type,
+                    };
+                    let lhs = self.gen_cast(lhs, lhs_source_type, lhs_op_input_type);
+                    let rhs_op_input_type = match rhs_source_type {
+                        ValueType::Bool => ValueType::U32,
+                        _ => rhs_source_type,
+                    };
+                    let rhs = self.gen_cast(rhs, rhs_source_type, rhs_op_input_type);
+                    let rhs = Expr::BinaryFunctionCall {
+                        name: "std::cmp::min".into(),
+                        lhs: Box::new(rhs),
+                        rhs: Box::new(Expr::Constant {
+                            value: match rhs_op_input_type {
+                                ValueType::Bool
+                                | ValueType::I32
+                                | ValueType::I64
+                                | ValueType::I128 => unreachable!(),
+                                ValueType::U32 => Constant::U32(std::u32::MAX),
+                                ValueType::U64 => Constant::U64(std::u32::MAX as _),
+                                ValueType::U128 => Constant::U128(std::u32::MAX as _),
+                            },
+                        }),
+                    };
+                    let rhs = self.gen_cast(rhs, lhs_op_input_type, ValueType::U32);
+                    let expr = Expr::UnaryMemberCall {
+                        target: Box::new(lhs),
+                        name: match op {
+                            graph::ShiftBinOp::Shl => "checked_shl".into(),
+                        },
+                        arg: Box::new(rhs),
+                    };
+                    let expr = self.gen_temp(Expr::UnaryMemberCall {
+                        target: Box::new(expr),
+                        name: "unwrap_or".into(),
+                        arg: Box::new(Expr::Constant {
+                            value: match lhs_op_input_type {
+                                ValueType::Bool
+                                | ValueType::I32
+                                | ValueType::I64
+                                | ValueType::I128 => unreachable!(),
+                                ValueType::U32 => Constant::U32(0),
+                                ValueType::U64 => Constant::U64(0),
+                                ValueType::U128 => Constant::U128(0),
+                            },
+                        }),
+                    });
+                    let op_output_type = lhs_op_input_type;
+                    let target_bit_width = signal.bit_width();
+                    let target_type = ValueType::from_bit_width(target_bit_width);
+                    let expr = self.gen_cast(expr, op_output_type, target_type);
+                    self.gen_mask(expr, target_bit_width, target_type)
                 }
 
                 graph::SignalData::Bits {

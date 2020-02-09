@@ -175,6 +175,12 @@ fn trace_signal<'graph, 'arena>(
             trace_signal(lhs, context, context_arena, source_output, root);
             trace_signal(rhs, context, context_arena, source_output, root);
         }
+        graph::SignalData::ShiftBinOp {
+            ref lhs, ref rhs, ..
+        } => {
+            trace_signal(lhs, context, context_arena, source_output, root);
+            trace_signal(rhs, context, context_arena, source_output, root);
+        }
 
         graph::SignalData::Bits { ref source, .. } => {
             trace_signal(source, context, context_arena, source_output, root);
