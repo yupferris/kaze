@@ -88,7 +88,15 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             graph::SignalData::UnOp { source, .. } => {
                 self.gather_regs(source, context);
             }
-            graph::SignalData::BinOp { lhs, rhs, .. } => {
+            graph::SignalData::SimpleBinOp { lhs, rhs, .. } => {
+                self.gather_regs(lhs, context);
+                self.gather_regs(rhs, context);
+            }
+            graph::SignalData::AdditiveBinOp { lhs, rhs, .. } => {
+                self.gather_regs(lhs, context);
+                self.gather_regs(rhs, context);
+            }
+            graph::SignalData::ComparisonBinOp { lhs, rhs, .. } => {
                 self.gather_regs(lhs, context);
                 self.gather_regs(rhs, context);
             }
@@ -188,80 +196,90 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     let target_type = ValueType::from_bit_width(bit_width);
                     self.gen_mask(expr, bit_width, target_type)
                 }
-                graph::SignalData::BinOp { lhs, rhs, op, .. } => {
+                graph::SignalData::SimpleBinOp { lhs, rhs, op } => {
+                    let lhs = self.compile_signal(lhs, context);
+                    let rhs = self.compile_signal(rhs, context);
+                    self.gen_temp(Expr::InfixBinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: match op {
+                            graph::SimpleBinOp::BitAnd => InfixBinOp::BitAnd,
+                            graph::SimpleBinOp::BitOr => InfixBinOp::BitOr,
+                            graph::SimpleBinOp::BitXor => InfixBinOp::BitXor,
+                        },
+                    })
+                }
+                graph::SignalData::AdditiveBinOp { lhs, rhs, op } => {
                     let source_bit_width = lhs.bit_width();
                     let source_type = ValueType::from_bit_width(source_bit_width);
                     let lhs = self.compile_signal(lhs, context);
                     let rhs = self.compile_signal(rhs, context);
-                    let op_input_type = match (op, source_type) {
-                        (graph::BinOp::Add, ValueType::Bool)
-                        | (graph::BinOp::Sub, ValueType::Bool) => ValueType::U32,
+                    let op_input_type = match source_type {
+                        ValueType::Bool => ValueType::U32,
                         _ => source_type,
                     };
-                    let mut lhs = self.gen_cast(lhs, source_type, op_input_type);
-                    let mut rhs = self.gen_cast(rhs, source_type, op_input_type);
-                    match op {
-                        graph::BinOp::GreaterThanEqualSigned
-                        | graph::BinOp::GreaterThanSigned
-                        | graph::BinOp::LessThanEqualSigned
-                        | graph::BinOp::LessThanSigned => {
-                            let op_input_type_signed = op_input_type.to_signed();
-                            lhs = self.gen_cast(lhs, op_input_type, op_input_type_signed);
-                            rhs = self.gen_cast(rhs, op_input_type, op_input_type_signed);
-                            lhs = self.gen_sign_extend_shifts(
-                                lhs,
-                                source_bit_width,
-                                op_input_type_signed,
-                            );
-                            rhs = self.gen_sign_extend_shifts(
-                                rhs,
-                                source_bit_width,
-                                op_input_type_signed,
-                            );
-                        }
-                        _ => (),
-                    }
-                    let expr = self.gen_temp(Expr::BinOp {
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                        op: match op {
-                            graph::BinOp::Add => BinOp::Add,
-                            graph::BinOp::BitAnd => BinOp::BitAnd,
-                            graph::BinOp::BitOr => BinOp::BitOr,
-                            graph::BinOp::BitXor => BinOp::BitXor,
-                            graph::BinOp::Equal => BinOp::Equal,
-                            graph::BinOp::NotEqual => BinOp::NotEqual,
-                            graph::BinOp::LessThan | graph::BinOp::LessThanSigned => {
-                                BinOp::LessThan
-                            }
-                            graph::BinOp::LessThanEqual | graph::BinOp::LessThanEqualSigned => {
-                                BinOp::LessThanEqual
-                            }
-                            graph::BinOp::GreaterThan | graph::BinOp::GreaterThanSigned => {
-                                BinOp::GreaterThan
-                            }
-                            graph::BinOp::GreaterThanEqual
-                            | graph::BinOp::GreaterThanEqualSigned => BinOp::GreaterThanEqual,
-                            graph::BinOp::Sub => BinOp::Sub,
+                    let lhs = self.gen_cast(lhs, source_type, op_input_type);
+                    let rhs = self.gen_cast(rhs, source_type, op_input_type);
+                    let expr = self.gen_temp(Expr::UnaryMemberCall {
+                        target: Box::new(lhs),
+                        name: match op {
+                            graph::AdditiveBinOp::Add => "wrapping_add".into(),
+                            graph::AdditiveBinOp::Sub => "wrapping_sub".into(),
                         },
+                        arg: Box::new(rhs),
                     });
-                    let op_output_type = match op {
-                        graph::BinOp::Equal
-                        | graph::BinOp::NotEqual
-                        | graph::BinOp::LessThan
-                        | graph::BinOp::LessThanEqual
-                        | graph::BinOp::LessThanEqualSigned
-                        | graph::BinOp::LessThanSigned
-                        | graph::BinOp::GreaterThan
-                        | graph::BinOp::GreaterThanEqual
-                        | graph::BinOp::GreaterThanEqualSigned
-                        | graph::BinOp::GreaterThanSigned => ValueType::Bool,
-                        _ => op_input_type,
-                    };
+                    let op_output_type = op_input_type;
                     let target_bit_width = signal.bit_width();
                     let target_type = ValueType::from_bit_width(target_bit_width);
                     let expr = self.gen_cast(expr, op_output_type, target_type);
                     self.gen_mask(expr, target_bit_width, target_type)
+                }
+                graph::SignalData::ComparisonBinOp { lhs, rhs, op } => {
+                    let source_bit_width = lhs.bit_width();
+                    let source_type = ValueType::from_bit_width(source_bit_width);
+                    let mut lhs = self.compile_signal(lhs, context);
+                    let mut rhs = self.compile_signal(rhs, context);
+                    match op {
+                        graph::ComparisonBinOp::GreaterThanEqualSigned
+                        | graph::ComparisonBinOp::GreaterThanSigned
+                        | graph::ComparisonBinOp::LessThanEqualSigned
+                        | graph::ComparisonBinOp::LessThanSigned => {
+                            let source_type_signed = source_type.to_signed();
+                            lhs = self.gen_cast(lhs, source_type, source_type_signed);
+                            rhs = self.gen_cast(rhs, source_type, source_type_signed);
+                            lhs = self.gen_sign_extend_shifts(
+                                lhs,
+                                source_bit_width,
+                                source_type_signed,
+                            );
+                            rhs = self.gen_sign_extend_shifts(
+                                rhs,
+                                source_bit_width,
+                                source_type_signed,
+                            );
+                        }
+                        _ => (),
+                    }
+                    self.gen_temp(Expr::InfixBinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: match op {
+                            graph::ComparisonBinOp::Equal => InfixBinOp::Equal,
+                            graph::ComparisonBinOp::NotEqual => InfixBinOp::NotEqual,
+                            graph::ComparisonBinOp::LessThan
+                            | graph::ComparisonBinOp::LessThanSigned => InfixBinOp::LessThan,
+                            graph::ComparisonBinOp::LessThanEqual
+                            | graph::ComparisonBinOp::LessThanEqualSigned => {
+                                InfixBinOp::LessThanEqual
+                            }
+                            graph::ComparisonBinOp::GreaterThan
+                            | graph::ComparisonBinOp::GreaterThanSigned => InfixBinOp::GreaterThan,
+                            graph::ComparisonBinOp::GreaterThanEqual
+                            | graph::ComparisonBinOp::GreaterThanEqualSigned => {
+                                InfixBinOp::GreaterThanEqual
+                            }
+                        },
+                    })
                 }
 
                 graph::SignalData::Bits {
@@ -293,10 +311,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         for i in 1..count {
                             let rhs =
                                 self.gen_shift_left(source_expr.clone(), i * source.bit_width());
-                            expr = self.gen_temp(Expr::BinOp {
+                            expr = self.gen_temp(Expr::InfixBinOp {
                                 lhs: Box::new(expr),
                                 rhs: Box::new(rhs),
-                                op: BinOp::BitOr,
+                                op: InfixBinOp::BitOr,
                             });
                         }
                     }
@@ -313,10 +331,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     let lhs = self.gen_cast(lhs, lhs_type, target_type);
                     let rhs = self.gen_cast(rhs, rhs_type, target_type);
                     let lhs = self.gen_shift_left(lhs, rhs_bit_width);
-                    self.gen_temp(Expr::BinOp {
+                    self.gen_temp(Expr::InfixBinOp {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
-                        op: BinOp::BitOr,
+                        op: InfixBinOp::BitOr,
                     })
                 }
 
@@ -367,7 +385,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
         }
 
         let mask = (1u128 << bit_width) - 1;
-        self.gen_temp(Expr::BinOp {
+        self.gen_temp(Expr::InfixBinOp {
             lhs: Box::new(expr),
             rhs: Box::new(Expr::Constant {
                 value: match target_type {
@@ -379,7 +397,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     ValueType::U128 => Constant::U128(mask),
                 },
             }),
-            op: BinOp::BitAnd,
+            op: InfixBinOp::BitAnd,
         })
     }
 
@@ -388,12 +406,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             return expr;
         }
 
-        self.gen_temp(Expr::BinOp {
+        self.gen_temp(Expr::InfixBinOp {
             lhs: Box::new(expr),
             rhs: Box::new(Expr::Constant {
                 value: Constant::U32(shift),
             }),
-            op: BinOp::Shl,
+            op: InfixBinOp::Shl,
         })
     }
 
@@ -402,12 +420,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
             return expr;
         }
 
-        self.gen_temp(Expr::BinOp {
+        self.gen_temp(Expr::InfixBinOp {
             lhs: Box::new(expr),
             rhs: Box::new(Expr::Constant {
                 value: Constant::U32(shift),
             }),
-            op: BinOp::Shr,
+            op: InfixBinOp::Shr,
         })
     }
 
@@ -418,7 +436,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
         if target_type == ValueType::Bool {
             let expr = self.gen_mask(expr, 1, source_type);
-            return self.gen_temp(Expr::BinOp {
+            return self.gen_temp(Expr::InfixBinOp {
                 lhs: Box::new(expr),
                 rhs: Box::new(Expr::Constant {
                     value: match source_type {
@@ -430,7 +448,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         ValueType::U128 => Constant::U128(0),
                     },
                 }),
-                op: BinOp::NotEqual,
+                op: InfixBinOp::NotEqual,
             });
         }
 

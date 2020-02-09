@@ -34,17 +34,17 @@ pub enum TargetScope {
 
 #[derive(Clone)]
 pub enum Expr {
-    BinOp {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-        op: BinOp,
-    },
     Cast {
         source: Box<Expr>,
         target_type: ValueType,
     },
     Constant {
         value: Constant,
+    },
+    InfixBinOp {
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+        op: InfixBinOp,
     },
     Ref {
         name: String,
@@ -55,6 +55,11 @@ pub enum Expr {
         when_true: Box<Expr>,
         when_false: Box<Expr>,
     },
+    UnaryMemberCall {
+        target: Box<Expr>,
+        name: String,
+        arg: Box<Expr>,
+    },
     UnOp {
         source: Box<Expr>,
         op: UnOp,
@@ -64,41 +69,6 @@ pub enum Expr {
 impl Expr {
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         match self {
-            Expr::BinOp { lhs, rhs, op } => {
-                lhs.write(w)?;
-                match op {
-                    BinOp::Add => {
-                        w.append(".wrapping_add(")?;
-                        rhs.write(w)?;
-                        w.append(")")?;
-                    }
-                    BinOp::Sub => {
-                        w.append(".wrapping_sub(")?;
-                        rhs.write(w)?;
-                        w.append(")")?;
-                    }
-                    _ => {
-                        w.append(&format!(
-                            " {} ",
-                            match op {
-                                BinOp::Add | BinOp::Sub => unreachable!(),
-                                BinOp::BitAnd => "&",
-                                BinOp::BitOr => "|",
-                                BinOp::BitXor => "^",
-                                BinOp::Equal => "==",
-                                BinOp::NotEqual => "!=",
-                                BinOp::LessThan => "<",
-                                BinOp::LessThanEqual => "<=",
-                                BinOp::GreaterThan => ">",
-                                BinOp::GreaterThanEqual => ">=",
-                                BinOp::Shl => "<<",
-                                BinOp::Shr => ">>",
-                            }
-                        ))?;
-                        rhs.write(w)?;
-                    }
-                }
-            }
             Expr::Cast {
                 source,
                 target_type,
@@ -113,6 +83,26 @@ impl Expr {
                     Constant::U64(value) => format!("0x{:x}u64", value),
                     Constant::U128(value) => format!("0x{:x}u128", value),
                 })?;
+            }
+            Expr::InfixBinOp { lhs, rhs, op } => {
+                lhs.write(w)?;
+                w.append(&format!(
+                    " {} ",
+                    match op {
+                        InfixBinOp::BitAnd => "&",
+                        InfixBinOp::BitOr => "|",
+                        InfixBinOp::BitXor => "^",
+                        InfixBinOp::Equal => "==",
+                        InfixBinOp::NotEqual => "!=",
+                        InfixBinOp::LessThan => "<",
+                        InfixBinOp::LessThanEqual => "<=",
+                        InfixBinOp::GreaterThan => ">",
+                        InfixBinOp::GreaterThanEqual => ">=",
+                        InfixBinOp::Shl => "<<",
+                        InfixBinOp::Shr => ">>",
+                    }
+                ))?;
+                rhs.write(w)?;
             }
             Expr::Ref { name, scope } => {
                 if let RefScope::Member = scope {
@@ -133,6 +123,12 @@ impl Expr {
                 when_false.write(w)?;
                 w.append(" }")?;
             }
+            Expr::UnaryMemberCall { target, name, arg } => {
+                target.write(w)?;
+                w.append(&format!(".{}(", name))?;
+                arg.write(w)?;
+                w.append(")")?;
+            }
             Expr::UnOp { source, op } => {
                 w.append(match op {
                     UnOp::Not => "!",
@@ -146,13 +142,15 @@ impl Expr {
 }
 
 #[derive(Clone)]
-pub enum UnOp {
-    Not,
+pub enum Constant {
+    Bool(bool),
+    U32(u32),
+    U64(u64),
+    U128(u128),
 }
 
 #[derive(Clone)]
-pub enum BinOp {
-    Add,
+pub enum InfixBinOp {
     BitAnd,
     BitOr,
     BitXor,
@@ -164,7 +162,6 @@ pub enum BinOp {
     GreaterThanEqual,
     Shl,
     Shr,
-    Sub,
 }
 
 #[derive(Clone)]
@@ -174,11 +171,8 @@ pub enum RefScope {
 }
 
 #[derive(Clone)]
-pub enum Constant {
-    Bool(bool),
-    U32(u32),
-    U64(u64),
-    U128(u128),
+pub enum UnOp {
+    Not,
 }
 
 #[derive(Clone, Copy, PartialEq)]

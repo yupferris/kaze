@@ -91,7 +91,9 @@ impl<'a> Signal<'a> {
             SignalData::Input { bit_width, .. } => *bit_width,
             SignalData::Reg { data } => data.bit_width,
             SignalData::UnOp { source, .. } => source.bit_width(),
-            SignalData::BinOp { bit_width, .. } => *bit_width,
+            SignalData::SimpleBinOp { lhs, .. } => lhs.bit_width(),
+            SignalData::AdditiveBinOp { lhs, .. } => lhs.bit_width(),
+            SignalData::ComparisonBinOp { .. } => 1,
             SignalData::Bits {
                 range_high,
                 range_low,
@@ -310,11 +312,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::Equal,
+                op: ComparisonBinOp::Equal,
             },
         })
     }
@@ -358,11 +359,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::NotEqual,
+                op: ComparisonBinOp::NotEqual,
             },
         })
     }
@@ -406,11 +406,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::LessThan,
+                op: ComparisonBinOp::LessThan,
             },
         })
     }
@@ -454,11 +453,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::LessThanEqual,
+                op: ComparisonBinOp::LessThanEqual,
             },
         })
     }
@@ -502,11 +500,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::GreaterThan,
+                op: ComparisonBinOp::GreaterThan,
             },
         })
     }
@@ -550,11 +547,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::GreaterThanEqual,
+                op: ComparisonBinOp::GreaterThanEqual,
             },
         })
     }
@@ -601,11 +597,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::LessThanSigned,
+                op: ComparisonBinOp::LessThanSigned,
             },
         })
     }
@@ -652,11 +647,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::LessThanEqualSigned,
+                op: ComparisonBinOp::LessThanEqualSigned,
             },
         })
     }
@@ -703,11 +697,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::GreaterThanSigned,
+                op: ComparisonBinOp::GreaterThanSigned,
             },
         })
     }
@@ -754,11 +747,10 @@ impl<'a> Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: 1,
+            data: SignalData::ComparisonBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::GreaterThanEqualSigned,
+                op: ComparisonBinOp::GreaterThanEqualSigned,
             },
         })
     }
@@ -813,11 +805,20 @@ pub(crate) enum SignalData<'a> {
         source: &'a Signal<'a>,
         op: UnOp,
     },
-    BinOp {
-        bit_width: u32,
+    SimpleBinOp {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
-        op: BinOp,
+        op: SimpleBinOp,
+    },
+    AdditiveBinOp {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
+        op: AdditiveBinOp,
+    },
+    ComparisonBinOp {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
+        op: ComparisonBinOp,
     },
 
     Bits {
@@ -895,11 +896,10 @@ impl<'a> Add for &'a Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: self.bit_width(),
+            data: SignalData::AdditiveBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::Add,
+                op: AdditiveBinOp::Add,
             },
         })
     }
@@ -948,11 +948,10 @@ impl<'a> BitAnd for &'a Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: self.bit_width(),
+            data: SignalData::SimpleBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::BitAnd,
+                op: SimpleBinOp::BitAnd,
             },
         })
     }
@@ -1001,11 +1000,10 @@ impl<'a> BitOr for &'a Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: self.bit_width(),
+            data: SignalData::SimpleBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::BitOr,
+                op: SimpleBinOp::BitOr,
             },
         })
     }
@@ -1054,11 +1052,10 @@ impl<'a> BitXor for &'a Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: self.bit_width(),
+            data: SignalData::SimpleBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::BitXor,
+                op: SimpleBinOp::BitXor,
             },
         })
     }
@@ -1153,11 +1150,10 @@ impl<'a> Sub for &'a Signal<'a> {
             context: self.context,
             module: self.module,
 
-            data: SignalData::BinOp {
-                bit_width: self.bit_width(),
+            data: SignalData::AdditiveBinOp {
                 lhs: self,
                 rhs,
-                op: BinOp::Sub,
+                op: AdditiveBinOp::Sub,
             },
         })
     }
@@ -1169,11 +1165,14 @@ pub(crate) enum UnOp {
 }
 
 #[derive(Clone, Copy)]
-pub(crate) enum BinOp {
-    Add,
+pub(crate) enum SimpleBinOp {
     BitAnd,
     BitOr,
     BitXor,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum ComparisonBinOp {
     Equal,
     GreaterThan,
     GreaterThanEqual,
@@ -1184,6 +1183,11 @@ pub(crate) enum BinOp {
     LessThanEqualSigned,
     LessThanSigned,
     NotEqual,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum AdditiveBinOp {
+    Add,
     Sub,
 }
 
