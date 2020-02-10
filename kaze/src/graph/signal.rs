@@ -76,6 +76,9 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.lit(1u32, 99).bits(37, 29).bit_width(), 9);
     /// assert_eq!(m.high().repeat(35).bit_width(), 35);
     /// assert_eq!(m.lit(1u32, 20).concat(m.high()).bit_width(), 21);
+    /// assert_eq!((m.lit(0x80u32, 8) << m.lit(true, 1)).bit_width(), 8);
+    /// assert_eq!((m.lit(0x80u32, 8) >> m.lit(true, 1)).bit_width(), 8);
+    /// assert_eq!(m.lit(0x80u32, 8).shr_arithmetic(m.lit(true, 1)).bit_width(), 8);
     /// assert_eq!(m.lit(0xaau32, 8).eq(m.lit(0xaau32, 8)).bit_width(), 1);
     /// assert_eq!(m.lit(0xaau32, 8).ne(m.lit(0xaau32, 8)).bit_width(), 1);
     /// assert_eq!(m.lit(0xaau32, 8).lt(m.lit(0xaau32, 8)).bit_width(), 1);
