@@ -1,4 +1,5 @@
 use super::instance::*;
+use super::mem::*;
 use super::module::*;
 use super::register::*;
 use super::signal::*;
@@ -31,6 +32,7 @@ pub struct Context<'a> {
     pub(super) register_data_arena: Arena<RegisterData<'a>>,
     pub(super) register_arena: Arena<Register<'a>>,
     pub(super) instance_arena: Arena<Instance<'a>>,
+    pub(super) mem_arena: Arena<Mem<'a>>,
 
     pub(super) modules: RefCell<BTreeMap<String, &'a Module<'a>>>,
 }
@@ -52,6 +54,7 @@ impl<'a> Context<'a> {
             register_data_arena: Arena::new(),
             register_arena: Arena::new(),
             instance_arena: Arena::new(),
+            mem_arena: Arena::new(),
 
             modules: RefCell::new(BTreeMap::new()),
         }

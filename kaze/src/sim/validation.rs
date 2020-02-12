@@ -31,6 +31,14 @@ pub fn validate_module_hierarchy<'graph>(m: &'graph graph::Module<'graph>) {
         },
         m,
     );
+    detect_mem_errors(
+        m,
+        &ModuleStackFrame {
+            parent: None,
+            module: m,
+        },
+        m,
+    );
     let context_arena = Arena::new();
     let root_context = context_arena.alloc(ModuleContext::new());
     detect_combinational_loops(m, root_context, &context_arena, m);
@@ -98,6 +106,35 @@ fn detect_undriven_registers<'graph, 'frame>(
         let instantiated_module = instance.instantiated_module;
 
         detect_undriven_registers(
+            instantiated_module,
+            &ModuleStackFrame {
+                parent: Some((instance, module_stack_frame)),
+                module: instantiated_module,
+            },
+            root,
+        );
+    }
+}
+
+fn detect_mem_errors<'graph, 'frame>(
+    m: &graph::Module<'graph>,
+    module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
+    root: &graph::Module<'graph>,
+) {
+    for mem in m.mems.borrow().iter() {
+        if mem.read_ports.borrow().is_empty() {
+            panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a memory called \"{}\" which doesn't have any read ports.", root.name, m.name, mem.name);
+        }
+
+        if mem.initial_contents.borrow().is_none() && mem.write_port.borrow().is_none() {
+            panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a memory called \"{}\" which doesn't have initial contents or a write port specified. At least one of the two is required.", root.name, m.name, mem.name);
+        }
+    }
+
+    for instance in m.instances.borrow().iter() {
+        let instantiated_module = instance.instantiated_module;
+
+        detect_mem_errors(
             instantiated_module,
             &ModuleStackFrame {
                 parent: Some((instance, module_stack_frame)),
@@ -215,5 +252,7 @@ fn trace_signal<'graph, 'arena>(
             }
             trace_signal(output, context, context_arena, source_output, root);
         }
+
+        graph::SignalData::MemReadPortOutput { .. } => (),
     }
 }

@@ -1,24 +1,75 @@
 use crate::code_writer;
+use crate::graph;
 
 use std::io::{Result, Write};
 
+pub struct AssignmentContext {
+    assignments: Vec<Assignment>,
+    local_count: u32,
+}
+
+impl AssignmentContext {
+    pub fn new() -> AssignmentContext {
+        AssignmentContext {
+            assignments: Vec::new(),
+            local_count: 0,
+        }
+    }
+
+    pub fn gen_temp(&mut self, expr: Expr) -> Expr {
+        let name = format!("__temp_{}", self.local_count);
+        self.local_count += 1;
+
+        self.assignments.push(Assignment {
+            target: Expr::Ref {
+                name: name.clone(),
+                scope: Scope::Local,
+            },
+            expr,
+        });
+
+        Expr::Ref {
+            name,
+            scope: Scope::Local,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.assignments.is_empty()
+    }
+
+    pub fn push(&mut self, assignment: Assignment) {
+        self.assignments.push(assignment);
+    }
+
+    pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
+        for assignment in self.assignments.iter() {
+            assignment.write(w)?;
+        }
+
+        Ok(())
+    }
+}
+
 pub struct Assignment {
-    pub target_scope: TargetScope,
-    pub target_name: String,
+    pub target: Expr,
     pub expr: Expr,
 }
 
 impl Assignment {
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        match self.target_scope {
-            TargetScope::Local => {
-                w.append("let ")?;
-            }
-            TargetScope::Member => {
-                w.append("self.")?;
+        w.append_indent()?;
+        // TODO: I hate these kind of conditionals...
+        if let Expr::Ref { ref scope, .. } = self.target {
+            match scope {
+                Scope::Local => {
+                    w.append("let ")?;
+                }
+                Scope::Member => (),
             }
         }
-        w.append(&format!("{} = ", self.target_name))?;
+        self.target.write(w)?;
+        w.append(" = ")?;
         self.expr.write(w)?;
         w.append(";")?;
         w.append_newline()?;
@@ -27,13 +78,12 @@ impl Assignment {
     }
 }
 
-pub enum TargetScope {
-    Local,
-    Member,
-}
-
 #[derive(Clone)]
 pub enum Expr {
+    ArrayIndex {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
     Cast {
         source: Box<Expr>,
         target_type: ValueType,
@@ -53,7 +103,7 @@ pub enum Expr {
     },
     Ref {
         name: String,
-        scope: RefScope,
+        scope: Scope,
     },
     Ternary {
         cond: Box<Expr>,
@@ -72,8 +122,34 @@ pub enum Expr {
 }
 
 impl Expr {
+    pub fn from_constant(value: &graph::Constant, bit_width: u32) -> Expr {
+        let value = match value {
+            graph::Constant::Bool(value) => *value as u128,
+            graph::Constant::U32(value) => *value as u128,
+            graph::Constant::U64(value) => *value as u128,
+            graph::Constant::U128(value) => *value,
+        };
+
+        let target_type = ValueType::from_bit_width(bit_width);
+        Expr::Constant {
+            value: match target_type {
+                ValueType::Bool => Constant::Bool(value != 0),
+                ValueType::I32 | ValueType::I64 | ValueType::I128 => unreachable!(),
+                ValueType::U32 => Constant::U32(value as _),
+                ValueType::U64 => Constant::U64(value as _),
+                ValueType::U128 => Constant::U128(value),
+            },
+        }
+    }
+
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         match self {
+            Expr::ArrayIndex { target, index } => {
+                target.write(w)?;
+                w.append("[")?;
+                index.write(w)?;
+                w.append(" as usize]")?;
+            }
             Expr::Cast {
                 source,
                 target_type,
@@ -117,7 +193,7 @@ impl Expr {
                 rhs.write(w)?;
             }
             Expr::Ref { name, scope } => {
-                if let RefScope::Member = scope {
+                if let Scope::Member = scope {
                     w.append("self.")?;
                 }
                 w.append(name)?;
@@ -177,7 +253,7 @@ pub enum InfixBinOp {
 }
 
 #[derive(Clone)]
-pub enum RefScope {
+pub enum Scope {
     Local,
     Member,
 }

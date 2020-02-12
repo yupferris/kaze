@@ -1,6 +1,7 @@
 use super::constant::*;
 use super::context::*;
 use super::instance::*;
+use super::mem::*;
 use super::register::*;
 use super::signal::*;
 
@@ -27,6 +28,7 @@ use std::ptr;
 ///
 /// [`Context`]: ./struct.Context.html
 /// [`module`]: ./struct.Context.html#method.module
+// TODO: Validation error if a module has no inputs/outputs
 #[must_use]
 pub struct Module<'a> {
     context: &'a Context<'a>,
@@ -37,6 +39,7 @@ pub struct Module<'a> {
     pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
     pub(crate) registers: RefCell<Vec<&'a Signal<'a>>>,
     pub(crate) instances: RefCell<Vec<&'a Instance<'a>>>,
+    pub(crate) mems: RefCell<Vec<&'a Mem<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -50,6 +53,7 @@ impl<'a> Module<'a> {
             outputs: RefCell::new(BTreeMap::new()),
             registers: RefCell::new(Vec::new()),
             instances: RefCell::new(Vec::new()),
+            mems: RefCell::new(Vec::new()),
         }
     }
 
@@ -388,6 +392,82 @@ impl<'a> Module<'a> {
             _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
         }
     }
+
+    /// Creates a [`Mem`] in this `Module` called `name` with `address_bit_width` address bits and `element_bit_width` element bits.
+    ///
+    /// The size of this memory will be `1 << address_bit_width` elements, each `element_bit_width` bits wide.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `address_bit_width` or `element_bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let my_mem = m.mem("my_mem", 1, 32);
+    /// // Optional, unless no write port is specified
+    /// my_mem.initial_contents(&[0xfadebabeu32, 0xdeadbeefu32]);
+    /// // Optional, unless no initial contents are specified
+    /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
+    /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
+    /// ```
+    ///
+    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    /// [`Mem`]: ./struct.Mem.html
+    pub fn mem<S: Into<String>>(
+        &'a self,
+        name: S,
+        address_bit_width: u32,
+        element_bit_width: u32,
+    ) -> &Mem<'a> {
+        // TODO: Error if name already exists in this context
+        if address_bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a memory with {} address bit(s). Signals must not be narrower than {} bit(s).",
+                address_bit_width, MIN_SIGNAL_BIT_WIDTH
+            );
+        }
+        if address_bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a memory with {} address bit(s). Signals must not be wider than {} bit(s).",
+                address_bit_width, MAX_SIGNAL_BIT_WIDTH
+            );
+        }
+        if element_bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a memory with {} element bit(s). Signals must not be narrower than {} bit(s).",
+                element_bit_width, MIN_SIGNAL_BIT_WIDTH
+            );
+        }
+        if element_bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!(
+                "Cannot create a memory with {} element bit(s). Signals must not be wider than {} bit(s).",
+                element_bit_width, MAX_SIGNAL_BIT_WIDTH
+            );
+        }
+        let ret = self.context.mem_arena.alloc(Mem {
+            context: self.context,
+            module: self,
+
+            name: name.into(),
+            address_bit_width,
+            element_bit_width,
+
+            initial_contents: RefCell::new(None),
+
+            read_ports: RefCell::new(Vec::new()),
+            write_port: RefCell::new(None),
+        });
+        self.mems.borrow_mut().push(ret);
+        ret
+    }
 }
 
 #[cfg(test)]
@@ -627,5 +707,57 @@ mod tests {
 
         // Panic
         let _ = m.instance("lol", "nope");
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a memory with 0 address bit(s). Signals must not be narrower than 1 bit(s)."
+    )]
+    fn mem_address_bit_width_lt_min_error() {
+        let c = Context::new();
+
+        let m = c.module("A");
+
+        // Panic
+        let _ = m.mem("mem", 0, 1);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a memory with 129 address bit(s). Signals must not be wider than 128 bit(s)."
+    )]
+    fn mem_address_bit_width_gt_max_error() {
+        let c = Context::new();
+
+        let m = c.module("A");
+
+        // Panic
+        let _ = m.mem("mem", 129, 1);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a memory with 0 element bit(s). Signals must not be narrower than 1 bit(s)."
+    )]
+    fn mem_element_bit_width_lt_min_error() {
+        let c = Context::new();
+
+        let m = c.module("A");
+
+        // Panic
+        let _ = m.mem("mem", 1, 0);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Cannot create a memory with 129 element bit(s). Signals must not be wider than 128 bit(s)."
+    )]
+    fn mem_element_bit_width_gt_max_error() {
+        let c = Context::new();
+
+        let m = c.module("A");
+
+        // Panic
+        let _ = m.mem("mem", 1, 129);
     }
 }

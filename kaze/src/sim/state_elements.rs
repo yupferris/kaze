@@ -6,14 +6,25 @@ use typed_arena::Arena;
 
 use std::collections::HashMap;
 
-#[derive(Clone)]
 pub(super) struct Register<'a> {
     pub data: &'a graph::RegisterData<'a>,
     pub value_name: String,
     pub next_name: String,
 }
 
+pub(super) struct Mem<'a> {
+    pub mem: &'a graph::Mem<'a>,
+    pub mem_name: String,
+}
+
 pub(super) struct StateElements<'graph, 'arena> {
+    pub mems: HashMap<
+        (
+            &'arena ModuleContext<'graph, 'arena>,
+            &'graph graph::Mem<'graph>,
+        ),
+        Mem<'graph>,
+    >,
     pub regs: HashMap<
         (
             &'arena ModuleContext<'graph, 'arena>,
@@ -26,6 +37,7 @@ pub(super) struct StateElements<'graph, 'arena> {
 impl<'graph, 'arena> StateElements<'graph, 'arena> {
     pub fn new() -> StateElements<'graph, 'arena> {
         StateElements {
+            mems: HashMap::new(),
             regs: HashMap::new(),
         }
     }
@@ -109,6 +121,33 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                 let output = instance.instantiated_module.outputs.borrow()[name];
                 let context = context.get_child(instance, context_arena);
                 self.gather(output, context, context_arena);
+            }
+
+            graph::SignalData::MemReadPortOutput { mem, .. } => {
+                let key = (context, mem);
+                if self.mems.contains_key(&key) {
+                    return;
+                }
+                self.mems.insert(
+                    key,
+                    Mem {
+                        mem,
+                        mem_name: format!("__mem_{}_{}", mem.name, self.mems.len()),
+                    },
+                );
+                // TODO: It might actually be too conservative to trace all read ports,
+                //  as we only know that the write port and _this_ read port are reachable
+                //  at this point, but we have to keep some extra state to know whether or
+                //  not we've hit each read port otherwise.
+                for (address, enable) in mem.read_ports.borrow().iter() {
+                    self.gather(address, context, context_arena);
+                    self.gather(enable, context, context_arena);
+                }
+                if let Some((address, value, enable)) = *mem.write_port.borrow() {
+                    self.gather(address, context, context_arena);
+                    self.gather(value, context, context_arena);
+                    self.gather(enable, context, context_arena);
+                }
             }
         }
     }

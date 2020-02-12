@@ -45,6 +45,8 @@ fn main() -> Result<()> {
     sim::generate(instantiation_test_module_comb(&c), &mut file)?;
     sim::generate(instantiation_test_module_reg(&c), &mut file)?;
     sim::generate(nested_instantiation_test_module(&c), &mut file)?;
+    sim::generate(mem_test_module_0(&c), &mut file)?;
+    sim::generate(mem_test_module_1(&c), &mut file)?;
 
     Ok(())
 }
@@ -624,6 +626,38 @@ fn nested_instantiation_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     i3.drive_input("i1", i1.output("o"));
     i3.drive_input("i2", i2.output("o"));
     m.output("o", i3.output("o"));
+
+    m
+}
+
+fn mem_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("MemTestModule0");
+
+    // No initial contents, single write port, single read port
+    let mem = m.mem("mem", 1, 4);
+    mem.write_port(
+        m.input("write_addr", 1),
+        m.input("write_value", 4),
+        m.input("write_enable", 1),
+    );
+    m.output(
+        "read_data",
+        mem.read_port(m.input("read_addr", 1), m.input("read_enable", 1)),
+    );
+
+    m
+}
+
+fn mem_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("MemTestModule1");
+
+    // Initial contents, no write ports, single read port
+    let mem = m.mem("mem", 2, 32);
+    mem.initial_contents(&[0xfadebabeu32, 0xdeadbeefu32, 0xabadcafeu32, 0xabad1deau32]);
+    m.output(
+        "read_data",
+        mem.read_port(m.input("read_addr", 2), m.input("read_enable", 1)),
+    );
 
     m
 }
