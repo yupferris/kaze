@@ -3,11 +3,13 @@
 mod compiler;
 mod ir;
 mod module_context;
+mod state_elements;
 mod validation;
 
 use compiler::*;
 use ir::*;
 use module_context::*;
+use state_elements::*;
 use validation::*;
 
 use typed_arena::Arena;
@@ -23,12 +25,13 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     let context_arena = Arena::new();
     let root_context = context_arena.alloc(ModuleContext::new());
-    let mut c = Compiler::new(&context_arena);
 
+    let mut state_elements = StateElements::new();
     for (_, output) in m.outputs.borrow().iter() {
-        c.gather_regs(&output, root_context);
+        state_elements.gather(&output, root_context, &context_arena);
     }
 
+    let mut c = Compiler::new(&context_arena, &state_elements);
     for (name, output) in m.outputs.borrow().iter() {
         let expr = c.compile_signal(&output, root_context);
         c.prop_assignments.push(Assignment {
@@ -38,8 +41,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         });
     }
 
-    // TODO: Can we get rid of this clone?
-    for ((context, _), reg) in c.regs.clone().iter() {
+    for ((context, _), reg) in state_elements.regs.iter() {
         let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context);
         c.prop_assignments.push(Assignment {
             target_scope: TargetScope::Member,
@@ -80,9 +82,9 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    if c.regs.len() > 0 {
+    if state_elements.regs.len() > 0 {
         w.append_line("// Regs")?;
-        for (_, reg) in c.regs.iter() {
+        for (_, reg) in state_elements.regs.iter() {
             let type_name = ValueType::from_bit_width(reg.data.bit_width).name();
             w.append_line(&format!(
                 "{}: {}, // {} bit(s)",
@@ -106,12 +108,12 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line("}")?;
     w.append_newline()?;
 
-    if c.regs.len() > 0 {
+    if state_elements.regs.len() > 0 {
         w.append_line("pub fn reset(&mut self) {")?;
         w.indent();
 
         // TODO: Consider using assignments/exprs instead of generating statement strings
-        for (_, reg) in c.regs.iter() {
+        for (_, reg) in state_elements.regs.iter() {
             if let Some(ref initial_value) = *reg.data.initial_value.borrow() {
                 w.append_indent()?;
                 w.append(&format!("self.{} = ", reg.value_name))?;
@@ -140,7 +142,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         w.append_line("pub fn posedge_clk(&mut self) {")?;
         w.indent();
 
-        for reg in c.regs.values() {
+        for reg in state_elements.regs.values() {
             w.append_line(&format!(
                 "self.{} = self.{};",
                 reg.value_name, reg.next_name

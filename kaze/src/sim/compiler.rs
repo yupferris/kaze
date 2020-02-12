@@ -1,5 +1,6 @@
 use super::ir::*;
 use super::module_context::*;
+use super::state_elements::*;
 
 use crate::graph;
 
@@ -7,23 +8,10 @@ use typed_arena::Arena;
 
 use std::collections::HashMap;
 
-#[derive(Clone)]
-pub(crate) struct CompiledRegister<'a> {
-    pub data: &'a graph::RegisterData<'a>,
-    pub value_name: String,
-    pub next_name: String,
-}
-
-pub(crate) struct Compiler<'graph, 'arena> {
+pub(super) struct Compiler<'graph, 'arena> {
     context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+    state_elements: &'arena StateElements<'graph, 'arena>,
 
-    pub regs: HashMap<
-        (
-            &'arena ModuleContext<'graph, 'arena>,
-            &'graph graph::Signal<'graph>,
-        ),
-        CompiledRegister<'graph>,
-    >,
     signal_exprs: HashMap<
         (
             &'arena ModuleContext<'graph, 'arena>,
@@ -40,98 +28,17 @@ pub(crate) struct Compiler<'graph, 'arena> {
 impl<'graph, 'arena> Compiler<'graph, 'arena> {
     pub fn new(
         context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+        state_elements: &'arena StateElements<'graph, 'arena>,
     ) -> Compiler<'graph, 'arena> {
         Compiler {
             context_arena,
+            state_elements,
 
-            regs: HashMap::new(),
             signal_exprs: HashMap::new(),
 
             prop_assignments: Vec::new(),
 
             local_count: 0,
-        }
-    }
-
-    pub fn gather_regs(
-        &mut self,
-        signal: &'graph graph::Signal<'graph>,
-        context: &'arena ModuleContext<'graph, 'arena>,
-    ) {
-        match signal.data {
-            graph::SignalData::Lit { .. } => (),
-
-            graph::SignalData::Input { ref name, .. } => {
-                if let Some((instance, parent)) = context.instance_and_parent {
-                    self.gather_regs(instance.driven_inputs.borrow()[name], parent);
-                }
-            }
-
-            graph::SignalData::Reg { data } => {
-                let key = (context, signal);
-                if self.regs.contains_key(&key) {
-                    return;
-                }
-                let value_name = format!("__reg_{}_{}", data.name, self.regs.len());
-                let next_name = format!("{}_next", value_name);
-                self.regs.insert(
-                    key,
-                    CompiledRegister {
-                        data,
-                        value_name,
-                        next_name,
-                    },
-                );
-                self.gather_regs(data.next.borrow().unwrap(), context);
-            }
-
-            graph::SignalData::UnOp { source, .. } => {
-                self.gather_regs(source, context);
-            }
-            graph::SignalData::SimpleBinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs, context);
-                self.gather_regs(rhs, context);
-            }
-            graph::SignalData::AdditiveBinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs, context);
-                self.gather_regs(rhs, context);
-            }
-            graph::SignalData::ComparisonBinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs, context);
-                self.gather_regs(rhs, context);
-            }
-            graph::SignalData::ShiftBinOp { lhs, rhs, .. } => {
-                self.gather_regs(lhs, context);
-                self.gather_regs(rhs, context);
-            }
-
-            graph::SignalData::Bits { source, .. } => {
-                self.gather_regs(source, context);
-            }
-
-            graph::SignalData::Repeat { source, .. } => {
-                self.gather_regs(source, context);
-            }
-            graph::SignalData::Concat { lhs, rhs } => {
-                self.gather_regs(lhs, context);
-                self.gather_regs(rhs, context);
-            }
-
-            graph::SignalData::Mux {
-                cond,
-                when_true,
-                when_false,
-            } => {
-                self.gather_regs(cond, context);
-                self.gather_regs(when_true, context);
-                self.gather_regs(when_false, context);
-            }
-
-            graph::SignalData::InstanceOutput { instance, ref name } => {
-                let output = instance.instantiated_module.outputs.borrow()[name];
-                let context = context.get_child(instance, self.context_arena);
-                self.gather_regs(output, context);
-            }
         }
     }
 
@@ -183,7 +90,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 }
 
                 graph::SignalData::Reg { .. } => Expr::Ref {
-                    name: self.regs[&key].value_name.clone(),
+                    name: self.state_elements.regs[&key].value_name.clone(),
                     scope: RefScope::Member,
                 },
 
