@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2020-02-15
+### Added
+- `Mem` construct for creating synchronous memories
+
+### Changed
+- Internal sim compiler refactorings to simplify/unify some implementation details
+
+### Fixed
+- Missing shift doc tests
+
 ## [0.1.4] - 2020-02-09
 ### Fixed
 - Link errors in top-level docs
@@ -47,7 +57,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/yupferris/kaze/compare/v0.1.4..v0.1.5
 [0.1.4]: https://github.com/yupferris/kaze/compare/v0.1.3..v0.1.4
 [0.1.3]: https://github.com/yupferris/kaze/compare/v0.1.2..v0.1.3
 [0.1.2]: https://github.com/yupferris/kaze/compare/v0.1.1..v0.1.2
