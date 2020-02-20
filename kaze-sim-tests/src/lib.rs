@@ -1484,4 +1484,177 @@ mod tests {
         m.prop();
         assert_eq!(m.read_data, 0xffffffff);
     }
+
+    #[test]
+    fn mem_test_module_2() {
+        let mut m = MemTestModule2::new();
+
+        // Initial state, no read/write
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = false;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Initial state, read from addr 0
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, false);
+
+        // Initial state, read from addr 1
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, false);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, false);
+
+        // Initial state, write to addr 0
+        m.write_addr = false;
+        m.write_value = true;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = false;
+        m.prop();
+        assert_eq!(m.read_data, false);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Write to addr 1
+        m.write_addr = true;
+        m.write_value = true;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = false;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Read from addr 0
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Read from addr 1
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Write to/read from addr 0
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, false);
+
+        // Write to/read from addr 1
+        m.write_addr = true;
+        m.write_value = true;
+        m.write_enable = true;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, false);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Read from addr 0
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, false);
+
+        // Read from addr 1
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, false);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Write to addr 0/read from addr 1
+        m.write_addr = false;
+        m.write_value = true;
+        m.write_enable = true;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Write to addr 1/read from addr 0
+        m.write_addr = true;
+        m.write_value = false;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, true);
+
+        // Read from addr 1
+        m.write_addr = false;
+        m.write_value = false;
+        m.write_enable = false;
+        m.read_addr = true;
+        m.read_enable = true;
+        m.prop();
+        assert_eq!(m.read_data, true);
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.read_data, false);
+    }
 }

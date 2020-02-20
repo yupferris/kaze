@@ -47,6 +47,7 @@ fn main() -> Result<()> {
     sim::generate(nested_instantiation_test_module(&c), &mut file)?;
     sim::generate(mem_test_module_0(&c), &mut file)?;
     sim::generate(mem_test_module_1(&c), &mut file)?;
+    sim::generate(mem_test_module_2(&c), &mut file)?;
 
     Ok(())
 }
@@ -657,6 +658,24 @@ fn mem_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m.output(
         "read_data",
         mem.read_port(m.input("read_addr", 2), m.input("read_enable", 1)),
+    );
+
+    m
+}
+
+fn mem_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("MemTestModule2");
+
+    // No initial contents, single write port, single read port
+    let mem = m.mem("mem", 1, 1);
+    mem.write_port(
+        m.input("write_addr", 1),
+        m.input("write_value", 1),
+        m.input("write_enable", 1),
+    );
+    m.output(
+        "read_data",
+        mem.read_port(m.input("read_addr", 1), m.input("read_enable", 1)),
     );
 
     m

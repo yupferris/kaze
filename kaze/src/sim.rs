@@ -138,8 +138,12 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 w.append_line("].into_boxed_slice();")?;
             } else {
                 w.append_line(&format!(
-                    "ret.{} = vec![0; {}].into_boxed_slice();",
+                    "ret.{} = vec![{}; {}].into_boxed_slice();",
                     mem.mem_name,
+                    match ValueType::from_bit_width(mem.mem.element_bit_width) {
+                        ValueType::Bool => "false",
+                        _ => "0",
+                    },
                     1 << mem.mem.address_bit_width
                 ))?;
             }
