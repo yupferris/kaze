@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.6] - 2020-02-20
+## [0.1.6] - 2020-02-22
 ### Fixed
 - Broken default value for `Mem`s with single-bit elements in generated simulators
 
