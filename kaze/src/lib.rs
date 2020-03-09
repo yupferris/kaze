@@ -44,7 +44,9 @@
 
 mod code_writer;
 mod graph;
+mod module_context;
 pub mod sim;
 pub mod system_verilog;
+mod validation;
 
 pub use graph::*;

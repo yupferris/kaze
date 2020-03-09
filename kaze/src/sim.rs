@@ -2,20 +2,18 @@
 
 mod compiler;
 mod ir;
-mod module_context;
 mod state_elements;
-mod validation;
 
 use compiler::*;
 use ir::*;
-use module_context::*;
 use state_elements::*;
-use validation::*;
 
 use typed_arena::Arena;
 
 use crate::code_writer;
 use crate::graph;
+use crate::module_context::*;
+use crate::validation::*;
 
 use std::io::{Result, Write};
 
