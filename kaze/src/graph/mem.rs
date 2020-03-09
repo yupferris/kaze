@@ -105,7 +105,7 @@ impl<'a> Mem<'a> {
     /// Specifies a read port for this `Mem` and returns a [`Signal`] representing the data read from this port.
     ///
     /// `Mem`s are required to have at least one read port, otherwise the memory contents could never be read, which would be a logical error.
-    /// There is no upper bound to the number of read ports specified in kaze, however a target device may not be able to synthesize the resulting verilog code if too many are used.
+    /// There is no upper bound to the number of read ports specified in kaze, however a target device may not be able to synthesize the resulting SystemVerilog code if too many are used.
     ///
     /// Read ports always have an `address` signal and an `enable` signal.
     /// When `enable` is asserted, the returned [`Signal`] will reflect the data read from the location specified by `address` on the following cycle.

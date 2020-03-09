@@ -1,4 +1,4 @@
-//! Verilog code generation.
+//! SystemVerilog code generation.
 
 use crate::code_writer;
 use crate::graph;
