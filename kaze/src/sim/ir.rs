@@ -123,12 +123,7 @@ pub enum Expr {
 
 impl Expr {
     pub fn from_constant(value: &graph::Constant, bit_width: u32) -> Expr {
-        let value = match value {
-            graph::Constant::Bool(value) => *value as u128,
-            graph::Constant::U32(value) => *value as u128,
-            graph::Constant::U64(value) => *value as u128,
-            graph::Constant::U128(value) => *value,
-        };
+        let value = value.numeric_value();
 
         let target_type = ValueType::from_bit_width(bit_width);
         Expr::Constant {

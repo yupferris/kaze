@@ -39,7 +39,7 @@ impl Constant {
         }
     }
 
-    pub(super) fn numeric_value(&self) -> u128 {
+    pub(crate) fn numeric_value(&self) -> u128 {
         match *self {
             Constant::Bool(value) => value.into(),
             Constant::U32(value) => value.into(),
