@@ -170,7 +170,11 @@ impl Expr {
                 range_low,
             } => {
                 source.write(w)?;
-                w.append(&format!("[{}:{}]", range_high, range_low))?;
+                if range_high != range_low {
+                    w.append(&format!("[{}:{}]", range_high, range_low))?;
+                } else {
+                    w.append(&format!("[{}]", range_high))?;
+                }
             }
             Expr::Concat { lhs, rhs } => {
                 w.append("{")?;
