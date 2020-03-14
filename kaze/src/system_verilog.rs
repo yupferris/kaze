@@ -153,6 +153,9 @@ impl Expr {
                     " {} ",
                     match op {
                         BinOp::Add => "+",
+                        BinOp::BitAnd => "&",
+                        BinOp::BitOr => "|",
+                        BinOp::BitXor => "^",
                         BinOp::Equal => "==",
                         BinOp::NotEqual => "!=",
                         BinOp::LessThan => "<",
@@ -220,6 +223,9 @@ impl Expr {
 #[derive(Clone)]
 enum BinOp {
     Add,
+    BitAnd,
+    BitOr,
+    BitXor,
     Equal,
     NotEqual,
     LessThan,
@@ -288,7 +294,23 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         bit_width,
                     )
                 }
-                graph::SignalData::SimpleBinOp { .. } => unimplemented!(),
+                graph::SignalData::SimpleBinOp { lhs, rhs, op } => {
+                    let bit_width = lhs.bit_width();
+                    let lhs = self.compile_signal(lhs, context, a);
+                    let rhs = self.compile_signal(rhs, context, a);
+                    a.gen_temp(
+                        Expr::BinOp {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                            op: match op {
+                                graph::SimpleBinOp::BitAnd => BinOp::BitAnd,
+                                graph::SimpleBinOp::BitOr => BinOp::BitOr,
+                                graph::SimpleBinOp::BitXor => BinOp::BitXor,
+                            },
+                        },
+                        bit_width,
+                    )
+                }
                 graph::SignalData::AdditiveBinOp { lhs, rhs, op } => {
                     let bit_width = lhs.bit_width();
                     let lhs = self.compile_signal(lhs, context, a);
