@@ -4,6 +4,7 @@ use super::signal::*;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::hash::{Hash, Hasher};
 use std::ptr;
 
 /// An instance of a [`Module`], created by the [`Module`]::[`instance`] method.
@@ -125,6 +126,20 @@ impl<'a> Instance<'a> {
                 name,
             },
         })
+    }
+}
+
+impl<'a> Eq for &'a Instance<'a> {}
+
+impl<'a> Hash for &'a Instance<'a> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_usize(*self as *const _ as usize)
+    }
+}
+
+impl<'a> PartialEq for &'a Instance<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        ptr::eq(*self, *other)
     }
 }
 

@@ -46,7 +46,6 @@ mod code_writer;
 mod graph;
 mod module_context;
 pub mod sim;
-mod state_elements;
 pub mod system_verilog;
 mod validation;
 

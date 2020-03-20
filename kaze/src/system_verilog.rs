@@ -1,486 +1,124 @@
 //! SystemVerilog code generation.
 
+mod compiler;
+mod instance_decls;
+mod ir;
+
+use compiler::*;
+use instance_decls::*;
+use ir::*;
+
 use crate::code_writer;
 use crate::graph;
-use crate::module_context::*;
-use crate::state_elements::*;
 use crate::validation::*;
-
-use typed_arena::Arena;
 
 use std::collections::HashMap;
 use std::io::{Result, Write};
-use std::ptr;
-
-struct NodeDecl {
-    name: String,
-    bit_width: u32,
-}
-
-impl NodeDecl {
-    fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        w.append_indent()?;
-        w.append("logic ")?;
-        if self.bit_width > 1 {
-            w.append(&format!("[{}:{}] ", self.bit_width - 1, 0))?;
-        }
-        w.append(&format!("{};", self.name))?;
-        w.append_newline()?;
-
-        Ok(())
-    }
-}
-
-struct AssignmentContext {
-    assignments: Vec<Assignment>,
-    local_decls: Vec<NodeDecl>,
-}
-
-impl AssignmentContext {
-    fn new() -> AssignmentContext {
-        AssignmentContext {
-            assignments: Vec::new(),
-            local_decls: Vec::new(),
-        }
-    }
-
-    fn gen_temp(&mut self, expr: Expr, bit_width: u32) -> Expr {
-        let name = format!("__temp_{}", self.local_decls.len());
-
-        self.local_decls.push(NodeDecl {
-            name: name.clone(),
-            bit_width,
-        });
-
-        self.assignments.push(Assignment {
-            target_name: name.clone(),
-            expr,
-        });
-
-        Expr::Ref { name }
-    }
-
-    fn is_empty(&self) -> bool {
-        self.assignments.is_empty()
-    }
-
-    fn push(&mut self, assignment: Assignment) {
-        self.assignments.push(assignment);
-    }
-
-    fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        for node_decl in self.local_decls.iter() {
-            node_decl.write(w)?;
-        }
-        w.append_newline()?;
-
-        for assignment in self.assignments.iter() {
-            assignment.write(w)?;
-        }
-
-        Ok(())
-    }
-}
-
-struct Assignment {
-    target_name: String,
-    expr: Expr,
-}
-
-impl Assignment {
-    fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        w.append_indent()?;
-        w.append(&format!("assign {}", self.target_name))?;
-        w.append(" = ")?;
-        self.expr.write(w)?;
-        w.append(";")?;
-        w.append_newline()?;
-
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-enum Expr {
-    BinOp {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-        op: BinOp,
-    },
-    Bits {
-        source: Box<Expr>,
-        range_high: u32,
-        range_low: u32,
-    },
-    Concat {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-    },
-    Constant {
-        bit_width: u32,
-        value: u128,
-    },
-    Ref {
-        name: String,
-    },
-    Signed {
-        source: Box<Expr>,
-    },
-    Ternary {
-        cond: Box<Expr>,
-        when_true: Box<Expr>,
-        when_false: Box<Expr>,
-    },
-    UnOp {
-        source: Box<Expr>,
-        op: UnOp,
-    },
-}
-
-impl Expr {
-    pub fn from_constant(value: &graph::Constant, bit_width: u32) -> Expr {
-        Expr::Constant {
-            bit_width,
-            value: value.numeric_value(),
-        }
-    }
-
-    fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        match self {
-            Expr::BinOp { lhs, rhs, op } => {
-                lhs.write(w)?;
-                w.append(&format!(
-                    " {} ",
-                    match op {
-                        BinOp::Add => "+",
-                        BinOp::BitAnd => "&",
-                        BinOp::BitOr => "|",
-                        BinOp::BitXor => "^",
-                        BinOp::Equal => "==",
-                        BinOp::NotEqual => "!=",
-                        BinOp::LessThan => "<",
-                        BinOp::LessThanEqual => "<=",
-                        BinOp::GreaterThan => ">",
-                        BinOp::GreaterThanEqual => ">=",
-                        BinOp::Sub => "-",
-                    }
-                ))?;
-                rhs.write(w)?;
-            }
-            Expr::Bits {
-                source,
-                range_high,
-                range_low,
-            } => {
-                source.write(w)?;
-                if range_high != range_low {
-                    w.append(&format!("[{}:{}]", range_high, range_low))?;
-                } else {
-                    w.append(&format!("[{}]", range_high))?;
-                }
-            }
-            Expr::Concat { lhs, rhs } => {
-                w.append("{")?;
-                lhs.write(w)?;
-                w.append(", ")?;
-                rhs.write(w)?;
-                w.append("}")?;
-            }
-            Expr::Constant { bit_width, value } => {
-                w.append(&format!("{}'h{:0x}", bit_width, value))?;
-            }
-            Expr::Ref { name } => {
-                w.append(name)?;
-            }
-            Expr::Signed { source } => {
-                w.append("$signed(")?;
-                source.write(w)?;
-                w.append(")")?;
-            }
-            Expr::Ternary {
-                cond,
-                when_true,
-                when_false,
-            } => {
-                cond.write(w)?;
-                w.append(" ? ")?;
-                when_true.write(w)?;
-                w.append(" : ")?;
-                when_false.write(w)?;
-            }
-            Expr::UnOp { source, op } => {
-                w.append(match op {
-                    UnOp::Not => "~",
-                })?;
-                source.write(w)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-enum BinOp {
-    Add,
-    BitAnd,
-    BitOr,
-    BitXor,
-    Equal,
-    NotEqual,
-    LessThan,
-    LessThanEqual,
-    GreaterThan,
-    GreaterThanEqual,
-    Sub,
-}
-
-#[derive(Clone)]
-enum UnOp {
-    Not,
-}
-
-struct Compiler<'graph, 'arena> {
-    state_elements: &'arena StateElements<'graph, 'arena>,
-
-    signal_exprs: HashMap<
-        (
-            &'arena ModuleContext<'graph, 'arena>,
-            &'graph graph::Signal<'graph>,
-        ),
-        Expr,
-    >,
-}
-
-impl<'graph, 'arena> Compiler<'graph, 'arena> {
-    pub fn new(state_elements: &'arena StateElements<'graph, 'arena>) -> Compiler<'graph, 'arena> {
-        Compiler {
-            state_elements,
-
-            signal_exprs: HashMap::new(),
-        }
-    }
-
-    pub fn compile_signal(
-        &mut self,
-        signal: &'graph graph::Signal<'graph>,
-        context: &'arena ModuleContext<'graph, 'arena>,
-        a: &mut AssignmentContext,
-    ) -> Expr {
-        let key = (context, signal);
-        if !self.signal_exprs.contains_key(&key) {
-            let expr = match signal.data {
-                graph::SignalData::Lit {
-                    ref value,
-                    bit_width,
-                } => Expr::from_constant(value, bit_width),
-
-                graph::SignalData::Input { ref name, .. } => Expr::Ref { name: name.clone() },
-
-                graph::SignalData::Reg { .. } => Expr::Ref {
-                    name: self.state_elements.regs[&key].value_name.clone(),
-                },
-
-                graph::SignalData::UnOp { source, op } => {
-                    let bit_width = source.bit_width();
-                    let source = self.compile_signal(source, context, a);
-                    a.gen_temp(
-                        Expr::UnOp {
-                            source: Box::new(source),
-                            op: match op {
-                                graph::UnOp::Not => UnOp::Not,
-                            },
-                        },
-                        bit_width,
-                    )
-                }
-                graph::SignalData::SimpleBinOp { lhs, rhs, op } => {
-                    let bit_width = lhs.bit_width();
-                    let lhs = self.compile_signal(lhs, context, a);
-                    let rhs = self.compile_signal(rhs, context, a);
-                    a.gen_temp(
-                        Expr::BinOp {
-                            lhs: Box::new(lhs),
-                            rhs: Box::new(rhs),
-                            op: match op {
-                                graph::SimpleBinOp::BitAnd => BinOp::BitAnd,
-                                graph::SimpleBinOp::BitOr => BinOp::BitOr,
-                                graph::SimpleBinOp::BitXor => BinOp::BitXor,
-                            },
-                        },
-                        bit_width,
-                    )
-                }
-                graph::SignalData::AdditiveBinOp { lhs, rhs, op } => {
-                    let bit_width = lhs.bit_width();
-                    let lhs = self.compile_signal(lhs, context, a);
-                    let rhs = self.compile_signal(rhs, context, a);
-                    a.gen_temp(
-                        Expr::BinOp {
-                            lhs: Box::new(lhs),
-                            rhs: Box::new(rhs),
-                            op: match op {
-                                graph::AdditiveBinOp::Add => BinOp::Add,
-                                graph::AdditiveBinOp::Sub => BinOp::Sub,
-                            },
-                        },
-                        bit_width,
-                    )
-                }
-                graph::SignalData::ComparisonBinOp { lhs, rhs, op } => {
-                    let bit_width = signal.bit_width();
-                    let mut lhs = self.compile_signal(lhs, context, a);
-                    let mut rhs = self.compile_signal(rhs, context, a);
-                    match op {
-                        graph::ComparisonBinOp::GreaterThanEqualSigned
-                        | graph::ComparisonBinOp::GreaterThanSigned
-                        | graph::ComparisonBinOp::LessThanEqualSigned
-                        | graph::ComparisonBinOp::LessThanSigned => {
-                            lhs = self.gen_signed(lhs, bit_width, a);
-                            rhs = self.gen_signed(rhs, bit_width, a);
-                        }
-                        _ => (),
-                    }
-                    a.gen_temp(
-                        Expr::BinOp {
-                            lhs: Box::new(lhs),
-                            rhs: Box::new(rhs),
-                            op: match op {
-                                graph::ComparisonBinOp::Equal => BinOp::Equal,
-                                graph::ComparisonBinOp::NotEqual => BinOp::NotEqual,
-                                graph::ComparisonBinOp::LessThan
-                                | graph::ComparisonBinOp::LessThanSigned => BinOp::LessThan,
-                                graph::ComparisonBinOp::LessThanEqual
-                                | graph::ComparisonBinOp::LessThanEqualSigned => {
-                                    BinOp::LessThanEqual
-                                }
-                                graph::ComparisonBinOp::GreaterThan
-                                | graph::ComparisonBinOp::GreaterThanSigned => BinOp::GreaterThan,
-                                graph::ComparisonBinOp::GreaterThanEqual
-                                | graph::ComparisonBinOp::GreaterThanEqualSigned => {
-                                    BinOp::GreaterThanEqual
-                                }
-                            },
-                        },
-                        bit_width,
-                    )
-                }
-                graph::SignalData::ShiftBinOp { .. } => unimplemented!(),
-
-                graph::SignalData::Bits {
-                    source,
-                    range_high,
-                    range_low,
-                } => {
-                    let bit_width = signal.bit_width();
-                    let source = self.compile_signal(source, context, a);
-                    a.gen_temp(
-                        Expr::Bits {
-                            source: Box::new(source),
-                            range_high,
-                            range_low,
-                        },
-                        bit_width,
-                    )
-                }
-
-                graph::SignalData::Repeat { .. } => unimplemented!(),
-                graph::SignalData::Concat { lhs, rhs } => {
-                    let bit_width = signal.bit_width();
-                    let lhs = self.compile_signal(lhs, context, a);
-                    let rhs = self.compile_signal(rhs, context, a);
-                    a.gen_temp(
-                        Expr::Concat {
-                            lhs: Box::new(lhs),
-                            rhs: Box::new(rhs),
-                        },
-                        bit_width,
-                    )
-                }
-
-                graph::SignalData::Mux {
-                    cond,
-                    when_true,
-                    when_false,
-                } => {
-                    let bit_width = when_true.bit_width();
-                    let cond = self.compile_signal(cond, context, a);
-                    let when_true = self.compile_signal(when_true, context, a);
-                    let when_false = self.compile_signal(when_false, context, a);
-                    a.gen_temp(
-                        Expr::Ternary {
-                            cond: Box::new(cond),
-                            when_true: Box::new(when_true),
-                            when_false: Box::new(when_false),
-                        },
-                        bit_width,
-                    )
-                }
-
-                graph::SignalData::InstanceOutput { .. } => unimplemented!(),
-
-                graph::SignalData::MemReadPortOutput { .. } => unimplemented!(),
-            };
-            self.signal_exprs.insert(key.clone(), expr);
-        }
-
-        self.signal_exprs[&key].clone()
-    }
-
-    fn gen_signed(&mut self, expr: Expr, bit_width: u32, a: &mut AssignmentContext) -> Expr {
-        a.gen_temp(
-            Expr::Signed {
-                source: Box::new(expr),
-            },
-            bit_width,
-        )
-    }
-}
 
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
 pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     validate_module_hierarchy(m);
 
-    let context_arena = Arena::new();
-    let root_context = context_arena.alloc(ModuleContext::new());
+    let mut instances = HashMap::new();
+    for instance in m.instances.borrow().iter() {
+        let mut input_names = HashMap::new();
+        for (name, _) in instance.instantiated_module.inputs.borrow().iter() {
+            input_names.insert(name.clone(), format!("__{}_input_{}", instance.name, name));
+        }
 
-    let mut state_elements = StateElements::new();
-    for (_, output) in m.outputs.borrow().iter() {
-        state_elements.gather(&output, root_context, &context_arena);
+        let mut output_names = HashMap::new();
+        for (name, _) in instance.instantiated_module.outputs.borrow().iter() {
+            output_names.insert(name.clone(), format!("__{}_output_{}", instance.name, name));
+        }
+
+        instances.insert(
+            *instance,
+            InstanceDecls {
+                input_names,
+                output_names,
+            },
+        );
     }
 
-    let mut c = Compiler::new(&state_elements);
+    let mut regs = HashMap::new();
+    for reg in m.registers.borrow().iter() {
+        match reg.data {
+            graph::SignalData::Reg { data } => {
+                let value_name = format!("__reg_{}_{}", data.name, regs.len());
+                let next_name = format!("{}_next", value_name);
+                regs.insert(
+                    *reg,
+                    RegisterDecls {
+                        data,
+                        value_name,
+                        next_name,
+                    },
+                );
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    let module_decls = ModuleDecls { instances, regs };
+
+    let mut c = Compiler::new();
 
     let mut assignments = AssignmentContext::new();
     for (name, output) in m.outputs.borrow().iter() {
-        let expr = c.compile_signal(&output, root_context, &mut assignments);
+        let expr = c.compile_signal(&output, &module_decls, &mut assignments);
         assignments.push(Assignment {
             target_name: name.clone(),
             expr,
         });
     }
-    let mut regs = Vec::new();
+
     let mut node_decls = Vec::new();
-    for ((context, _), reg) in state_elements.regs.iter() {
-        // TODO: Impl Eq/PartialEq for ModuleContext
-        if ptr::eq(*context, root_context) {
-            regs.push(reg);
 
+    for (instance, instance_decls) in module_decls.instances.iter() {
+        for (name, decl_name) in instance_decls.input_names.iter() {
             node_decls.push(NodeDecl {
-                name: reg.value_name.clone(),
-                bit_width: reg.data.bit_width,
-            });
-            node_decls.push(NodeDecl {
-                name: reg.next_name.clone(),
-                bit_width: reg.data.bit_width,
+                name: decl_name.clone(),
+                bit_width: instance.instantiated_module.inputs.borrow()[name].bit_width(),
             });
 
-            let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context, &mut assignments);
+            let expr = c.compile_signal(
+                instance.driven_inputs.borrow()[name],
+                &module_decls,
+                &mut assignments,
+            );
             assignments.push(Assignment {
-                target_name: reg.next_name.clone(),
+                target_name: decl_name.clone(),
                 expr,
             });
         }
+
+        for (name, decl_name) in instance_decls.output_names.iter() {
+            node_decls.push(NodeDecl {
+                name: decl_name.clone(),
+                bit_width: instance.instantiated_module.outputs.borrow()[name].bit_width(),
+            });
+        }
+    }
+
+    for reg in module_decls.regs.values() {
+        node_decls.push(NodeDecl {
+            name: reg.value_name.clone(),
+            bit_width: reg.data.bit_width,
+        });
+        node_decls.push(NodeDecl {
+            name: reg.next_name.clone(),
+            bit_width: reg.data.bit_width,
+        });
+
+        let expr = c.compile_signal(
+            reg.data.next.borrow().unwrap(),
+            &module_decls,
+            &mut assignments,
+        );
+        assignments.push(Assignment {
+            target_name: reg.next_name.clone(),
+            expr,
+        });
     }
 
     let mut w = code_writer::CodeWriter::new(w);
@@ -492,7 +130,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line("input wire logic reset_n,")?;
     w.append_indent()?;
     w.append("input wire logic clk")?;
-    if m.inputs.borrow().len() > 0 || m.outputs.borrow().len() > 0 {
+    if !m.inputs.borrow().is_empty() || !m.outputs.borrow().is_empty() {
         w.append(",")?;
         w.append_newline()?;
     }
@@ -506,7 +144,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             w.append(&format!("[{}:{}] ", source.bit_width() - 1, 0))?;
         }
         w.append(name)?;
-        if m.outputs.borrow().len() > 0 || i < num_inputs - 1 {
+        if !m.outputs.borrow().is_empty() || i < num_inputs - 1 {
             w.append(",")?;
         }
         w.append_newline()?;
@@ -528,15 +166,49 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line(");")?;
     w.append_newline()?;
 
-    if node_decls.len() > 0 {
+    if !node_decls.is_empty() {
         for node_decl in node_decls {
             node_decl.write(&mut w)?;
         }
         w.append_newline()?;
     }
 
-    if regs.len() > 0 {
-        for reg in regs {
+    if !module_decls.instances.is_empty() {
+        for (instance, instance_decls) in module_decls.instances.iter() {
+            w.append_line(&format!(
+                "{} {}(",
+                instance.instantiated_module.name, instance.name
+            ))?;
+            w.indent();
+            // TODO: Make conditional based on the presents of (resetable) state elements
+            w.append_line(".reset_n(reset_n),")?;
+            w.append_indent()?;
+            w.append(".clk(clk)")?;
+            if !instance_decls.input_names.is_empty() {
+                for (name, decl_name) in instance_decls.input_names.iter() {
+                    w.append(",")?;
+                    w.append_newline()?;
+                    w.append_indent()?;
+                    w.append(&format!(".{}({})", name, decl_name))?;
+                }
+            }
+            if !instance_decls.output_names.is_empty() {
+                for (name, decl_name) in instance_decls.output_names.iter() {
+                    w.append(",")?;
+                    w.append_newline()?;
+                    w.append_indent()?;
+                    w.append(&format!(".{}({})", name, decl_name))?;
+                }
+            }
+            w.unindent()?;
+            w.append(");")?;
+            w.append_newline()?;
+            w.append_newline()?;
+        }
+    }
+
+    if !module_decls.regs.is_empty() {
+        for reg in module_decls.regs.values() {
             w.append_indent()?;
             w.append("always_ff @(posedge clk")?;
             if reg.data.initial_value.borrow().is_some() {
@@ -566,8 +238,8 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             }
             w.unindent()?;
             w.append_line("end")?;
+            w.append_newline()?;
         }
-        w.append_newline()?;
     }
 
     if !assignments.is_empty() {

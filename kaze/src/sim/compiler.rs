@@ -1,8 +1,8 @@
 use super::ir::*;
+use super::state_elements::*;
 
 use crate::graph;
 use crate::module_context::*;
-use crate::state_elements::*;
 
 use typed_arena::Arena;
 
