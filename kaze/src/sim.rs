@@ -41,6 +41,34 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             expr,
         });
     }
+    for ((context, _), mem) in state_elements.mems.iter() {
+        if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
+            let address = c.compile_signal(address, context, &mut prop_context);
+            prop_context.push(Assignment {
+                target: Expr::Ref {
+                    name: mem.write_address_name.clone(),
+                    scope: Scope::Member,
+                },
+                expr: address,
+            });
+            let value = c.compile_signal(value, context, &mut prop_context);
+            prop_context.push(Assignment {
+                target: Expr::Ref {
+                    name: mem.write_value_name.clone(),
+                    scope: Scope::Member,
+                },
+                expr: value,
+            });
+            let enable = c.compile_signal(enable, context, &mut prop_context);
+            prop_context.push(Assignment {
+                target: Expr::Ref {
+                    name: mem.write_enable_name.clone(),
+                    scope: Scope::Member,
+                },
+                expr: enable,
+            });
+        }
+    }
     for ((context, _), reg) in state_elements.regs.iter() {
         let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context, &mut prop_context);
         prop_context.push(Assignment {
@@ -106,6 +134,14 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 "{}: Box<[{}]>, // {} bit elements",
                 mem.mem_name, element_type_name, mem.mem.element_bit_width
             ))?;
+            if mem.mem.write_port.borrow().is_some() {
+                let type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
+                w.append_line(&format!("{}: {},", mem.write_address_name, type_name))?;
+                let type_name = ValueType::from_bit_width(mem.mem.element_bit_width).name();
+                w.append_line(&format!("{}: {},", mem.write_value_name, type_name))?;
+                let type_name = ValueType::Bool.name();
+                w.append_line(&format!("{}: {},", mem.write_enable_name, type_name))?;
+            }
         }
     }
 
@@ -178,14 +214,20 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         });
     }
 
-    for ((context, _), mem) in state_elements.mems.iter() {
-        if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
-            let address = c.compile_signal(address, context, &mut posedge_clk_context);
-            let address = posedge_clk_context.gen_temp(address);
-            let value = c.compile_signal(value, context, &mut posedge_clk_context);
-            let value = posedge_clk_context.gen_temp(value);
-            let enable = c.compile_signal(enable, context, &mut posedge_clk_context);
-            let enable = posedge_clk_context.gen_temp(enable);
+    for (_, mem) in state_elements.mems.iter() {
+        if mem.mem.write_port.borrow().is_some() {
+            let address = Expr::Ref {
+                name: mem.write_address_name.clone(),
+                scope: Scope::Member,
+            };
+            let value = Expr::Ref {
+                name: mem.write_value_name.clone(),
+                scope: Scope::Member,
+            };
+            let enable = Expr::Ref {
+                name: mem.write_enable_name.clone(),
+                scope: Scope::Member,
+            };
             let element = Expr::ArrayIndex {
                 target: Box::new(Expr::Ref {
                     name: mem.mem_name.clone(),

@@ -210,11 +210,6 @@ impl<'a> Mem<'a> {
         if enable.bit_width() != 1 {
             panic!("Attempted to specify a write port for memory \"{}\" in module \"{}\" with an enable signal with {} bit(s), but memory read/write ports are required to be 1 bit wide.", self.name, self.module.name, enable.bit_width());
         }
-        // TODO: Avoid potential name collisions
-        let name_prefix = format!("{}_impl_write_port", self.name);
-        let address = address.reg_next(format!("{}_address", name_prefix));
-        let value = value.reg_next(format!("{}_value", name_prefix));
-        let enable = enable.reg_next(format!("{}_enable", name_prefix));
         *self.write_port.borrow_mut() = Some((address, value, enable));
     }
 }

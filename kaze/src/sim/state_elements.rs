@@ -14,6 +14,9 @@ pub(super) struct Register<'a> {
 pub(super) struct Mem<'a> {
     pub mem: &'a graph::Mem<'a>,
     pub mem_name: String,
+    pub write_address_name: String,
+    pub write_value_name: String,
+    pub write_enable_name: String,
 }
 
 pub(super) struct StateElements<'graph, 'arena> {
@@ -127,11 +130,19 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                 if self.mems.contains_key(&key) {
                     return;
                 }
+                let mem_name = format!("__mem_{}_{}", mem.name, self.mems.len());
+                let name_prefix = format!("{}_write_port_", mem_name);
+                let write_address_name = format!("{}address", name_prefix);
+                let write_value_name = format!("{}value", name_prefix);
+                let write_enable_name = format!("{}enable", name_prefix);
                 self.mems.insert(
                     key,
                     Mem {
                         mem,
-                        mem_name: format!("__mem_{}_{}", mem.name, self.mems.len()),
+                        mem_name,
+                        write_address_name,
+                        write_value_name,
+                        write_enable_name,
                     },
                 );
                 // TODO: It might actually be too conservative to trace all read ports,
