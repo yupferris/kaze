@@ -165,7 +165,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                         graph::Constant::Bool(value) => format!("{},", value),
                         graph::Constant::U32(value) => format!("0x{:x},", value),
                         graph::Constant::U64(value) => format!("0x{:x},", value),
-                        graph::Constant::U128(value) => format!("0x:{:x},", value),
+                        graph::Constant::U128(value) => format!("0x{:x},", value),
                     })?;
                 }
                 w.unindent()?;

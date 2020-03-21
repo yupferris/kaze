@@ -60,10 +60,12 @@ impl AssignmentContext {
     }
 
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        for node_decl in self.local_decls.iter() {
-            node_decl.write(w)?;
+        if !self.local_decls.is_empty() {
+            for node_decl in self.local_decls.iter() {
+                node_decl.write(w)?;
+            }
+            w.append_newline()?;
         }
-        w.append_newline()?;
 
         for assignment in self.assignments.iter() {
             assignment.write(w)?;
@@ -93,6 +95,10 @@ impl Assignment {
 
 #[derive(Clone)]
 pub enum Expr {
+    ArrayIndex {
+        target: Box<Expr>,
+        index: Box<Expr>,
+    },
     BinOp {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
@@ -142,6 +148,12 @@ impl Expr {
 
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         match self {
+            Expr::ArrayIndex { target, index } => {
+                target.write(w)?;
+                w.append("[")?;
+                index.write(w)?;
+                w.append("]")?;
+            }
             Expr::BinOp { lhs, rhs, op } => {
                 lhs.write(w)?;
                 w.append(&format!(
@@ -185,7 +197,7 @@ impl Expr {
                 w.append("}")?;
             }
             Expr::Constant { bit_width, value } => {
-                w.append(&format!("{}'h{:0x}", bit_width, value))?;
+                w.append(&format!("{}'h{:x}", bit_width, value))?;
             }
             Expr::Ref { name } => {
                 w.append(name)?;

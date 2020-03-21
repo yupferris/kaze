@@ -208,7 +208,24 @@ impl<'graph> Compiler<'graph> {
                     }
                 }
 
-                graph::SignalData::MemReadPortOutput { .. } => unimplemented!(),
+                graph::SignalData::MemReadPortOutput {
+                    mem,
+                    address,
+                    enable: _,
+                } => {
+                    let bit_width = signal.bit_width();
+                    let address = self.compile_signal(address, module_decls, a);
+                    // TODO: Should we actually remove the enable signal?
+                    a.gen_temp(
+                        Expr::ArrayIndex {
+                            target: Box::new(Expr::Ref {
+                                name: mem.name.clone(),
+                            }),
+                            index: Box::new(address),
+                        },
+                        bit_width,
+                    )
+                }
             };
             self.signal_exprs.insert(signal, expr);
         }

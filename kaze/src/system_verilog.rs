@@ -40,6 +40,23 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         );
     }
 
+    let mut mems = HashMap::new();
+    for mem in m.mems.borrow().iter() {
+        let mem_name = format!("__mem_{}", mem.name);
+        let name_prefix = format!("{}_write_port_", mem_name);
+        let write_address_name = format!("{}address", name_prefix);
+        let write_value_name = format!("{}value", name_prefix);
+        let write_enable_name = format!("{}enable", name_prefix);
+        mems.insert(
+            *mem,
+            MemDecls {
+                write_address_name,
+                write_value_name,
+                write_enable_name,
+            },
+        );
+    }
+
     let mut regs = HashMap::new();
     for reg in m.registers.borrow().iter() {
         match reg.data {
@@ -59,7 +76,11 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    let module_decls = ModuleDecls { instances, regs };
+    let module_decls = ModuleDecls {
+        instances,
+        mems,
+        regs,
+    };
 
     let mut c = Compiler::new();
 
@@ -100,6 +121,38 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
+    for (mem, mem_decls) in module_decls.mems.iter() {
+        if let Some((address, value, enable)) = *mem.write_port.borrow() {
+            let expr = c.compile_signal(address, &module_decls, &mut assignments);
+            node_decls.push(NodeDecl {
+                name: mem_decls.write_address_name.clone(),
+                bit_width: address.bit_width(),
+            });
+            assignments.push(Assignment {
+                target_name: mem_decls.write_address_name.clone(),
+                expr,
+            });
+            let expr = c.compile_signal(value, &module_decls, &mut assignments);
+            node_decls.push(NodeDecl {
+                name: mem_decls.write_value_name.clone(),
+                bit_width: value.bit_width(),
+            });
+            assignments.push(Assignment {
+                target_name: mem_decls.write_value_name.clone(),
+                expr,
+            });
+            let expr = c.compile_signal(enable, &module_decls, &mut assignments);
+            node_decls.push(NodeDecl {
+                name: mem_decls.write_enable_name.clone(),
+                bit_width: enable.bit_width(),
+            });
+            assignments.push(Assignment {
+                target_name: mem_decls.write_enable_name.clone(),
+                expr,
+            });
+        }
+    }
+
     for reg in module_decls.regs.values() {
         node_decls.push(NodeDecl {
             name: reg.value_name.clone(),
@@ -126,7 +179,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.append_line(&format!("module {}(", m.name))?;
     w.indent();
 
-    // TODO: Make conditional based on the presents of (resetable) state elements
+    // TODO: Make conditional based on the presence of (resetable) state elements
     w.append_line("input wire logic reset_n,")?;
     w.append_indent()?;
     w.append("input wire logic clk")?;
@@ -173,73 +226,116 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         w.append_newline()?;
     }
 
-    if !module_decls.instances.is_empty() {
-        for (instance, instance_decls) in module_decls.instances.iter() {
-            w.append_line(&format!(
-                "{} {}(",
-                instance.instantiated_module.name, instance.name
-            ))?;
-            w.indent();
-            // TODO: Make conditional based on the presents of (resetable) state elements
-            w.append_line(".reset_n(reset_n),")?;
-            w.append_indent()?;
-            w.append(".clk(clk)")?;
-            if !instance_decls.input_names.is_empty() {
-                for (name, decl_name) in instance_decls.input_names.iter() {
-                    w.append(",")?;
-                    w.append_newline()?;
-                    w.append_indent()?;
-                    w.append(&format!(".{}({})", name, decl_name))?;
-                }
+    for (instance, instance_decls) in module_decls.instances.iter() {
+        w.append_line(&format!(
+            "{} {}(",
+            instance.instantiated_module.name, instance.name
+        ))?;
+        w.indent();
+        // TODO: Make conditional based on the presence of (resetable) state elements
+        w.append_line(".reset_n(reset_n),")?;
+        w.append_indent()?;
+        w.append(".clk(clk)")?;
+        if !instance_decls.input_names.is_empty() {
+            for (name, decl_name) in instance_decls.input_names.iter() {
+                w.append(",")?;
+                w.append_newline()?;
+                w.append_indent()?;
+                w.append(&format!(".{}({})", name, decl_name))?;
             }
-            if !instance_decls.output_names.is_empty() {
-                for (name, decl_name) in instance_decls.output_names.iter() {
-                    w.append(",")?;
-                    w.append_newline()?;
-                    w.append_indent()?;
-                    w.append(&format!(".{}({})", name, decl_name))?;
-                }
-            }
-            w.unindent()?;
-            w.append(");")?;
-            w.append_newline()?;
-            w.append_newline()?;
         }
+        if !instance_decls.output_names.is_empty() {
+            for (name, decl_name) in instance_decls.output_names.iter() {
+                w.append(",")?;
+                w.append_newline()?;
+                w.append_indent()?;
+                w.append(&format!(".{}({})", name, decl_name))?;
+            }
+        }
+        w.unindent()?;
+        w.append(");")?;
+        w.append_newline()?;
+        w.append_newline()?;
     }
 
-    if !module_decls.regs.is_empty() {
-        for reg in module_decls.regs.values() {
-            w.append_indent()?;
-            w.append("always_ff @(posedge clk")?;
-            if reg.data.initial_value.borrow().is_some() {
-                w.append(", negedge reset_n")?;
-            }
-            w.append(") begin")?;
-            w.append_newline()?;
+    for (mem, mem_decls) in module_decls.mems.iter() {
+        w.append_indent()?;
+        w.append("logic ")?;
+        if mem.element_bit_width > 1 {
+            w.append(&format!("[{}:{}] ", mem.element_bit_width - 1, 0))?;
+        }
+        w.append(&format!(
+            "{}[{}:{}];",
+            mem.name,
+            0,
+            (1 << mem.address_bit_width) - 1
+        ))?;
+        w.append_newline()?;
+        w.append_newline()?;
+        if let Some(ref initial_contents) = *mem.initial_contents.borrow() {
+            w.append_line("initial begin")?;
             w.indent();
-            if let Some(ref initial_value) = *reg.data.initial_value.borrow() {
-                w.append_line("if (~reset_n) begin")?;
-                w.indent();
+            for (i, element) in initial_contents.iter().enumerate() {
                 w.append_line(&format!(
-                    "{} <= {}'h{:0x};",
-                    reg.value_name,
-                    reg.data.bit_width,
-                    initial_value.numeric_value()
+                    "{}[{}] = {}'h{:x};",
+                    mem.name,
+                    i,
+                    mem.element_bit_width,
+                    element.numeric_value()
                 ))?;
-                w.unindent()?;
-                w.append_line("end")?;
-                w.append_line("else begin")?;
-                w.indent();
-            }
-            w.append_line(&format!("{} <= {};", reg.value_name, reg.next_name))?;
-            if reg.data.initial_value.borrow().is_some() {
-                w.unindent()?;
-                w.append_line("end")?;
             }
             w.unindent()?;
             w.append_line("end")?;
             w.append_newline()?;
         }
+        if mem.write_port.borrow().is_some() {
+            w.append_line("always_ff @(posedge clk) begin")?;
+            w.indent();
+            w.append_line(&format!("if ({}) begin", mem_decls.write_enable_name))?;
+            w.indent();
+            w.append_line(&format!(
+                "{}[{}] <= {};",
+                mem.name, mem_decls.write_address_name, mem_decls.write_value_name
+            ))?;
+            w.unindent()?;
+            w.append_line("end")?;
+            w.unindent()?;
+            w.append_line("end")?;
+            w.append_newline()?;
+        }
+    }
+
+    for reg in module_decls.regs.values() {
+        w.append_indent()?;
+        w.append("always_ff @(posedge clk")?;
+        if reg.data.initial_value.borrow().is_some() {
+            w.append(", negedge reset_n")?;
+        }
+        w.append(") begin")?;
+        w.append_newline()?;
+        w.indent();
+        if let Some(ref initial_value) = *reg.data.initial_value.borrow() {
+            w.append_line("if (~reset_n) begin")?;
+            w.indent();
+            w.append_line(&format!(
+                "{} <= {}'h{:x};",
+                reg.value_name,
+                reg.data.bit_width,
+                initial_value.numeric_value()
+            ))?;
+            w.unindent()?;
+            w.append_line("end")?;
+            w.append_line("else begin")?;
+            w.indent();
+        }
+        w.append_line(&format!("{} <= {};", reg.value_name, reg.next_name))?;
+        if reg.data.initial_value.borrow().is_some() {
+            w.unindent()?;
+            w.append_line("end")?;
+        }
+        w.unindent()?;
+        w.append_line("end")?;
+        w.append_newline()?;
     }
 
     if !assignments.is_empty() {
