@@ -90,8 +90,12 @@ impl<'graph> Compiler<'graph> {
                         | graph::ComparisonBinOp::GreaterThanSigned
                         | graph::ComparisonBinOp::LessThanEqualSigned
                         | graph::ComparisonBinOp::LessThanSigned => {
-                            lhs = self.gen_signed(lhs, bit_width, a);
-                            rhs = self.gen_signed(rhs, bit_width, a);
+                            lhs = Expr::Signed {
+                                source: Box::new(lhs),
+                            };
+                            rhs = Expr::Signed {
+                                source: Box::new(rhs),
+                            };
                         }
                         _ => (),
                     }
@@ -184,14 +188,5 @@ impl<'graph> Compiler<'graph> {
         }
 
         self.signal_exprs[&signal].clone()
-    }
-
-    fn gen_signed(&mut self, expr: Expr, bit_width: u32, a: &mut AssignmentContext) -> Expr {
-        a.gen_temp(
-            Expr::Signed {
-                source: Box::new(expr),
-            },
-            bit_width,
-        )
     }
 }
