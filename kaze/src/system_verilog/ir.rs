@@ -153,6 +153,9 @@ impl Expr {
                         BinOp::LessThanEqual => "<=",
                         BinOp::GreaterThan => ">",
                         BinOp::GreaterThanEqual => ">=",
+                        BinOp::Shl => "<<",
+                        BinOp::Shr => ">>",
+                        BinOp::ShrArithmetic => ">>>",
                         BinOp::Sub => "-",
                     }
                 ))?;
@@ -223,6 +226,9 @@ pub enum BinOp {
     LessThanEqual,
     GreaterThan,
     GreaterThanEqual,
+    Shl,
+    Shr,
+    ShrArithmetic,
     Sub,
 }
 

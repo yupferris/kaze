@@ -123,7 +123,20 @@ impl<'graph> Compiler<'graph> {
                         bit_width,
                     )
                 }
-                graph::SignalData::ShiftBinOp { .. } => unimplemented!(),
+                graph::SignalData::ShiftBinOp { lhs, rhs, op } => {
+                    let bit_width = signal.bit_width();
+                    let lhs = self.compile_signal(lhs, module_decls, a);
+                    let rhs = self.compile_signal(rhs, module_decls, a);
+                    a.gen_temp(Expr::BinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: match op {
+                            graph::ShiftBinOp::Shl => BinOp::Shl,
+                            graph::ShiftBinOp::Shr => BinOp::Shr,
+                            graph::ShiftBinOp::ShrArithmetic => BinOp::ShrArithmetic,
+                        },
+                    }, bit_width)
+                }
 
                 graph::SignalData::Bits {
                     source,
