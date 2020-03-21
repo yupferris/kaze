@@ -114,6 +114,10 @@ pub enum Expr {
     Ref {
         name: String,
     },
+    Repeat {
+        source: Box<Expr>,
+        count: u32,
+    },
     Signed {
         source: Box<Expr>,
     },
@@ -185,6 +189,11 @@ impl Expr {
             }
             Expr::Ref { name } => {
                 w.append(name)?;
+            }
+            Expr::Repeat { source, count } => {
+                w.append(&format!("{{{}, {{", count))?;
+                source.write(w)?;
+                w.append("}}")?;
             }
             Expr::Signed { source } => {
                 w.append("$signed(")?;

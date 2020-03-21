@@ -155,7 +155,14 @@ impl<'graph> Compiler<'graph> {
                     )
                 }
 
-                graph::SignalData::Repeat { .. } => unimplemented!(),
+                graph::SignalData::Repeat { source, count } => {
+                    let bit_width = signal.bit_width();
+                    let source = self.compile_signal(source, module_decls, a);
+                    a.gen_temp(Expr::Repeat {
+                        source: Box::new(source),
+                        count,
+                    }, bit_width)
+                }
                 graph::SignalData::Concat { lhs, rhs } => {
                     let bit_width = signal.bit_width();
                     let lhs = self.compile_signal(lhs, module_decls, a);
