@@ -127,15 +127,18 @@ impl<'graph> Compiler<'graph> {
                     let bit_width = signal.bit_width();
                     let lhs = self.compile_signal(lhs, module_decls, a);
                     let rhs = self.compile_signal(rhs, module_decls, a);
-                    a.gen_temp(Expr::BinOp {
-                        lhs: Box::new(lhs),
-                        rhs: Box::new(rhs),
-                        op: match op {
-                            graph::ShiftBinOp::Shl => BinOp::Shl,
-                            graph::ShiftBinOp::Shr => BinOp::Shr,
-                            graph::ShiftBinOp::ShrArithmetic => BinOp::ShrArithmetic,
+                    a.gen_temp(
+                        Expr::BinOp {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                            op: match op {
+                                graph::ShiftBinOp::Shl => BinOp::Shl,
+                                graph::ShiftBinOp::Shr => BinOp::Shr,
+                                graph::ShiftBinOp::ShrArithmetic => BinOp::ShrArithmetic,
+                            },
                         },
-                    }, bit_width)
+                        bit_width,
+                    )
                 }
 
                 graph::SignalData::Bits {
@@ -158,10 +161,13 @@ impl<'graph> Compiler<'graph> {
                 graph::SignalData::Repeat { source, count } => {
                     let bit_width = signal.bit_width();
                     let source = self.compile_signal(source, module_decls, a);
-                    a.gen_temp(Expr::Repeat {
-                        source: Box::new(source),
-                        count,
-                    }, bit_width)
+                    a.gen_temp(
+                        Expr::Repeat {
+                            source: Box::new(source),
+                            count,
+                        },
+                        bit_width,
+                    )
                 }
                 graph::SignalData::Concat { lhs, rhs } => {
                     let bit_width = signal.bit_width();
