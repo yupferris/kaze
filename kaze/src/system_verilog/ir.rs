@@ -203,7 +203,7 @@ impl Expr {
                 w.append(name)?;
             }
             Expr::Repeat { source, count } => {
-                w.append(&format!("{{{}, {{", count))?;
+                w.append(&format!("{{{}{{", count))?;
                 source.write(w)?;
                 w.append("}}")?;
             }
