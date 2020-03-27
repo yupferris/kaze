@@ -1264,10 +1264,10 @@ mod tests {
         m.read_addr = false;
         m.read_enable = false;
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
 
         // Initial state, read from addr 0
         m.write_addr = false;
@@ -1276,7 +1276,7 @@ mod tests {
         m.read_addr = false;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, 0);
@@ -1303,7 +1303,7 @@ mod tests {
         assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
 
         // Write to addr 1
         m.write_addr = true;
@@ -1312,10 +1312,10 @@ mod tests {
         m.read_addr = false;
         m.read_enable = false;
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
 
         // Read from addr 0
         m.write_addr = false;
@@ -1324,7 +1324,7 @@ mod tests {
         m.read_addr = false;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, 0xf);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, 0x5);
@@ -1351,7 +1351,7 @@ mod tests {
         assert_eq!(m.read_data, 0xa);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xc);
+        assert_eq!(m.read_data, 0x5);
 
         // Write to/read from addr 1
         m.write_addr = true;
@@ -1360,10 +1360,10 @@ mod tests {
         m.read_addr = true;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, 0xc);
+        assert_eq!(m.read_data, 0x5);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0x3);
+        assert_eq!(m.read_data, 0xa);
 
         // Read from addr 0
         m.write_addr = false;
@@ -1372,7 +1372,7 @@ mod tests {
         m.read_addr = false;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, 0x3);
+        assert_eq!(m.read_data, 0xa);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, 0xc);
@@ -1434,16 +1434,16 @@ mod tests {
         m.read_addr = 0;
         m.read_enable = false;
         m.prop();
-        assert_eq!(m.read_data, 0xffffffff);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xffffffff);
+        assert_eq!(m.read_data, 0);
 
         // Read from addr 0
         m.read_addr = 0;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, 0xffffffff);
+        assert_eq!(m.read_data, 0);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, 0xfadebabe);
@@ -1482,7 +1482,7 @@ mod tests {
         assert_eq!(m.read_data, 0xabad1dea);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, 0xffffffff);
+        assert_eq!(m.read_data, 0xabad1dea);
     }
 
     #[test]
@@ -1496,10 +1496,10 @@ mod tests {
         m.read_addr = false;
         m.read_enable = false;
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
 
         // Initial state, read from addr 0
         m.write_addr = false;
@@ -1508,7 +1508,7 @@ mod tests {
         m.read_addr = false;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, false);
@@ -1535,7 +1535,7 @@ mod tests {
         assert_eq!(m.read_data, false);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
 
         // Write to addr 1
         m.write_addr = true;
@@ -1544,10 +1544,10 @@ mod tests {
         m.read_addr = false;
         m.read_enable = false;
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
 
         // Read from addr 0
         m.write_addr = false;
@@ -1556,7 +1556,7 @@ mod tests {
         m.read_addr = false;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, true);
+        assert_eq!(m.read_data, false);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, true);
@@ -1583,7 +1583,7 @@ mod tests {
         assert_eq!(m.read_data, true);
         m.posedge_clk();
         m.prop();
-        assert_eq!(m.read_data, false);
+        assert_eq!(m.read_data, true);
 
         // Write to/read from addr 1
         m.write_addr = true;
@@ -1592,7 +1592,7 @@ mod tests {
         m.read_addr = true;
         m.read_enable = true;
         m.prop();
-        assert_eq!(m.read_data, false);
+        assert_eq!(m.read_data, true);
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, true);

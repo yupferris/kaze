@@ -1,12 +1,12 @@
 //! SystemVerilog code generation.
 
 mod compiler;
-mod instance_decls;
 mod ir;
+mod module_decls;
 
 use compiler::*;
-use instance_decls::*;
 use ir::*;
+use module_decls::*;
 
 use crate::code_writer;
 use crate::graph;
@@ -43,6 +43,18 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     let mut mems = HashMap::new();
     for mem in m.mems.borrow().iter() {
         let mem_name = format!("__mem_{}", mem.name);
+        let mut read_signal_names = HashMap::new();
+        for (index, (address, enable)) in mem.read_ports.borrow().iter().enumerate() {
+            let name_prefix = format!("{}_read_port_{}_", mem_name, index);
+            read_signal_names.insert(
+                (*address, *enable),
+                ReadSignalNames {
+                    address_name: format!("{}address", name_prefix),
+                    enable_name: format!("{}enable", name_prefix),
+                    value_name: format!("{}value", name_prefix),
+                },
+            );
+        }
         let name_prefix = format!("{}_write_port_", mem_name);
         let write_address_name = format!("{}address", name_prefix);
         let write_value_name = format!("{}value", name_prefix);
@@ -50,6 +62,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         mems.insert(
             *mem,
             MemDecls {
+                read_signal_names,
                 write_address_name,
                 write_value_name,
                 write_enable_name,
@@ -122,6 +135,30 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     for (mem, mem_decls) in module_decls.mems.iter() {
+        for ((address, enable), read_signal_names) in mem_decls.read_signal_names.iter() {
+            let expr = c.compile_signal(address, &module_decls, &mut assignments);
+            node_decls.push(NodeDecl {
+                name: read_signal_names.address_name.clone(),
+                bit_width: address.bit_width(),
+            });
+            assignments.push(Assignment {
+                target_name: read_signal_names.address_name.clone(),
+                expr,
+            });
+            let expr = c.compile_signal(enable, &module_decls, &mut assignments);
+            node_decls.push(NodeDecl {
+                name: read_signal_names.enable_name.clone(),
+                bit_width: enable.bit_width(),
+            });
+            assignments.push(Assignment {
+                target_name: read_signal_names.enable_name.clone(),
+                expr,
+            });
+            node_decls.push(NodeDecl {
+                name: read_signal_names.value_name.clone(),
+                bit_width: mem.element_bit_width,
+            });
+        }
         if let Some((address, value, enable)) = *mem.write_port.borrow() {
             let expr = c.compile_signal(address, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
@@ -288,9 +325,21 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             w.append_line("end")?;
             w.append_newline()?;
         }
-        if mem.write_port.borrow().is_some() {
+        if !mem_decls.read_signal_names.is_empty() || mem.write_port.borrow().is_some() {
             w.append_line("always_ff @(posedge clk) begin")?;
             w.indent();
+        }
+        for (_, read_signal_names) in mem_decls.read_signal_names.iter() {
+            w.append_line(&format!("if ({}) begin", read_signal_names.enable_name))?;
+            w.indent();
+            w.append_line(&format!(
+                "{} <= {}[{}];",
+                read_signal_names.value_name, mem.name, read_signal_names.address_name
+            ))?;
+            w.unindent()?;
+            w.append_line("end")?;
+        }
+        if mem.write_port.borrow().is_some() {
             w.append_line(&format!("if ({}) begin", mem_decls.write_enable_name))?;
             w.indent();
             w.append_line(&format!(
@@ -299,6 +348,8 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             ))?;
             w.unindent()?;
             w.append_line("end")?;
+        }
+        if !mem_decls.read_signal_names.is_empty() || mem.write_port.borrow().is_some() {
             w.unindent()?;
             w.append_line("end")?;
             w.append_newline()?;

@@ -42,6 +42,24 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         });
     }
     for ((context, _), mem) in state_elements.mems.iter() {
+        for ((address, enable), read_signal_names) in mem.read_signal_names.iter() {
+            let address = c.compile_signal(address, context, &mut prop_context);
+            prop_context.push(Assignment {
+                target: Expr::Ref {
+                    name: read_signal_names.address_name.clone(),
+                    scope: Scope::Member,
+                },
+                expr: address,
+            });
+            let enable = c.compile_signal(enable, context, &mut prop_context);
+            prop_context.push(Assignment {
+                target: Expr::Ref {
+                    name: read_signal_names.enable_name.clone(),
+                    scope: Scope::Member,
+                },
+                expr: enable,
+            });
+        }
         if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
             let address = c.compile_signal(address, context, &mut prop_context);
             prop_context.push(Assignment {
@@ -134,6 +152,20 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 "{}: Box<[{}]>, // {} bit elements",
                 mem.mem_name, element_type_name, mem.mem.element_bit_width
             ))?;
+            for (_, read_signal_names) in mem.read_signal_names.iter() {
+                let type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.address_name, type_name
+                ))?;
+                let type_name = ValueType::Bool.name();
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.enable_name, type_name
+                ))?;
+                let type_name = ValueType::from_bit_width(mem.mem.element_bit_width).name();
+                w.append_line(&format!("{}: {},", read_signal_names.value_name, type_name))?;
+            }
             if mem.mem.write_port.borrow().is_some() {
                 let type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
                 w.append_line(&format!("{}: {},", mem.write_address_name, type_name))?;
@@ -215,6 +247,36 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     for (_, mem) in state_elements.mems.iter() {
+        for (_, read_signal_names) in mem.read_signal_names.iter() {
+            let address = Expr::Ref {
+                name: read_signal_names.address_name.clone(),
+                scope: Scope::Member,
+            };
+            let enable = Expr::Ref {
+                name: read_signal_names.enable_name.clone(),
+                scope: Scope::Member,
+            };
+            let value = Expr::Ref {
+                name: read_signal_names.value_name.clone(),
+                scope: Scope::Member,
+            };
+            let element = Expr::ArrayIndex {
+                target: Box::new(Expr::Ref {
+                    name: mem.mem_name.clone(),
+                    scope: Scope::Member,
+                }),
+                index: Box::new(address),
+            };
+            // TODO: Conditional assign statement instead of always writing ternary
+            posedge_clk_context.push(Assignment {
+                target: value.clone(),
+                expr: Expr::Ternary {
+                    cond: Box::new(enable),
+                    when_true: Box::new(element),
+                    when_false: Box::new(value),
+                },
+            });
+        }
         if mem.mem.write_port.borrow().is_some() {
             let address = Expr::Ref {
                 name: mem.write_address_name.clone(),

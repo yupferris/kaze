@@ -1,5 +1,5 @@
-use super::instance_decls::*;
 use super::ir::*;
+use super::module_decls::*;
 
 use crate::graph;
 
@@ -211,20 +211,13 @@ impl<'graph> Compiler<'graph> {
                 graph::SignalData::MemReadPortOutput {
                     mem,
                     address,
-                    enable: _,
+                    enable,
                 } => {
-                    let bit_width = signal.bit_width();
-                    let address = self.compile_signal(address, module_decls, a);
-                    // TODO: Should we actually remove the enable signal?
-                    a.gen_temp(
-                        Expr::ArrayIndex {
-                            target: Box::new(Expr::Ref {
-                                name: mem.name.clone(),
-                            }),
-                            index: Box::new(address),
-                        },
-                        bit_width,
-                    )
+                    let mem = &module_decls.mems[&mem];
+                    let read_signal_names = &mem.read_signal_names[&(address, enable)];
+                    Expr::Ref {
+                        name: read_signal_names.value_name.clone(),
+                    }
                 }
             };
             self.signal_exprs.insert(signal, expr);

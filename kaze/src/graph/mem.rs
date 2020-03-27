@@ -9,9 +9,9 @@ use std::ptr;
 
 /// A synchronous memory, created by the [`Module`]::[`mem`] method.
 ///
-/// Memories in kaze are always sequential/synchronous-read (read-through), sequential/synchronous-write memories.
+/// Memories in kaze are always sequential/synchronous-read, sequential/synchronous-write memories.
 /// This means that when a read and/or write is asserted, the read/write will be visible on the cycle immediately following the cycle in which it's asserted.
-/// If both a write and a read to the same location occurs within the same cycle, the read will return the newly-written value.
+/// If both a write and a read to the same location occurs within the same cycle, the read will return the previous value at the memory location, **not** the newly-written value.
 ///
 /// Memories must have at least one read port specified.
 /// Multiple reads to the same location within the same cycle will return the same value.
@@ -142,10 +142,6 @@ impl<'a> Mem<'a> {
         if enable.bit_width() != 1 {
             panic!("Attempted to specify a read port for memory \"{}\" in module \"{}\" with an enable signal with {} bit(s), but memory read/write ports are required to be 1 bit wide.", self.name, self.module.name, enable.bit_width());
         }
-        // TODO: Avoid potential name collisions
-        let name_prefix = format!("{}_impl_read_port", self.name);
-        let address = address.reg_next(format!("{}_address", name_prefix));
-        let enable = enable.reg_next(format!("{}_enable", name_prefix));
         let ret = self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,

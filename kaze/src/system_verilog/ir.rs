@@ -95,10 +95,6 @@ impl Assignment {
 
 #[derive(Clone)]
 pub enum Expr {
-    ArrayIndex {
-        target: Box<Expr>,
-        index: Box<Expr>,
-    },
     BinOp {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
@@ -148,12 +144,6 @@ impl Expr {
 
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         match self {
-            Expr::ArrayIndex { target, index } => {
-                target.write(w)?;
-                w.append("[")?;
-                index.write(w)?;
-                w.append("]")?;
-            }
             Expr::BinOp { lhs, rhs, op } => {
                 lhs.write(w)?;
                 w.append(&format!(

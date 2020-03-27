@@ -14,9 +14,16 @@ pub(super) struct Register<'a> {
 pub(super) struct Mem<'a> {
     pub mem: &'a graph::Mem<'a>,
     pub mem_name: String,
+    pub read_signal_names: HashMap<(&'a graph::Signal<'a>, &'a graph::Signal<'a>), ReadSignalNames>,
     pub write_address_name: String,
     pub write_value_name: String,
     pub write_enable_name: String,
+}
+
+pub struct ReadSignalNames {
+    pub address_name: String,
+    pub enable_name: String,
+    pub value_name: String,
 }
 
 pub(super) struct StateElements<'graph, 'arena> {
@@ -131,6 +138,22 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                     return;
                 }
                 let mem_name = format!("__mem_{}_{}", mem.name, self.mems.len());
+                // TODO: It might actually be too conservative to trace all read ports,
+                //  as we only know that the write port and _this_ read port are reachable
+                //  at this point, but we have to keep some extra state to know whether or
+                //  not we've hit each read port otherwise.
+                let mut read_signal_names = HashMap::new();
+                for (index, (address, enable)) in mem.read_ports.borrow().iter().enumerate() {
+                    let name_prefix = format!("{}_read_port_{}_", mem_name, index);
+                    read_signal_names.insert(
+                        (*address, *enable),
+                        ReadSignalNames {
+                            address_name: format!("{}address", name_prefix),
+                            enable_name: format!("{}enable", name_prefix),
+                            value_name: format!("{}value", name_prefix),
+                        },
+                    );
+                }
                 let name_prefix = format!("{}_write_port_", mem_name);
                 let write_address_name = format!("{}address", name_prefix);
                 let write_value_name = format!("{}value", name_prefix);
@@ -143,12 +166,9 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                         write_address_name,
                         write_value_name,
                         write_enable_name,
+                        read_signal_names,
                     },
                 );
-                // TODO: It might actually be too conservative to trace all read ports,
-                //  as we only know that the write port and _this_ read port are reachable
-                //  at this point, but we have to keep some extra state to know whether or
-                //  not we've hit each read port otherwise.
                 for (address, enable) in mem.read_ports.borrow().iter() {
                     self.gather(address, context, context_arena);
                     self.gather(enable, context, context_arena);

@@ -348,36 +348,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     enable,
                 } => {
                     let mem = &self.state_elements.mems[&(context, mem)];
-                    let address = self.compile_signal(address, context, a);
-                    let enable = self.compile_signal(enable, context, a);
-                    let when_true = Expr::ArrayIndex {
-                        target: Box::new(Expr::Ref {
-                            name: mem.mem_name.clone(),
-                            scope: Scope::Member,
-                        }),
-                        index: Box::new(address),
-                    };
-                    let element_bit_width = mem.mem.element_bit_width;
-                    let element_type = ValueType::from_bit_width(element_bit_width);
-                    // TODO: Is it possible/better to mask the value instead of the expr?
-                    let when_false = self.gen_mask(
-                        Expr::Constant {
-                            value: match element_type {
-                                ValueType::Bool => Constant::Bool(true),
-                                ValueType::I32 | ValueType::I64 | ValueType::I128 => unreachable!(),
-                                ValueType::U32 => Constant::U32(std::u32::MAX),
-                                ValueType::U64 => Constant::U64(std::u64::MAX),
-                                ValueType::U128 => Constant::U128(std::u128::MAX),
-                            },
-                        },
-                        element_bit_width,
-                        element_type,
-                        a,
-                    );
-                    Expr::Ternary {
-                        cond: Box::new(enable),
-                        when_true: Box::new(when_true),
-                        when_false: Box::new(when_false),
+                    let read_signal_names = &mem.read_signal_names[&(address, enable)];
+                    Expr::Ref {
+                        name: read_signal_names.value_name.clone(),
+                        scope: Scope::Member,
                     }
                 }
             };

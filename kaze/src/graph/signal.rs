@@ -829,13 +829,6 @@ impl<'a> Signal<'a> {
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
     }
-
-    // TODO: Make proper construct
-    pub(super) fn reg_next<S: Into<String>>(&'a self, name: S) -> &'a Signal<'a> {
-        let reg = self.module.reg(name, self.bit_width());
-        reg.drive_next(self);
-        reg.value
-    }
 }
 
 pub(crate) enum SignalData<'a> {
