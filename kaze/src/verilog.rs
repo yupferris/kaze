@@ -1,4 +1,4 @@
-//! SystemVerilog code generation.
+//! Verilog code generation.
 
 mod compiler;
 mod ir;
@@ -111,6 +111,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     for (instance, instance_decls) in module_decls.instances.iter() {
         for (name, decl_name) in instance_decls.input_names.iter() {
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: decl_name.clone(),
                 bit_width: instance.instantiated_module.inputs.borrow()[name].bit_width(),
             });
@@ -128,6 +129,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
         for (name, decl_name) in instance_decls.output_names.iter() {
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: decl_name.clone(),
                 bit_width: instance.instantiated_module.outputs.borrow()[name].bit_width(),
             });
@@ -138,6 +140,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         for ((address, enable), read_signal_names) in mem_decls.read_signal_names.iter() {
             let expr = c.compile_signal(address, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: read_signal_names.address_name.clone(),
                 bit_width: address.bit_width(),
             });
@@ -147,6 +150,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             });
             let expr = c.compile_signal(enable, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: read_signal_names.enable_name.clone(),
                 bit_width: enable.bit_width(),
             });
@@ -155,6 +159,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 expr,
             });
             node_decls.push(NodeDecl {
+                net_type: NetType::Reg,
                 name: read_signal_names.value_name.clone(),
                 bit_width: mem.element_bit_width,
             });
@@ -162,6 +167,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         if let Some((address, value, enable)) = *mem.write_port.borrow() {
             let expr = c.compile_signal(address, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: mem_decls.write_address_name.clone(),
                 bit_width: address.bit_width(),
             });
@@ -171,6 +177,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             });
             let expr = c.compile_signal(value, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: mem_decls.write_value_name.clone(),
                 bit_width: value.bit_width(),
             });
@@ -180,6 +187,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             });
             let expr = c.compile_signal(enable, &module_decls, &mut assignments);
             node_decls.push(NodeDecl {
+                net_type: NetType::Wire,
                 name: mem_decls.write_enable_name.clone(),
                 bit_width: enable.bit_width(),
             });
@@ -192,10 +200,12 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     for reg in module_decls.regs.values() {
         node_decls.push(NodeDecl {
+            net_type: NetType::Reg,
             name: reg.value_name.clone(),
             bit_width: reg.data.bit_width,
         });
         node_decls.push(NodeDecl {
+            net_type: NetType::Wire,
             name: reg.next_name.clone(),
             bit_width: reg.data.bit_width,
         });
@@ -217,9 +227,9 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     w.indent();
 
     // TODO: Make conditional based on the presence of (resetable) state elements
-    w.append_line("input wire logic reset_n,")?;
+    w.append_line("input wire reset_n,")?;
     w.append_indent()?;
-    w.append("input wire logic clk")?;
+    w.append("input wire clk")?;
     if !m.inputs.borrow().is_empty() || !m.outputs.borrow().is_empty() {
         w.append(",")?;
         w.append_newline()?;
@@ -229,7 +239,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     let num_inputs = inputs.len();
     for (i, (name, source)) in inputs.iter().enumerate() {
         w.append_indent()?;
-        w.append("input wire logic ")?;
+        w.append("input wire ")?;
         if source.bit_width() > 1 {
             w.append(&format!("[{}:{}] ", source.bit_width() - 1, 0))?;
         }
@@ -243,7 +253,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     let num_outputs = outputs.len();
     for (i, (name, output)) in outputs.iter().enumerate() {
         w.append_indent()?;
-        w.append("output wire logic ")?;
+        w.append("output wire ")?;
         if output.bit_width() > 1 {
             w.append(&format!("[{}:{}] ", output.bit_width() - 1, 0))?;
         }
@@ -297,7 +307,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     for (mem, mem_decls) in module_decls.mems.iter() {
         w.append_indent()?;
-        w.append("logic ")?;
+        w.append("reg ")?;
         if mem.element_bit_width > 1 {
             w.append(&format!("[{}:{}] ", mem.element_bit_width - 1, 0))?;
         }
@@ -326,7 +336,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             w.append_newline()?;
         }
         if !mem_decls.read_signal_names.is_empty() || mem.write_port.borrow().is_some() {
-            w.append_line("always_ff @(posedge clk) begin")?;
+            w.append_line("always @(posedge clk) begin")?;
             w.indent();
         }
         for (_, read_signal_names) in mem_decls.read_signal_names.iter() {
@@ -358,7 +368,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     for reg in module_decls.regs.values() {
         w.append_indent()?;
-        w.append("always_ff @(posedge clk")?;
+        w.append("always @(posedge clk")?;
         if reg.data.initial_value.borrow().is_some() {
             w.append(", negedge reset_n")?;
         }

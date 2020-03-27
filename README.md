@@ -6,7 +6,7 @@ An [HDL](https://en.wikipedia.org/wiki/Hardware_description_language) embedded i
 [![Documentation](https://docs.rs/kaze/badge.svg)](https://docs.rs/kaze)
 ![License](https://img.shields.io/crates/l/kaze)
 
-kaze provides an API to describe `Module`s composed of `Signal`s, which can then be used to generate Rust simulator code or SystemVerilog modules.
+kaze provides an API to describe `Module`s composed of `Signal`s, which can then be used to generate Rust simulator code or Verilog modules.
 
 kaze's API is designed to be as minimal as possible while still being expressive.
 It's designed to prevent the user from being able to describe buggy or incorrect hardware as much as possible.
@@ -36,8 +36,8 @@ fn main() -> std::io::Result<()> {
     // Generate Rust simulator code
     sim::generate(inverter, std::io::stdout())?;
 
-    // Generate SystemVerilog code
-    system_verilog::generate(inverter, std::io::stdout())?;
+    // Generate Verilog code
+    verilog::generate(inverter, std::io::stdout())?;
 
     Ok(())
 }

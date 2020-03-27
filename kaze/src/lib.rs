@@ -1,6 +1,6 @@
 //! An [HDL](https://en.wikipedia.org/wiki/Hardware_description_language) embedded in [Rust](https://www.rust-lang.org/).
 //!
-//! kaze provides an API to describe [`Module`]s composed of [`Signal`]s, which can then be used to generate [Rust simulator code](sim/fn.generate.html) or [SystemVerilog modules](system_verilog/fn.generate.html).
+//! kaze provides an API to describe [`Module`]s composed of [`Signal`]s, which can then be used to generate [Rust simulator code](sim/fn.generate.html) or [Verilog modules](verilog/fn.generate.html).
 //!
 //! kaze's API is designed to be as minimal as possible while still being expressive.
 //! It's designed to prevent the user from being able to describe buggy or incorrect hardware as much as possible.
@@ -30,8 +30,8 @@
 //! // Generate Rust simulator code
 //! sim::generate(inverter, std::io::stdout())?;
 //!
-//! // Generate SystemVerilog code
-//! system_verilog::generate(inverter, std::io::stdout())?;
+//! // Generate Verilog code
+//! verilog::generate(inverter, std::io::stdout())?;
 //! # Ok(())
 //! # }
 //! ```
@@ -46,7 +46,7 @@ mod code_writer;
 mod graph;
 mod module_context;
 pub mod sim;
-pub mod system_verilog;
 mod validation;
+pub mod verilog;
 
 pub use graph::*;

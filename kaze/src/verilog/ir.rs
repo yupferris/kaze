@@ -4,6 +4,7 @@ use crate::graph;
 use std::io::{Result, Write};
 
 pub struct NodeDecl {
+    pub net_type: NetType,
     pub name: String,
     pub bit_width: u32,
 }
@@ -11,7 +12,8 @@ pub struct NodeDecl {
 impl NodeDecl {
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         w.append_indent()?;
-        w.append("logic ")?;
+        self.net_type.write(w)?;
+        w.append(" ")?;
         if self.bit_width > 1 {
             w.append(&format!("[{}:{}] ", self.bit_width - 1, 0))?;
         }
@@ -19,6 +21,20 @@ impl NodeDecl {
         w.append_newline()?;
 
         Ok(())
+    }
+}
+
+pub enum NetType {
+    Reg,
+    Wire,
+}
+
+impl NetType {
+    pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
+        w.append(match self {
+            NetType::Reg => "reg",
+            NetType::Wire => "wire",
+        })
     }
 }
 
@@ -39,6 +55,7 @@ impl AssignmentContext {
         let name = format!("__temp_{}", self.local_decls.len());
 
         self.local_decls.push(NodeDecl {
+            net_type: NetType::Wire,
             name: name.clone(),
             bit_width,
         });

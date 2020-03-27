@@ -26,7 +26,7 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 ///
 /// A `Signal` can be created by several [`Module`] methods (eg. [`lit`]) or as a result of combining existing `Signal`s (eg. [`concat`]). `Signal`s are local to their respective [`Module`]s.
 ///
-/// A `Signal` behaves similarly to a `wire` in SystemVerilog, except that it's always driven.
+/// A `Signal` behaves similarly to a `wire` in Verilog, except that it's always driven.
 ///
 /// # Examples
 ///
