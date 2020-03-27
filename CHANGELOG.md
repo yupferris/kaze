@@ -6,6 +6,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2020-03-27
+### Added
+- Complete Verilog codegen
+- Validation tests for Verilog codegen
+- `Context::modules` method to borrow a `Context`'s `Module`s, primarily useful for iterating over them for generating Verilog code
+
+### Changed
+- Simultaneous reads/writes to the same location in a `Mem` on a given cycle results in reads returning the value previously at that memory location, **not** the newly-written value
+
+### Fixed
+- Wrong publish date for 0.1.6 in changelog
+
 ## [0.1.6] - 2020-02-22
 ### Fixed
 - Broken default value for `Mem`s with single-bit elements in generated simulators
@@ -61,7 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/yupferris/kaze/compare/v0.1.6..v0.1.7
 [0.1.6]: https://github.com/yupferris/kaze/compare/v0.1.5..v0.1.6
 [0.1.5]: https://github.com/yupferris/kaze/compare/v0.1.4..v0.1.5
 [0.1.4]: https://github.com/yupferris/kaze/compare/v0.1.3..v0.1.4
