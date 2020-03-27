@@ -109,7 +109,7 @@ impl<'a> Mem<'a> {
     ///
     /// Read ports always have an `address` signal and an `enable` signal.
     /// When `enable` is asserted, the returned [`Signal`] will reflect the data read from the location specified by `address` on the following cycle.
-    /// If `enable` is not asserted, then the value of the returned [`Signal`] is undefined on the following cycle.
+    /// If `enable` is not asserted, then the value of the returned [`Signal`] is unchanged on the following cycle and reflects the value of the most recent read (note that this may be undefined before a valid read has occurred).
     ///
     /// # Panics
     ///
