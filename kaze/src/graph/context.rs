@@ -6,7 +6,7 @@ use super::signal::*;
 
 use typed_arena::Arena;
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 
 /// A top-level container/owner object for a [`Module`] graph.
@@ -106,6 +106,28 @@ impl<'a> Context<'a> {
         modules.insert(name, module);
         module
     }
+
+    /// Immutably borrows this `Context`'s [`Module`]s.
+    ///
+    /// This is primarily useful for iterating over every [`Module`] in this `Context` when generating code.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let my_module = c.module("MyModule");
+    /// let another_mod = c.module("AnotherMod");
+    ///
+    /// assert_eq!(c.modules().len(), 2);
+    /// ```
+    ///
+    /// [`Module`]: ./struct.Module.html
+    pub fn modules(&'a self) -> Ref<BTreeMap<String, &'a Module<'a>>> {
+        self.modules.borrow()
+    }
 }
 
 #[cfg(test)]
@@ -122,5 +144,12 @@ mod tests {
 
         // Panic
         let _ = c.module("A");
+    }
+
+    #[test]
+    fn new_context_has_no_modules() {
+        let c = Context::new();
+
+        assert!(c.modules().is_empty());
     }
 }
