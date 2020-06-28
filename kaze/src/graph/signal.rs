@@ -22,7 +22,7 @@ pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
 /// [`Signal`]: ./struct.Signal.html
 pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 
-/// Represents a collection of 1 or more bits driven by some source.
+/// A collection of 1 or more bits driven by some source.
 ///
 /// A `Signal` can be created by several [`Module`] methods (eg. [`lit`]) or as a result of combining existing `Signal`s (eg. [`concat`]). `Signal`s are local to their respective [`Module`]s.
 ///
