@@ -763,7 +763,7 @@ impl<'a> Signal<'a> {
 
     /// Combines two `Signal`s, producing a new `Signal` that represents `self` arithmetically shifted right by `rhs` bits.
     ///
-    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be all `self`'s top bit repeated `self`'s `bit_width` times.
+    /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be all `self`'s top bit repeated `self`'s `bit_width` times.
     ///
     /// # Panics
     ///
@@ -1169,7 +1169,7 @@ impl<'a> Shl for &'a Signal<'a> {
 
     /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted left by `rhs` bits.
     ///
-    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+    /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
     ///
     /// # Panics
     ///
@@ -1212,7 +1212,7 @@ impl<'a> Shr for &'a Signal<'a> {
 
     /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted right by `rhs` bits.
     ///
-    /// The difference is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+    /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
     ///
     /// # Panics
     ///
