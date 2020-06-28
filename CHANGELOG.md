@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Fixed
 - Clarified docs for `Mem` read port values when `enable` is not asserted
+- Various small doc fixes/regularizations
 
 ### Changed
 - Added more `if_` sugar variants for tuples with up to 12 elements (previously 8)
