@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Clarified docs for `Mem` read port values when `enable` is not asserted
 
+### Changed
+- Added more `if_` sugar variants for tuples with up to 12 elements (previously 8)
+
 ## [0.1.7] - 2020-03-27
 ### Added
 - Complete Verilog codegen
