@@ -264,6 +264,21 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     self.gen_mask(expr, target_bit_width, target_type, a)
                 }
 
+                graph::SignalData::Mul { lhs, rhs } => {
+                    let lhs_type = ValueType::from_bit_width(lhs.bit_width());
+                    let rhs_type = ValueType::from_bit_width(rhs.bit_width());
+                    let lhs = self.compile_signal(lhs, context, a);
+                    let rhs = self.compile_signal(rhs, context, a);
+                    let target_type = ValueType::from_bit_width(signal.bit_width());
+                    let lhs = self.gen_cast(lhs, lhs_type, target_type, a);
+                    let rhs = self.gen_cast(rhs, rhs_type, target_type, a);
+                    a.gen_temp(Expr::InfixBinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: InfixBinOp::Mul,
+                    })
+                }
+
                 graph::SignalData::Bits {
                     source, range_low, ..
                 } => {

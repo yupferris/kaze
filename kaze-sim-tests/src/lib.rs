@@ -165,6 +165,64 @@ mod tests {
     }
 
     #[test]
+    fn mul_test_module() {
+        let mut m = MulTestModule::new();
+
+        m.i1 = false;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = true;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = false;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = true;
+        m.i2 = true;
+        m.prop();
+        assert_eq!(m.o1, 1);
+
+        m.i3 = 7;
+        m.i4 = 15;
+        m.prop();
+        assert_eq!(m.o2, 105);
+
+        m.i5 = 0xffffffff;
+        m.i6 = true;
+        m.prop();
+        assert_eq!(m.o3, 0xffffffff);
+
+        m.i7 = 0xffffffff;
+        m.i8 = 0xffffffff;
+        m.prop();
+        assert_eq!(m.o4, 0xfffffffe00000001);
+
+        m.i9 = 0xfadebabedeadbeef;
+        m.i10 = true;
+        m.prop();
+        assert_eq!(m.o5, 0xfadebabedeadbeef);
+
+        m.i11 = 0xfadebabedeadbeef;
+        m.i12 = 0xabad1deacafeb00b;
+        m.prop();
+        assert_eq!(m.o6, 0xa83c_6c93_0366_3080_b2ff_e1cd_0bdd_8445);
+
+        m.i13 = 0x7adebabedeadbeefabad1deacafeb00b;
+        m.i14 = false;
+        m.prop();
+        assert_eq!(m.o7, 0);
+        m.i14 = true;
+        m.prop();
+        assert_eq!(m.o7, 0x7adebabedeadbeefabad1deacafeb00b);
+    }
+
+    #[test]
     fn shl_test_module() {
         let mut m = ShlTestModule::new();
 

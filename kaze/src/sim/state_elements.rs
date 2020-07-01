@@ -104,6 +104,11 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                 self.gather(rhs, context, context_arena);
             }
 
+            graph::SignalData::Mul { lhs, rhs } => {
+                self.gather(lhs, context, context_arena);
+                self.gather(rhs, context, context_arena);
+            }
+
             graph::SignalData::Bits { source, .. } => {
                 self.gather(source, context, context_arena);
             }

@@ -141,6 +141,20 @@ impl<'graph> Compiler<'graph> {
                     )
                 }
 
+                graph::SignalData::Mul { lhs, rhs } => {
+                    let bit_width = signal.bit_width();
+                    let lhs = self.compile_signal(lhs, module_decls, a);
+                    let rhs = self.compile_signal(rhs, module_decls, a);
+                    a.gen_temp(
+                        Expr::BinOp {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                            op: BinOp::Mul,
+                        },
+                        bit_width,
+                    )
+                }
+
                 graph::SignalData::Bits {
                     source,
                     range_high,

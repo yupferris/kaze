@@ -183,6 +183,7 @@ impl Expr {
                         InfixBinOp::GreaterThanEqual => ">=",
                         InfixBinOp::Shl => "<<",
                         InfixBinOp::Shr => ">>",
+                        InfixBinOp::Mul => "*",
                     }
                 ))?;
                 rhs.write(w)?;
@@ -245,6 +246,7 @@ pub enum InfixBinOp {
     GreaterThanEqual,
     Shl,
     Shr,
+    Mul,
 }
 
 #[derive(Clone)]

@@ -180,6 +180,7 @@ impl Expr {
                         BinOp::Shr => ">>",
                         BinOp::ShrArithmetic => ">>>",
                         BinOp::Sub => "-",
+                        BinOp::Mul => "*",
                     }
                 ))?;
                 rhs.write(w)?;
@@ -258,6 +259,7 @@ pub enum BinOp {
     Shr,
     ShrArithmetic,
     Sub,
+    Mul,
 }
 
 #[derive(Clone)]

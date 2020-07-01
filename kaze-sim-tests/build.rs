@@ -16,6 +16,7 @@ fn main() -> Result<()> {
     sim::generate(widest_input(&c), &mut file)?;
     sim::generate(add_test_module(&c), &mut file)?;
     sim::generate(sub_test_module(&c), &mut file)?;
+    sim::generate(mul_test_module(&c), &mut file)?;
     sim::generate(shl_test_module(&c), &mut file)?;
     sim::generate(shr_test_module(&c), &mut file)?;
     sim::generate(shr_arithmetic_test_module(&c), &mut file)?;
@@ -124,6 +125,40 @@ fn sub_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     let i11 = m.input("i11", 7);
     let i12 = m.input("i12", 7);
     m.output("o6", i11 - i12);
+
+    m
+}
+
+fn mul_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("MulTestModule");
+
+    let i1 = m.input("i1", 1);
+    let i2 = m.input("i2", 1);
+    m.output("o1", i1 * i2);
+
+    let i3 = m.input("i3", 3);
+    let i4 = m.input("i4", 4);
+    m.output("o2", i3 * i4);
+
+    let i5 = m.input("i5", 32);
+    let i6 = m.input("i6", 1);
+    m.output("o3", i5 * i6);
+
+    let i7 = m.input("i7", 32);
+    let i8_ = m.input("i8", 32);
+    m.output("o4", i7 * i8_);
+
+    let i9 = m.input("i9", 64);
+    let i10 = m.input("i10", 1);
+    m.output("o5", i9 * i10);
+
+    let i11 = m.input("i11", 64);
+    let i12 = m.input("i12", 64);
+    m.output("o6", i11 * i12);
+
+    let i13 = m.input("i13", 127);
+    let i14 = m.input("i14", 1);
+    m.output("o7", i13 * i14);
 
     m
 }
