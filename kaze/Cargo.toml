@@ -1,6 +1,6 @@
 [package]
 name = "kaze"
-version = "0.1.9" # Must be kept up-to-date with html_root_url in lib.rs
+version = "0.1.10" # Must be kept up-to-date with html_root_url in lib.rs
 authors = ["Jake \"ferris\" Taylor <yupferris@gmail.com>"]
 edition = "2018"
 description = "An HDL embedded in Rust"
