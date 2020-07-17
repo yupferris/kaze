@@ -154,6 +154,25 @@ impl<'graph> Compiler<'graph> {
                         bit_width,
                     )
                 }
+                graph::SignalData::MulSigned { lhs, rhs } => {
+                    let bit_width = signal.bit_width();
+                    let lhs = self.compile_signal(lhs, module_decls, a);
+                    let rhs = self.compile_signal(rhs, module_decls, a);
+                    let lhs = Expr::Signed {
+                        source: Box::new(lhs),
+                    };
+                    let rhs = Expr::Signed {
+                        source: Box::new(rhs),
+                    };
+                    a.gen_temp(
+                        Expr::BinOp {
+                            lhs: Box::new(lhs),
+                            rhs: Box::new(rhs),
+                            op: BinOp::Mul,
+                        },
+                        bit_width,
+                    )
+                }
 
                 graph::SignalData::Bits {
                     source,

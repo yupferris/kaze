@@ -278,6 +278,30 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         op: InfixBinOp::Mul,
                     })
                 }
+                graph::SignalData::MulSigned { lhs, rhs } => {
+                    let lhs_bit_width = lhs.bit_width();
+                    let rhs_bit_width = rhs.bit_width();
+                    let lhs_type = ValueType::from_bit_width(lhs_bit_width);
+                    let rhs_type = ValueType::from_bit_width(rhs_bit_width);
+                    let lhs = self.compile_signal(lhs, context, a);
+                    let rhs = self.compile_signal(rhs, context, a);
+                    let target_bit_width = signal.bit_width();
+                    let target_type = ValueType::from_bit_width(target_bit_width);
+                    let target_type_signed = target_type.to_signed();
+                    let lhs = self.gen_cast(lhs, lhs_type, target_type_signed, a);
+                    let rhs = self.gen_cast(rhs, rhs_type, target_type_signed, a);
+                    let lhs =
+                        self.gen_sign_extend_shifts(lhs, lhs_bit_width, target_type_signed, a);
+                    let rhs =
+                        self.gen_sign_extend_shifts(rhs, rhs_bit_width, target_type_signed, a);
+                    let expr = a.gen_temp(Expr::InfixBinOp {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: InfixBinOp::Mul,
+                    });
+                    let expr = self.gen_cast(expr, target_type_signed, target_type, a);
+                    self.gen_mask(expr, target_bit_width, target_type, a)
+                }
 
                 graph::SignalData::Bits {
                     source, range_low, ..

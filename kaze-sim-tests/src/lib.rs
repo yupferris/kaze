@@ -223,6 +223,64 @@ mod tests {
     }
 
     #[test]
+    fn mul_signed_test_module() {
+        let mut m = MulSignedTestModule::new();
+
+        m.i1 = false;
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = true; // -1
+        m.i2 = false;
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = false;
+        m.i2 = true; // -1
+        m.prop();
+        assert_eq!(m.o1, 0);
+
+        m.i1 = true; // -1
+        m.i2 = true; // -1
+        m.prop();
+        assert_eq!(m.o1, 1);
+
+        m.i3 = 7; // -1
+        m.i4 = 15; // -1
+        m.prop();
+        assert_eq!(m.o2, 1);
+
+        m.i5 = 0xffffffff; // -1
+        m.i6 = true; // 1
+        m.prop();
+        assert_eq!(m.o3, 1);
+
+        m.i7 = 0xffffffff; // -1
+        m.i8 = 0x7fffffff;
+        m.prop();
+        assert_eq!(m.o4, 0xffffffff80000001);
+
+        m.i9 = 0xfadebabedeadbeef; // negative something
+        m.i10 = true; // -1
+        m.prop();
+        assert_eq!(m.o5, 0x0521454121524111);
+
+        m.i11 = 0xfadebabedeadbeef; // negative something
+        m.i12 = 0xabad1deacafeb00b; // negative something
+        m.prop();
+        assert_eq!(m.o6, 0x1b093e959b9c186b2ffe1cd0bdd8445);
+
+        m.i13 = 0x7adebabedeadbeefabad1deacafeb00b;
+        m.i14 = false;
+        m.prop();
+        assert_eq!(m.o7, 0);
+        m.i14 = true; // -1
+        m.prop();
+        assert_eq!(m.o7, 0x5214541215241105452e21535014ff5);
+    }
+
+    #[test]
     fn shl_test_module() {
         let mut m = ShlTestModule::new();
 

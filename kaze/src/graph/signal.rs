@@ -72,6 +72,7 @@ impl<'a> Signal<'a> {
     /// assert_eq!((!m.low()).bit_width(), 1);
     /// assert_eq!((m.lit(25u8, 8) + m.lit(42u8, 8)).bit_width(), 8);
     /// assert_eq!((m.lit(1u8, 1) * m.lit(2u8, 2)).bit_width(), 3);
+    /// assert_eq!(m.lit(1u8, 1).mul_signed(m.lit(2u8, 2)).bit_width(), 3);
     /// assert_eq!((m.high() & m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(12u32, 100).bit(30).bit_width(), 1);
@@ -101,6 +102,7 @@ impl<'a> Signal<'a> {
             SignalData::ComparisonBinOp { .. } => 1,
             SignalData::ShiftBinOp { lhs, .. } => lhs.bit_width(),
             SignalData::Mul { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
+            SignalData::MulSigned { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
             SignalData::Bits {
                 range_high,
                 range_low,
@@ -802,6 +804,46 @@ impl<'a> Signal<'a> {
         })
     }
 
+    /// Combines two `Signal`s, producing a new `Signal` that represents the signed product of the original two `Signal`s.
+    ///
+    /// The product's `bit_width` is equal to `self.bit_width() + rhs.bit_width()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if `self.bit_width() + rhs.bit_width()` is greater than [`MAX_SIGNAL_BIT_WIDTH`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let lhs = m.lit(4u32, 3); // -4
+    /// let rhs = m.lit(5u32, 4);
+    /// let sum = lhs.mul_signed(rhs); // Equivalent to m.lit(108u32, 7), -20
+    /// ```
+    ///
+    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
+    /// [`Module`]: ./struct.Module.html
+    pub fn mul_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
+        if !ptr::eq(self.module, rhs.module) {
+            panic!("Attempted to combine signals from different modules.");
+        }
+        let target_bit_width = self.bit_width() + rhs.bit_width();
+        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        }
+        self.context.signal_arena.alloc(Signal {
+            context: self.context,
+            module: self.module,
+
+            data: SignalData::MulSigned { lhs: self, rhs },
+        })
+    }
+
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `self` is high, and `when_false`'s value when `self` is low.
     ///
     /// This is a convenience wrapper for [`Module`]::[`mux`].
@@ -874,6 +916,10 @@ pub(crate) enum SignalData<'a> {
     },
 
     Mul {
+        lhs: &'a Signal<'a>,
+        rhs: &'a Signal<'a>,
+    },
+    MulSigned {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
     },
@@ -1857,6 +1903,36 @@ mod tests {
 
         // Panic
         let _ = i1.shr_arithmetic(i2);
+    }
+
+    #[test]
+    #[should_panic(expected = "Attempted to combine signals from different modules.")]
+    fn mul_signed_separate_module_error() {
+        let c = Context::new();
+
+        let m1 = c.module("A");
+        let i1 = m1.input("a", 1);
+
+        let m2 = c.module("B");
+        let i2 = m2.high();
+
+        // Panic
+        let _ = i1.mul_signed(i2);
+    }
+
+    #[test]
+    #[should_panic(
+        expected = "Attempted to multiply a 128-bit with a 1-bit signal, but this would result in a bit width of 129, which is greater than the maximum signal bit width of 128 bit(s)."
+    )]
+    fn mul_signed_oob_error() {
+        let c = Context::new();
+
+        let m = c.module("A");
+        let i1 = m.input("a", 128);
+        let i2 = m.input("b", 1);
+
+        // Panic
+        let _ = i1.mul_signed(i2);
     }
 
     #[test]
