@@ -181,14 +181,19 @@ impl<'graph> Compiler<'graph> {
                 } => {
                     let bit_width = signal.bit_width();
                     let source = self.compile_signal(source, module_decls, a);
-                    a.gen_temp(
-                        Expr::Bits {
-                            source: Box::new(source),
-                            range_high,
-                            range_low,
-                        },
-                        bit_width,
-                    )
+                    // Verilog doesn't allow indexing scalars
+                    if bit_width == 1 {
+                        source
+                    } else {
+                        a.gen_temp(
+                            Expr::Bits {
+                                source: Box::new(source),
+                                range_high,
+                                range_low,
+                            },
+                            bit_width,
+                        )
+                    }
                 }
 
                 graph::SignalData::Repeat { source, count } => {
