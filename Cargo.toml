@@ -1,0 +1,6 @@
+[workspace]
+
+members = [
+    "kaze",
+    "kaze-sim-tests",
+]
