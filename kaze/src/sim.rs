@@ -100,7 +100,6 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     let mut w = code_writer::CodeWriter::new(w);
 
-    w.append_line("#[derive(Default)]")?;
     w.append_line(&format!("pub struct {} {{", m.name))?;
     w.indent();
 
@@ -130,7 +129,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    if state_elements.regs.len() > 0 {
+    if !state_elements.regs.is_empty() {
         w.append_newline()?;
         w.append_line("// Regs")?;
         for (_, reg) in state_elements.regs.iter() {
@@ -143,36 +142,42 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    if state_elements.mems.len() > 0 {
+    if !state_elements.mems.is_empty() {
         w.append_newline()?;
         w.append_line("// Mems")?;
         for (_, mem) in state_elements.mems.iter() {
+            let address_type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
             let element_type_name = ValueType::from_bit_width(mem.mem.element_bit_width).name();
             w.append_line(&format!(
                 "{}: Box<[{}]>, // {} bit elements",
                 mem.mem_name, element_type_name, mem.mem.element_bit_width
             ))?;
             for (_, read_signal_names) in mem.read_signal_names.iter() {
-                let type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
                 w.append_line(&format!(
                     "{}: {},",
-                    read_signal_names.address_name, type_name
+                    read_signal_names.address_name, address_type_name
                 ))?;
-                let type_name = ValueType::Bool.name();
                 w.append_line(&format!(
                     "{}: {},",
-                    read_signal_names.enable_name, type_name
+                    read_signal_names.enable_name,
+                    ValueType::Bool.name()
                 ))?;
-                let type_name = ValueType::from_bit_width(mem.mem.element_bit_width).name();
-                w.append_line(&format!("{}: {},", read_signal_names.value_name, type_name))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.value_name, element_type_name
+                ))?;
             }
             if mem.mem.write_port.borrow().is_some() {
-                let type_name = ValueType::from_bit_width(mem.mem.address_bit_width).name();
-                w.append_line(&format!("{}: {},", mem.write_address_name, type_name))?;
-                let type_name = ValueType::from_bit_width(mem.mem.element_bit_width).name();
-                w.append_line(&format!("{}: {},", mem.write_value_name, type_name))?;
-                let type_name = ValueType::Bool.name();
-                w.append_line(&format!("{}: {},", mem.write_enable_name, type_name))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    mem.write_address_name, address_type_name
+                ))?;
+                w.append_line(&format!("{}: {},", mem.write_value_name, element_type_name))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    mem.write_enable_name,
+                    ValueType::Bool.name()
+                ))?;
             }
         }
     }
@@ -186,11 +191,59 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     w.append_line(&format!("pub fn new() -> {} {{", m.name))?;
     w.indent();
+    w.append_line(&format!("{} {{", m.name))?;
+    w.indent();
+
+    if !inputs.is_empty() {
+        w.append_line("// Inputs")?;
+        for (name, input) in inputs.iter() {
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                name,
+                ValueType::from_bit_width(input.bit_width()).zero_str(),
+                input.bit_width()
+            ))?;
+        }
+    }
+
+    if !outputs.is_empty() {
+        w.append_line("// Outputs")?;
+        for (name, output) in outputs.iter() {
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                name,
+                ValueType::from_bit_width(output.bit_width()).zero_str(),
+                output.bit_width()
+            ))?;
+        }
+    }
+
+    if !state_elements.regs.is_empty() {
+        w.append_newline()?;
+        w.append_line("// Regs")?;
+        for (_, reg) in state_elements.regs.iter() {
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                reg.value_name,
+                ValueType::from_bit_width(reg.data.bit_width).zero_str(),
+                reg.data.bit_width
+            ))?;
+            w.append_line(&format!(
+                "{}: {},",
+                reg.next_name,
+                ValueType::from_bit_width(reg.data.bit_width).zero_str()
+            ))?;
+        }
+    }
+
     if !state_elements.mems.is_empty() {
-        w.append_line(&format!("let mut ret = {}::default();", m.name))?;
+        w.append_newline()?;
+        w.append_line("// Mems")?;
         for (_, mem) in state_elements.mems.iter() {
+            let address_type = ValueType::from_bit_width(mem.mem.address_bit_width);
+            let element_type = ValueType::from_bit_width(mem.mem.element_bit_width);
             if let Some(ref initial_contents) = *mem.mem.initial_contents.borrow() {
-                w.append_line(&format!("ret.{} = vec![", mem.mem_name))?;
+                w.append_line(&format!("{}: vec![", mem.mem_name))?;
                 w.indent();
                 for element in initial_contents.iter() {
                     w.append_line(&match *element {
@@ -201,23 +254,54 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                     })?;
                 }
                 w.unindent()?;
-                w.append_line("].into_boxed_slice();")?;
+                w.append_line("].into_boxed_slice(),")?;
             } else {
                 w.append_line(&format!(
-                    "ret.{} = vec![{}; {}].into_boxed_slice();",
+                    "{}: vec![{}; {}].into_boxed_slice(),",
                     mem.mem_name,
-                    match ValueType::from_bit_width(mem.mem.element_bit_width) {
-                        ValueType::Bool => "false",
-                        _ => "0",
-                    },
+                    element_type.zero_str(),
                     1 << mem.mem.address_bit_width
                 ))?;
             }
+            for (_, read_signal_names) in mem.read_signal_names.iter() {
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.address_name,
+                    address_type.zero_str()
+                ))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.enable_name,
+                    ValueType::Bool.zero_str()
+                ))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    read_signal_names.value_name,
+                    element_type.zero_str()
+                ))?;
+            }
+            if mem.mem.write_port.borrow().is_some() {
+                w.append_line(&format!(
+                    "{}: {},",
+                    mem.write_address_name,
+                    address_type.zero_str()
+                ))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    mem.write_value_name,
+                    element_type.zero_str()
+                ))?;
+                w.append_line(&format!(
+                    "{}: {},",
+                    mem.write_enable_name,
+                    ValueType::Bool.zero_str()
+                ))?;
+            }
         }
-        w.append_line("ret")?;
-    } else {
-        w.append_line(&format!("{}::default()", m.name))?;
     }
+
+    w.unindent()?;
+    w.append_line("}")?;
     w.unindent()?;
     w.append_line("}")?;
 

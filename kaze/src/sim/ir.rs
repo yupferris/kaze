@@ -315,4 +315,11 @@ impl ValueType {
             ValueType::I128 | ValueType::U128 => 128,
         }
     }
+
+    pub fn zero_str(&self) -> &'static str {
+        match self {
+            ValueType::Bool => "false",
+            _ => "0",
+        }
+    }
 }
