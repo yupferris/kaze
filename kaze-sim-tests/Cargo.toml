@@ -12,3 +12,4 @@ build = "build.rs"
 kaze = { path = "../kaze" }
 
 [dependencies]
+kaze = { path = "../kaze" }

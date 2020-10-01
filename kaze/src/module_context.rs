@@ -2,7 +2,7 @@ use crate::graph;
 
 use typed_arena::Arena;
 
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::ptr;
@@ -38,6 +38,12 @@ impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
             self.children.borrow_mut().insert(instance, child);
         }
         self.children.borrow()[&key]
+    }
+
+    pub fn children(
+        &self,
+    ) -> Ref<HashMap<*const graph::Instance<'graph>, &'arena ModuleContext<'graph, 'arena>>> {
+        self.children.borrow()
     }
 }
 

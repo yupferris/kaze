@@ -146,7 +146,7 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                 if self.mems.contains_key(&key) {
                     return;
                 }
-                let mem_name = format!("__mem_{}_{}", mem.name, self.mems.len());
+                let mem_name = format!("{}_{}", mem.name, self.mems.len());
                 // TODO: It might actually be too conservative to trace all read ports,
                 //  as we only know that the write port and _this_ read port are reachable
                 //  at this point, but we have to keep some extra state to know whether or

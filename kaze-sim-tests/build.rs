@@ -12,44 +12,228 @@ fn main() -> Result<()> {
 
     let c = Context::new();
 
-    sim::generate(input_masking(&c), &mut file)?;
-    sim::generate(widest_input(&c), &mut file)?;
-    sim::generate(add_test_module(&c), &mut file)?;
-    sim::generate(sub_test_module(&c), &mut file)?;
-    sim::generate(mul_test_module(&c), &mut file)?;
-    sim::generate(mul_signed_test_module(&c), &mut file)?;
-    sim::generate(shl_test_module(&c), &mut file)?;
-    sim::generate(shr_test_module(&c), &mut file)?;
-    sim::generate(shr_arithmetic_test_module(&c), &mut file)?;
-    sim::generate(bit_and_test_module(&c), &mut file)?;
-    sim::generate(bit_or_test_module(&c), &mut file)?;
-    sim::generate(bit_xor_test_module(&c), &mut file)?;
-    sim::generate(not_test_module(&c), &mut file)?;
-    sim::generate(reg_test_module(&c), &mut file)?;
-    sim::generate(simple_reg_delay(&c), &mut file)?;
-    sim::generate(bit_test_module_0(&c), &mut file)?;
-    sim::generate(bit_test_module_1(&c), &mut file)?;
-    sim::generate(bits_test_module_0(&c), &mut file)?;
-    sim::generate(bits_test_module_1(&c), &mut file)?;
-    sim::generate(repeat_test_module(&c), &mut file)?;
-    sim::generate(concat_test_module(&c), &mut file)?;
-    sim::generate(eq_test_module(&c), &mut file)?;
-    sim::generate(ne_test_module(&c), &mut file)?;
-    sim::generate(lt_test_module(&c), &mut file)?;
-    sim::generate(le_test_module(&c), &mut file)?;
-    sim::generate(gt_test_module(&c), &mut file)?;
-    sim::generate(ge_test_module(&c), &mut file)?;
-    sim::generate(lt_signed_test_module(&c), &mut file)?;
-    sim::generate(le_signed_test_module(&c), &mut file)?;
-    sim::generate(gt_signed_test_module(&c), &mut file)?;
-    sim::generate(ge_signed_test_module(&c), &mut file)?;
-    sim::generate(mux_test_module(&c), &mut file)?;
-    sim::generate(instantiation_test_module_comb(&c), &mut file)?;
-    sim::generate(instantiation_test_module_reg(&c), &mut file)?;
-    sim::generate(nested_instantiation_test_module(&c), &mut file)?;
-    sim::generate(mem_test_module_0(&c), &mut file)?;
-    sim::generate(mem_test_module_1(&c), &mut file)?;
-    sim::generate(mem_test_module_2(&c), &mut file)?;
+    sim::generate(
+        input_masking(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        widest_input(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        add_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        sub_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mul_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mul_signed_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        shl_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        shr_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        shr_arithmetic_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bit_and_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bit_or_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bit_xor_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        not_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        reg_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        simple_reg_delay(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bit_test_module_0(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bit_test_module_1(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bits_test_module_0(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        bits_test_module_1(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        repeat_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        concat_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        eq_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        ne_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        lt_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        le_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        gt_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        ge_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        lt_signed_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        le_signed_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        gt_signed_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        ge_signed_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mux_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        instantiation_test_module_comb(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        instantiation_test_module_reg(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        nested_instantiation_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mem_test_module_0(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mem_test_module_1(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        mem_test_module_2(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        trace_test_module_0(&c),
+        sim::GenerationOptions {
+            tracing: true,
+            ..sim::GenerationOptions::default()
+        },
+        &mut file,
+    )?;
+    sim::generate(
+        trace_test_module_1(&c),
+        sim::GenerationOptions {
+            tracing: true,
+            ..sim::GenerationOptions::default()
+        },
+        &mut file,
+    )?;
+    sim::generate(
+        trace_test_module_2(&c),
+        sim::GenerationOptions {
+            tracing: true,
+            ..sim::GenerationOptions::default()
+        },
+        &mut file,
+    )?;
+    sim::generate(
+        trace_test_module_3(&c),
+        sim::GenerationOptions {
+            tracing: true,
+            ..sim::GenerationOptions::default()
+        },
+        &mut file,
+    )?;
 
     Ok(())
 }
@@ -741,6 +925,75 @@ fn mem_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
     mem.write_port(
         m.input("write_addr", 1),
         m.input("write_value", 1),
+        m.input("write_enable", 1),
+    );
+    m.output(
+        "read_data",
+        mem.read_port(m.input("read_addr", 1), m.input("read_enable", 1)),
+    );
+
+    m
+}
+
+fn trace_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("TraceTestModule0");
+
+    m.output("o0", m.input("i0", 1));
+    m.output("o1", m.input("i1", 2));
+    m.output("o2", m.input("i2", 32));
+    m.output("o3", m.input("i3", 64));
+    m.output("o4", m.input("i4", 128));
+
+    m
+}
+
+fn trace_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("TraceTestModule1");
+
+    let r1 = m.reg("r1", 32);
+    r1.default_value(0u32);
+    r1.drive_next(m.input("i1", 32));
+    m.output("o1", r1.value);
+
+    let r2 = m.reg("r2", 32);
+    r2.drive_next(m.input("i2", 32));
+    m.output("o2", r2.value);
+
+    m
+}
+
+fn trace_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("TraceTestModule2Inner");
+    let i1 = m.input("i1", 32);
+    let i2 = m.input("i2", 32);
+    let r = m.reg("r", 32);
+    r.default_value(0u32);
+    r.drive_next(i1 & i2);
+    m.output("o", r.value);
+
+    let m = c.module("TraceTestModule2");
+    let i1 = m.instance("inner1", "TraceTestModule2Inner");
+    i1.drive_input("i1", m.input("i1", 32));
+    i1.drive_input("i2", m.input("i2", 32));
+    let i2 = m.instance("inner2", "TraceTestModule2Inner");
+    i2.drive_input("i1", m.input("i3", 32));
+    i2.drive_input("i2", m.input("i4", 32));
+    let i3 = m.instance("inner3", "TraceTestModule2Inner");
+    i3.drive_input("i1", i1.output("o"));
+    i3.drive_input("i2", i2.output("o"));
+    m.output("o", i3.output("o"));
+
+    m
+}
+
+fn trace_test_module_3<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("TraceTestModule3");
+
+    // No initial contents, single write port, single read port
+    let mem = m.mem("mem", 1, 4);
+    mem.write_port(
+        m.input("write_addr", 1),
+        m.input("write_value", 4),
         m.input("write_enable", 1),
     );
     m.output(

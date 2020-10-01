@@ -28,7 +28,7 @@
 //! inverter.output("o", !i); // Output inverted input
 //!
 //! // Generate Rust simulator code
-//! sim::generate(inverter, std::io::stdout())?;
+//! sim::generate(inverter, sim::GenerationOptions::default(), std::io::stdout())?;
 //!
 //! // Generate Verilog code
 //! verilog::generate(inverter, std::io::stdout())?;
@@ -45,6 +45,7 @@
 mod code_writer;
 mod graph;
 mod module_context;
+pub mod runtime;
 pub mod sim;
 mod validation;
 pub mod verilog;

@@ -299,7 +299,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 w.append(&format!(".{}({})", name, decl_name))?;
             }
         }
-        w.unindent()?;
+        w.unindent();
         w.append(");")?;
         w.append_newline()?;
         w.append_newline()?;
@@ -331,7 +331,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                     element.numeric_value()
                 ))?;
             }
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
             w.append_newline()?;
         }
@@ -346,7 +346,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 "{} <= {}[{}];",
                 read_signal_names.value_name, mem.name, read_signal_names.address_name
             ))?;
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
         }
         if mem.write_port.borrow().is_some() {
@@ -356,11 +356,11 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 "{}[{}] <= {};",
                 mem.name, mem_decls.write_address_name, mem_decls.write_value_name
             ))?;
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
         }
         if !mem_decls.read_signal_names.is_empty() || mem.write_port.borrow().is_some() {
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
             w.append_newline()?;
         }
@@ -384,17 +384,17 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 reg.data.bit_width,
                 initial_value.numeric_value()
             ))?;
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
             w.append_line("else begin")?;
             w.indent();
         }
         w.append_line(&format!("{} <= {};", reg.value_name, reg.next_name))?;
         if reg.data.initial_value.borrow().is_some() {
-            w.unindent()?;
+            w.unindent();
             w.append_line("end")?;
         }
-        w.unindent()?;
+        w.unindent();
         w.append_line("end")?;
         w.append_newline()?;
     }
@@ -404,7 +404,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         w.append_newline()?;
     }
 
-    w.unindent()?;
+    w.unindent();
     w.append_line("endmodule")?;
     w.append_newline()?;
 

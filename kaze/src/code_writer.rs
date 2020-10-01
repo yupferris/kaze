@@ -14,12 +14,11 @@ impl<W: Write> CodeWriter<W> {
         self.indent_level += 1;
     }
 
-    pub fn unindent(&mut self) -> Result<()> {
+    pub fn unindent(&mut self) {
         if self.indent_level == 0 {
             panic!("Indent level underflow");
         }
         self.indent_level -= 1;
-        Ok(())
     }
 
     pub fn append_indent(&mut self) -> Result<()> {

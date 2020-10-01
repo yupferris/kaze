@@ -1,10 +1,220 @@
 #[cfg(test)]
 mod tests {
+    extern crate kaze;
+
     mod modules {
         include!(concat!(env!("OUT_DIR"), "/modules.rs"));
     }
 
     use modules::*;
+
+    use kaze::runtime::tracing::*;
+
+    use std::cell::RefCell;
+    use std::collections::BTreeMap;
+    use std::fmt;
+    use std::io;
+    use std::rc::Rc;
+
+    struct CodeWriter<'a, 'b> {
+        f: &'a mut fmt::Formatter<'b>,
+        indent_level: u32,
+    }
+
+    impl<'a, 'b> CodeWriter<'a, 'b> {
+        fn new(f: &'a mut fmt::Formatter<'b>) -> CodeWriter<'a, 'b> {
+            CodeWriter { f, indent_level: 0 }
+        }
+
+        fn indent(&mut self) {
+            self.indent_level += 1;
+        }
+
+        fn unindent(&mut self) {
+            if self.indent_level == 0 {
+                panic!("Indent level underflow");
+            }
+            self.indent_level -= 1;
+        }
+
+        fn append_indent(&mut self) -> fmt::Result {
+            for _ in 0..self.indent_level {
+                write!(self.f, "    ")?;
+            }
+            Ok(())
+        }
+
+        fn append_newline(&mut self) -> fmt::Result {
+            writeln!(self.f, "")?;
+            Ok(())
+        }
+
+        fn append(&mut self, s: &str) -> fmt::Result {
+            write!(self.f, "{}", s)?;
+            Ok(())
+        }
+
+        fn append_line(&mut self, s: &str) -> fmt::Result {
+            self.append_indent()?;
+            self.append(s)?;
+            self.append_newline()?;
+            Ok(())
+        }
+    }
+
+    #[derive(Eq, PartialEq)]
+    struct Capture {
+        root: Option<(&'static str, CaptureModule)>,
+    }
+
+    impl fmt::Debug for Capture {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            let mut w = CodeWriter::new(f);
+
+            let (name, module) = self.root.as_ref().unwrap();
+
+            fn print_module(w: &mut CodeWriter, name: &str, module: &CaptureModule) -> fmt::Result {
+                w.append_line(&format!("module {}:", name))?;
+                w.indent();
+
+                w.append_line(&format!("children:"))?;
+                w.indent();
+                for (name, module) in module.children.iter() {
+                    print_module(w, name, module)?;
+                }
+                w.unindent();
+
+                w.append_line(&format!("signals:"))?;
+                w.indent();
+                for (name, signal) in module.signals.iter() {
+                    w.append_line(&format!(
+                        "{}: {} bit(s) ({:?})",
+                        name, signal.bit_width, signal.type_
+                    ))?;
+                    w.indent();
+                    for (timestamp, value) in signal.values.borrow().iter() {
+                        w.append_line(&format!("{}: {:?}", timestamp, value))?;
+                    }
+                    w.unindent();
+                }
+                w.unindent();
+
+                w.unindent();
+
+                Ok(())
+            };
+            print_module(&mut w, name, module)?;
+
+            Ok(())
+        }
+    }
+
+    impl Capture {
+        fn new() -> Capture {
+            Capture { root: None }
+        }
+    }
+
+    #[derive(Eq, PartialEq)]
+    struct CaptureModule {
+        children: BTreeMap<&'static str, CaptureModule>,
+        signals: BTreeMap<&'static str, Rc<CaptureSignal>>,
+    }
+
+    #[derive(Debug, Eq, PartialEq)]
+    struct CaptureSignal {
+        bit_width: u32,
+        type_: TraceValueType,
+        values: RefCell<Vec<(u64, TraceValue)>>,
+    }
+
+    struct CaptureTrace<'a> {
+        capture: &'a mut Capture,
+
+        module_stack: Vec<(&'static str, CaptureModule)>,
+
+        time_stamp: u64,
+    }
+
+    impl<'a> CaptureTrace<'a> {
+        fn new(capture: &'a mut Capture) -> CaptureTrace<'a> {
+            CaptureTrace {
+                capture,
+
+                module_stack: Vec::new(),
+
+                time_stamp: 0,
+            }
+        }
+    }
+
+    impl<'a> Trace for CaptureTrace<'a> {
+        type SignalId = Rc<CaptureSignal>;
+
+        fn push_module(&mut self, name: &'static str) -> io::Result<()> {
+            self.module_stack.push((
+                name,
+                CaptureModule {
+                    children: BTreeMap::new(),
+                    signals: BTreeMap::new(),
+                },
+            ));
+
+            Ok(())
+        }
+
+        fn pop_module(&mut self) -> io::Result<()> {
+            let (name, current_module) = self.module_stack.pop().unwrap();
+
+            if self.module_stack.is_empty() {
+                self.capture.root = Some((name, current_module));
+            } else {
+                self.module_stack
+                    .last_mut()
+                    .unwrap()
+                    .1
+                    .children
+                    .insert(name, current_module);
+            }
+
+            Ok(())
+        }
+
+        fn add_signal(
+            &mut self,
+            name: &'static str,
+            bit_width: u32,
+            type_: TraceValueType,
+        ) -> io::Result<Self::SignalId> {
+            let (_, current_module) = self.module_stack.last_mut().unwrap();
+
+            let ret = Rc::new(CaptureSignal {
+                bit_width,
+                type_,
+                values: RefCell::new(Vec::new()),
+            });
+
+            current_module.signals.insert(name, ret.clone());
+
+            Ok(ret)
+        }
+
+        fn update_time_stamp(&mut self, time_stamp: u64) -> io::Result<()> {
+            self.time_stamp = time_stamp;
+
+            Ok(())
+        }
+
+        fn update_signal(
+            &mut self,
+            signal_id: &Self::SignalId,
+            value: TraceValue,
+        ) -> io::Result<()> {
+            signal_id.values.borrow_mut().push((self.time_stamp, value));
+
+            Ok(())
+        }
+    }
 
     #[test]
     fn input_masking() {
@@ -1772,5 +1982,808 @@ mod tests {
         m.posedge_clk();
         m.prop();
         assert_eq!(m.read_data, false);
+    }
+
+    #[test]
+    fn trace_test_module_0() -> io::Result<()> {
+        let mut capture = Capture::new();
+        let trace = CaptureTrace::new(&mut capture);
+
+        let mut m = TraceTestModule0::new("m", trace)?;
+        let mut time_stamp = 0;
+
+        m.prop();
+        m.update_trace(time_stamp)?;
+
+        time_stamp += 1;
+        m.i0 = true;
+        m.prop();
+        m.update_trace(time_stamp)?;
+
+        time_stamp += 50;
+        m.i1 = 0b11u32;
+        m.i2 = 0xfadebabeu32;
+        m.i3 = 0xdeadbeefcafed00du64;
+        m.i4 = 0xc0cac01adeadbeefabad1deabadc0de5u128;
+        m.prop();
+        m.update_trace(time_stamp)?;
+
+        assert_eq!(
+            capture,
+            Capture {
+                root: Some((
+                    "m",
+                    CaptureModule {
+                        children: BTreeMap::new(),
+                        signals: vec![
+                            (
+                                "i0",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(true)),
+                                        (51, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 2,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (51, TraceValue::U32(0b11)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (51, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i3",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 64,
+                                    type_: TraceValueType::U64,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U64(0)),
+                                        (1, TraceValue::U64(0)),
+                                        (51, TraceValue::U64(0xdeadbeefcafed00d)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i4",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 128,
+                                    type_: TraceValueType::U128,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U128(0)),
+                                        (1, TraceValue::U128(0)),
+                                        (51, TraceValue::U128(0xc0cac01adeadbeefabad1deabadc0de5)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o0",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(true)),
+                                        (51, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 2,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (51, TraceValue::U32(0b11)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (51, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o3",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 64,
+                                    type_: TraceValueType::U64,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U64(0)),
+                                        (1, TraceValue::U64(0)),
+                                        (51, TraceValue::U64(0xdeadbeefcafed00d)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o4",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 128,
+                                    type_: TraceValueType::U128,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U128(0)),
+                                        (1, TraceValue::U128(0)),
+                                        (51, TraceValue::U128(0xc0cac01adeadbeefabad1deabadc0de5)),
+                                    ]),
+                                })
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }
+                )),
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn trace_test_module_1() -> io::Result<()> {
+        let mut capture = Capture::new();
+        let trace = CaptureTrace::new(&mut capture);
+
+        let mut m = TraceTestModule1::new("m", trace)?;
+        let mut time_stamp = 0;
+
+        // Check initial value
+        m.reset();
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o1, 0);
+
+        m.i1 = 0xdeadbeef;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o1, 0xdeadbeef);
+        m.i1 = 0xfadebabe;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o1, 0xdeadbeef);
+
+        // Clock in initial value (second reg explicitly doesn't have one!)
+        m.i2 = 0xfadebabe;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o2, 0xfadebabe);
+
+        assert_eq!(
+            capture,
+            Capture {
+                root: Some((
+                    "m",
+                    CaptureModule {
+                        children: BTreeMap::new(),
+                        signals: vec![
+                            (
+                                "i1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xfadebabe)),
+                                        (1, TraceValue::U32(0xfadebabe)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0xfadebabe)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "r1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (1, TraceValue::U32(0xdeadbeef)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "r2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0xfadebabe)),
+                                    ]),
+                                })
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }
+                )),
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn trace_test_module_2() -> io::Result<()> {
+        let mut capture = Capture::new();
+        let trace = CaptureTrace::new(&mut capture);
+
+        let mut m = TraceTestModule2::new("m", trace)?;
+        let mut time_stamp = 0;
+
+        // Check initial value
+        m.reset();
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o, 0);
+
+        // The inputs propagate through 2 registers, so we won't see proper output for 2 cycles
+        m.i1 = 0xffffffff;
+        m.i2 = 0xffff0000;
+        m.i3 = 0x00ff0000;
+        m.i4 = 0x000f0000;
+        m.prop(); // Propagate to first register inputs
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o, 0u32);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o, 0u32);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.o, 0x000f0000u32);
+
+        assert_eq!(
+            capture,
+            Capture {
+                root: Some((
+                    "m",
+                    CaptureModule {
+                        children: vec![
+                            (
+                                "inner1",
+                                CaptureModule {
+                                    children: BTreeMap::new(),
+                                    signals: vec![(
+                                        "r",
+                                        Rc::new(CaptureSignal {
+                                            bit_width: 32,
+                                            type_: TraceValueType::U32,
+                                            values: RefCell::new(vec![
+                                                (0, TraceValue::U32(0)),
+                                                (0, TraceValue::U32(0)),
+                                                (1, TraceValue::U32(0xffff0000)),
+                                                (2, TraceValue::U32(0xffff0000)),
+                                            ]),
+                                        })
+                                    ),]
+                                    .into_iter()
+                                    .collect(),
+                                }
+                            ),
+                            (
+                                "inner2",
+                                CaptureModule {
+                                    children: BTreeMap::new(),
+                                    signals: vec![(
+                                        "r",
+                                        Rc::new(CaptureSignal {
+                                            bit_width: 32,
+                                            type_: TraceValueType::U32,
+                                            values: RefCell::new(vec![
+                                                (0, TraceValue::U32(0)),
+                                                (0, TraceValue::U32(0)),
+                                                (1, TraceValue::U32(0x000f0000)),
+                                                (2, TraceValue::U32(0x000f0000)),
+                                            ]),
+                                        })
+                                    ),]
+                                    .into_iter()
+                                    .collect(),
+                                }
+                            ),
+                            (
+                                "inner3",
+                                CaptureModule {
+                                    children: BTreeMap::new(),
+                                    signals: vec![(
+                                        "r",
+                                        Rc::new(CaptureSignal {
+                                            bit_width: 32,
+                                            type_: TraceValueType::U32,
+                                            values: RefCell::new(vec![
+                                                (0, TraceValue::U32(0)),
+                                                (0, TraceValue::U32(0)),
+                                                (1, TraceValue::U32(0)),
+                                                (2, TraceValue::U32(0x000f0000)),
+                                            ]),
+                                        })
+                                    ),]
+                                    .into_iter()
+                                    .collect(),
+                                }
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                        signals: vec![
+                            (
+                                "i1",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0xffffffff)),
+                                        (1, TraceValue::U32(0xffffffff)),
+                                        (2, TraceValue::U32(0xffffffff)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i2",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0xffff0000)),
+                                        (1, TraceValue::U32(0xffff0000)),
+                                        (2, TraceValue::U32(0xffff0000)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i3",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0x00ff0000)),
+                                        (1, TraceValue::U32(0x00ff0000)),
+                                        (2, TraceValue::U32(0x00ff0000)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "i4",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0x000f0000)),
+                                        (1, TraceValue::U32(0x000f0000)),
+                                        (2, TraceValue::U32(0x000f0000)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "o",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 32,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0x000f0000)),
+                                    ]),
+                                })
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }
+                )),
+            }
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn trace_test_module_3() -> io::Result<()> {
+        let mut capture = Capture::new();
+        let trace = CaptureTrace::new(&mut capture);
+
+        let mut m = TraceTestModule3::new("m", trace)?;
+        let mut time_stamp = 0;
+
+        // Initial state, no read/write
+        m.write_addr = false;
+        m.write_value = 0;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = false;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+
+        // Initial state, read from addr 0
+        m.write_addr = false;
+        m.write_value = 0;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+
+        // Initial state, write to addr 0
+        m.write_addr = false;
+        m.write_value = 0x5;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = false;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+
+        // Read from addr 0
+        m.write_addr = false;
+        m.write_value = 0;
+        m.write_enable = false;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0x5);
+
+        // Write to/read from addr 0
+        m.write_addr = false;
+        m.write_value = 0xc;
+        m.write_enable = true;
+        m.read_addr = false;
+        m.read_enable = true;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0x5);
+        m.posedge_clk();
+        time_stamp += 1;
+        m.prop();
+        m.update_trace(time_stamp)?;
+        assert_eq!(m.read_data, 0x5);
+
+        assert_eq!(
+            capture,
+            Capture {
+                root: Some((
+                    "m",
+                    CaptureModule {
+                        children: BTreeMap::new(),
+                        signals: vec![
+                            (
+                                "mem_0_read_port_0_address",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (5, TraceValue::Bool(false)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "mem_0_read_port_0_enable",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(true)),
+                                        (2, TraceValue::Bool(true)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(true)),
+                                        (4, TraceValue::Bool(true)),
+                                        (4, TraceValue::Bool(true)),
+                                        (5, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "mem_0_write_port_address",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (5, TraceValue::Bool(false)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "mem_0_write_port_enable",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(true)),
+                                        (3, TraceValue::Bool(true)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(true)),
+                                        (5, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "mem_0_write_port_value",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 4,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(5)),
+                                        (3, TraceValue::U32(5)),
+                                        (3, TraceValue::U32(0)),
+                                        (4, TraceValue::U32(0)),
+                                        (4, TraceValue::U32(12)),
+                                        (5, TraceValue::U32(12)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "read_addr",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (5, TraceValue::Bool(false)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "read_data",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 4,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0)),
+                                        (3, TraceValue::U32(0)),
+                                        (3, TraceValue::U32(0)),
+                                        (4, TraceValue::U32(5)),
+                                        (4, TraceValue::U32(5)),
+                                        (5, TraceValue::U32(5)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "read_enable",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(true)),
+                                        (2, TraceValue::Bool(true)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(true)),
+                                        (4, TraceValue::Bool(true)),
+                                        (4, TraceValue::Bool(true)),
+                                        (5, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "write_addr",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (5, TraceValue::Bool(false)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "write_enable",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 1,
+                                    type_: TraceValueType::Bool,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (1, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(false)),
+                                        (2, TraceValue::Bool(true)),
+                                        (3, TraceValue::Bool(true)),
+                                        (3, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(false)),
+                                        (4, TraceValue::Bool(true)),
+                                        (5, TraceValue::Bool(true)),
+                                    ]),
+                                })
+                            ),
+                            (
+                                "write_value",
+                                Rc::new(CaptureSignal {
+                                    bit_width: 4,
+                                    type_: TraceValueType::U32,
+                                    values: RefCell::new(vec![
+                                        (0, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (1, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(0)),
+                                        (2, TraceValue::U32(5)),
+                                        (3, TraceValue::U32(5)),
+                                        (3, TraceValue::U32(0)),
+                                        (4, TraceValue::U32(0)),
+                                        (4, TraceValue::U32(12)),
+                                        (5, TraceValue::U32(12)),
+                                    ]),
+                                })
+                            ),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    }
+                )),
+            }
+        );
+
+        Ok(())
     }
 }

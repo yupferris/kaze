@@ -13,12 +13,23 @@ use typed_arena::Arena;
 use crate::code_writer;
 use crate::graph;
 use crate::module_context::*;
+use crate::runtime::tracing::*;
 use crate::validation::*;
 
+use std::collections::HashMap;
 use std::io::{Result, Write};
 
+#[derive(Default)]
+pub struct GenerationOptions {
+    pub tracing: bool,
+}
+
 // TODO: Note that mutable writer reference can be passed, see https://rust-lang.github.io/api-guidelines/interoperability.html#c-rw-value
-pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
+pub fn generate<'a, W: Write>(
+    m: &'a graph::Module<'a>,
+    options: GenerationOptions,
+    w: W,
+) -> Result<()> {
     validate_module_hierarchy(m);
 
     let context_arena = Arena::new();
@@ -29,8 +40,33 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         state_elements.gather(&output, root_context, &context_arena);
     }
 
+    struct TraceSignal {
+        name: String,
+        member_name: String,
+        value_name: String,
+        bit_width: u32,
+        type_: TraceValueType,
+    }
+    let mut trace_signals: HashMap<&ModuleContext, Vec<TraceSignal>> = HashMap::new();
+    let mut add_trace_signal = |context, name, value_name, bit_width| {
+        if options.tracing {
+            let member_name = format!("__trace_signal_id_{}_{}", name, trace_signals.len());
+            let context_trace_signals = trace_signals.entry(context).or_insert(Vec::new());
+            context_trace_signals.push(TraceSignal {
+                name,
+                member_name,
+                value_name,
+                bit_width,
+                type_: TraceValueType::from_bit_width(bit_width),
+            });
+        }
+    };
+
     let mut prop_context = AssignmentContext::new();
     let mut c = Compiler::new(&state_elements, &context_arena);
+    for (name, input) in m.inputs.borrow().iter() {
+        add_trace_signal(root_context, name.clone(), name.clone(), input.bit_width());
+    }
     for (name, output) in m.outputs.borrow().iter() {
         let expr = c.compile_signal(&output, root_context, &mut prop_context);
         prop_context.push(Assignment {
@@ -40,6 +76,8 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             },
             expr,
         });
+
+        add_trace_signal(root_context, name.clone(), name.clone(), output.bit_width());
     }
     for ((context, _), mem) in state_elements.mems.iter() {
         for ((address, enable), read_signal_names) in mem.read_signal_names.iter() {
@@ -59,6 +97,19 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 },
                 expr: enable,
             });
+
+            add_trace_signal(
+                context,
+                read_signal_names.address_name.clone(),
+                read_signal_names.address_name.clone(),
+                mem.mem.address_bit_width,
+            );
+            add_trace_signal(
+                context,
+                read_signal_names.enable_name.clone(),
+                read_signal_names.enable_name.clone(),
+                1,
+            );
         }
         if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
             let address = c.compile_signal(address, context, &mut prop_context);
@@ -85,10 +136,30 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                 },
                 expr: enable,
             });
+
+            add_trace_signal(
+                context,
+                mem.write_address_name.clone(),
+                mem.write_address_name.clone(),
+                mem.mem.address_bit_width,
+            );
+            add_trace_signal(
+                context,
+                mem.write_value_name.clone(),
+                mem.write_value_name.clone(),
+                mem.mem.element_bit_width,
+            );
+            add_trace_signal(
+                context,
+                mem.write_enable_name.clone(),
+                mem.write_enable_name.clone(),
+                1,
+            );
         }
     }
     for ((context, _), reg) in state_elements.regs.iter() {
-        let expr = c.compile_signal(reg.data.next.borrow().unwrap(), context, &mut prop_context);
+        let signal = reg.data.next.borrow().unwrap();
+        let expr = c.compile_signal(signal, context, &mut prop_context);
         prop_context.push(Assignment {
             target: Expr::Ref {
                 name: reg.next_name.clone(),
@@ -96,11 +167,23 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
             },
             expr,
         });
+
+        add_trace_signal(
+            context,
+            reg.data.name.clone(),
+            reg.value_name.clone(),
+            signal.bit_width(),
+        );
     }
 
     let mut w = code_writer::CodeWriter::new(w);
 
-    w.append_line(&format!("pub struct {} {{", m.name))?;
+    w.append(&format!("pub struct {}", m.name))?;
+    if options.tracing {
+        w.append("<T: kaze::runtime::tracing::Trace>")?;
+    }
+    w.append("{")?;
+    w.append_newline()?;
     w.indent();
 
     let inputs = m.inputs.borrow();
@@ -182,16 +265,85 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    w.unindent()?;
+    if options.tracing {
+        w.append_newline()?;
+        w.append_line("__trace: T,")?;
+        for context_trace_signals in trace_signals.values() {
+            for trace_signal in context_trace_signals.iter() {
+                w.append_line(&format!("{}: T::SignalId,", trace_signal.member_name))?;
+            }
+        }
+    }
+
+    w.unindent();
     w.append_line("}")?;
     w.append_newline()?;
 
-    w.append_line(&format!("impl {} {{", m.name))?;
+    w.append("impl")?;
+    if options.tracing {
+        w.append("<T: kaze::runtime::tracing::Trace>")?;
+    }
+    w.append(&format!(" {}", m.name))?;
+    if options.tracing {
+        w.append("<T>")?;
+    }
+    w.append(" {")?;
+    w.append_newline()?;
     w.indent();
 
-    w.append_line(&format!("pub fn new() -> {} {{", m.name))?;
+    w.append("pub fn new(")?;
+    if options.tracing {
+        w.append(&format!(
+            "instance_name: &'static str, mut trace: T) -> std::io::Result<{}<T>> {{",
+            m.name
+        ))?;
+    } else {
+        w.append(&format!(") -> {} {{", m.name))?;
+    }
+    w.append_newline()?;
     w.indent();
-    w.append_line(&format!("{} {{", m.name))?;
+
+    if options.tracing {
+        fn visit_context<'graph, 'arena, W: Write>(
+            context: &'arena ModuleContext<'graph, 'arena>,
+            trace_signals: &HashMap<&'arena ModuleContext<'graph, 'arena>, Vec<TraceSignal>>,
+            w: &mut code_writer::CodeWriter<W>,
+        ) -> Result<()> {
+            let module_name = if let Some((instance, _)) = context.instance_and_parent {
+                format!("\"{}\"", instance.name)
+            } else {
+                "instance_name".into()
+            };
+            w.append_line(&format!("trace.push_module({})?;", module_name))?;
+
+            if let Some(module_trace_signals) = trace_signals.get(&context) {
+                for trace_signal in module_trace_signals.iter() {
+                    w.append_line(&format!("let {} = trace.add_signal(\"{}\", {}, kaze::runtime::tracing::TraceValueType::{})?;", trace_signal.member_name, trace_signal.name, trace_signal.bit_width, match trace_signal.type_ {
+                        TraceValueType::Bool => "Bool",
+                        TraceValueType::U32 => "U32",
+                        TraceValueType::U64 => "U64",
+                        TraceValueType::U128 => "U128",
+                    }))?;
+                }
+            }
+
+            for child in context.children().values() {
+                visit_context(child, trace_signals, w)?;
+            }
+
+            w.append_line("trace.pop_module()?;")?;
+
+            Ok(())
+        };
+        visit_context(root_context, &trace_signals, &mut w)?;
+        w.append_newline()?;
+    }
+
+    if options.tracing {
+        w.append("Ok(")?;
+    }
+    w.append(&format!("{} {{", m.name))?;
+    w.append_newline()?;
     w.indent();
 
     if !inputs.is_empty() {
@@ -253,7 +405,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
                         graph::Constant::U128(value) => format!("0x{:x},", value),
                     })?;
                 }
-                w.unindent()?;
+                w.unindent();
                 w.append_line("].into_boxed_slice(),")?;
             } else {
                 w.append_line(&format!(
@@ -300,9 +452,23 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
         }
     }
 
-    w.unindent()?;
-    w.append_line("}")?;
-    w.unindent()?;
+    if options.tracing {
+        w.append_newline()?;
+        w.append_line("__trace: trace,")?;
+        for context_trace_signals in trace_signals.values() {
+            for trace_signal in context_trace_signals.iter() {
+                w.append_line(&format!("{},", trace_signal.member_name))?;
+            }
+        }
+    }
+
+    w.unindent();
+    w.append("}")?;
+    if options.tracing {
+        w.append(")")?;
+    }
+    w.append_newline()?;
+    w.unindent();
     w.append_line("}")?;
 
     let mut reset_context = AssignmentContext::new();
@@ -400,7 +566,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
         reset_context.write(&mut w)?;
 
-        w.unindent()?;
+        w.unindent();
         w.append_line("}")?;
     }
 
@@ -411,7 +577,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
         posedge_clk_context.write(&mut w)?;
 
-        w.unindent()?;
+        w.unindent();
         w.append_line("}")?;
     }
 
@@ -421,10 +587,36 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
 
     prop_context.write(&mut w)?;
 
-    w.unindent()?;
+    w.unindent();
     w.append_line("}")?;
 
-    w.unindent()?;
+    if options.tracing {
+        w.append_newline()?;
+        w.append_line("pub fn update_trace(&mut self, time_stamp: u64) -> std::io::Result<()> {")?;
+        w.indent();
+
+        w.append_line("self.__trace.update_time_stamp(time_stamp)?;")?;
+        w.append_newline()?;
+
+        for context_trace_signals in trace_signals.values() {
+            for trace_signal in context_trace_signals.iter() {
+                w.append_line(&format!("self.__trace.update_signal(&self.{}, kaze::runtime::tracing::TraceValue::{}(self.{}))?;", trace_signal.member_name, match trace_signal.type_ {
+                    TraceValueType::Bool => "Bool",
+                    TraceValueType::U32 => "U32",
+                    TraceValueType::U64 => "U64",
+                    TraceValueType::U128 => "U128",
+                }, trace_signal.value_name))?;
+            }
+        }
+        w.append_newline()?;
+
+        w.append_line("Ok(())")?;
+
+        w.unindent();
+        w.append_line("}")?;
+    }
+
+    w.unindent();
     w.append_line("}")?;
     w.append_newline()?;
 
@@ -449,7 +641,7 @@ mod tests {
         let _ = a.instance("a", "A");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -466,7 +658,7 @@ mod tests {
         let _ = b.instance("a", "A");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -483,7 +675,7 @@ mod tests {
         let _ = a.instance("b", "B");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -497,7 +689,7 @@ mod tests {
         let _ = a.reg("r", 1);
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -514,7 +706,7 @@ mod tests {
         let _ = a.instance("b", "B");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -528,7 +720,7 @@ mod tests {
         let _ = a.mem("m", 1, 1);
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -545,7 +737,7 @@ mod tests {
         let _ = a.instance("b", "B");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -560,7 +752,7 @@ mod tests {
         let _ = m.read_port(a.low(), a.low());
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -578,7 +770,7 @@ mod tests {
         let _ = a.instance("b", "B");
 
         // Panic
-        generate(a, Vec::new()).unwrap();
+        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
     }
 
     #[test]
@@ -597,6 +789,6 @@ mod tests {
         a_inst.drive_input("i", a_inst_o);
 
         // Panic
-        generate(b, Vec::new()).unwrap();
+        generate(b, GenerationOptions::default(), Vec::new()).unwrap();
     }
 }

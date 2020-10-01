@@ -14,3 +14,4 @@ categories = ["development-tools", "emulators", "simulation"]
 
 [dependencies]
 typed-arena = "2.0.0"
+vcd = "0.6"
