@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.13] - 2020-10-12
 ### Added
 - Tracing for generated sim modules
 
@@ -99,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.12...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/yupferris/kaze/compare/v0.1.12..v0.1.13
 [0.1.12]: https://github.com/yupferris/kaze/compare/v0.1.11..v0.1.12
 [0.1.11]: https://github.com/yupferris/kaze/compare/v0.1.10..v0.1.11
 [0.1.10]: https://github.com/yupferris/kaze/compare/v0.1.9..v0.1.10
