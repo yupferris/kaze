@@ -34,7 +34,7 @@ fn main() -> std::io::Result<()> {
     inverter.output("o", !i); // Output inverted input
 
     // Generate Rust simulator code
-    sim::generate(inverter, std::io::stdout())?;
+    sim::generate(inverter, sim::GenerationOptions::default(), std::io::stdout())?;
 
     // Generate Verilog code
     verilog::generate(inverter, std::io::stdout())?;
