@@ -12,14 +12,10 @@ use std::ptr;
 /// The minimum allowed bit width for any given [`Signal`].
 ///
 /// This is currently set to `1`, and is not likely to change in future versions of this library.
-///
-/// [`Signal`]: ./struct.Signal.html
 pub const MIN_SIGNAL_BIT_WIDTH: u32 = 1;
 /// The maximum allowed bit width for any given [`Signal`].
 ///
 /// This is currently set to `128` to simplify simulator code generation, since it allows the generated code to rely purely on native integer types provided by Rust's standard library for storage, arithmetic, etc. Larger widths may be supported in a future version of this library.
-///
-/// [`Signal`]: ./struct.Signal.html
 pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 
 /// A collection of 1 or more bits driven by some source.
@@ -43,9 +39,8 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 /// m.output("my_output", d); // 8-bit output driven by d
 /// ```
 ///
-/// [`concat`]: #method.concat
-/// [`lit`]: ./struct.Module.html#method.lit
-/// [`Module`]: ./struct.Module.html
+/// [`concat`]: Self::concat
+/// [`lit`]: Module::lit
 #[must_use]
 pub struct Signal<'a> {
     pub(super) context: &'a Context<'a>,
@@ -220,9 +215,6 @@ impl<'a> Signal<'a> {
     /// let repeat_5 = lit.repeat(5); // Equivalent to 20-bit lit with value 0xaaaaa
     /// let repeat_8 = lit.repeat(8); // Equivalent to 32-bit lit with value 0xaaaaaaaa
     /// ```
-    ///
-    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn repeat(&'a self, count: u32) -> &Signal<'a> {
         let target_bit_width = self.bit_width() * count;
         if target_bit_width < MIN_SIGNAL_BIT_WIDTH {
@@ -265,8 +257,6 @@ impl<'a> Signal<'a> {
     /// let concat_2 = lit_b.concat(lit_a); // Equivalent to 12-bit lit with value 0xffa
     /// let concat_3 = lit_a.concat(lit_a); // Equivalent to 8-bit lit with value 0xaa
     /// ```
-    ///
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
     pub fn concat(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -305,8 +295,6 @@ impl<'a> Signal<'a> {
     /// let eq_3 = lit_a.eq(lit_b); // Equivalent to m.low()
     /// let eq_4 = lit_b.eq(lit_a); // Equivalent to m.low()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn eq(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -352,8 +340,6 @@ impl<'a> Signal<'a> {
     /// let ne_3 = lit_a.ne(lit_b); // Equivalent to m.high()
     /// let ne_4 = lit_b.ne(lit_a); // Equivalent to m.high()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn ne(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -399,8 +385,6 @@ impl<'a> Signal<'a> {
     /// let lt_3 = lit_a.lt(lit_b); // Equivalent to m.high()
     /// let lt_4 = lit_b.lt(lit_a); // Equivalent to m.low()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn lt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -446,8 +430,6 @@ impl<'a> Signal<'a> {
     /// let le_3 = lit_a.le(lit_b); // Equivalent to m.high()
     /// let le_4 = lit_b.le(lit_a); // Equivalent to m.low()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn le(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -493,8 +475,6 @@ impl<'a> Signal<'a> {
     /// let gt_3 = lit_a.gt(lit_b); // Equivalent to m.low()
     /// let gt_4 = lit_b.gt(lit_a); // Equivalent to m.high()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn gt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -540,8 +520,6 @@ impl<'a> Signal<'a> {
     /// let ge_3 = lit_a.ge(lit_b); // Equivalent to m.low()
     /// let ge_4 = lit_b.ge(lit_a); // Equivalent to m.high()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn ge(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -587,8 +565,6 @@ impl<'a> Signal<'a> {
     /// let lt_signed_3 = lit_a.lt_signed(lit_b); // Equivalent to m.high()
     /// let lt_signed_4 = lit_b.lt_signed(lit_a); // Equivalent to m.low()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn lt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -637,8 +613,6 @@ impl<'a> Signal<'a> {
     /// let le_signed_3 = lit_a.le_signed(lit_b); // Equivalent to m.high()
     /// let le_signed_4 = lit_b.le_signed(lit_a); // Equivalent to m.low()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn le_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -687,8 +661,6 @@ impl<'a> Signal<'a> {
     /// let gt_signed_3 = lit_a.gt_signed(lit_b); // Equivalent to m.low()
     /// let gt_signed_4 = lit_b.gt_signed(lit_a); // Equivalent to m.high()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn gt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -737,8 +709,6 @@ impl<'a> Signal<'a> {
     /// let ge_signed_3 = lit_a.ge_signed(lit_b); // Equivalent to m.low()
     /// let ge_signed_4 = lit_b.ge_signed(lit_a); // Equivalent to m.high()
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn ge_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -786,8 +756,6 @@ impl<'a> Signal<'a> {
     /// let rhs = m.lit(1u32, 1);
     /// let shifted = lhs.shr_arithmetic(rhs); // Equivalent to m.lit(0xc0000000u32, 32)
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn shr_arithmetic(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -825,9 +793,6 @@ impl<'a> Signal<'a> {
     /// let rhs = m.lit(5u32, 4);
     /// let sum = lhs.mul_signed(rhs); // Equivalent to m.lit(108u32, 7), -20
     /// ```
-    ///
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Module`]: ./struct.Module.html
     pub fn mul_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -846,7 +811,7 @@ impl<'a> Signal<'a> {
 
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `self` is high, and `when_false`'s value when `self` is low.
     ///
-    /// This is a convenience wrapper for [`Module`]::[`mux`].
+    /// This is a convenience wrapper for [`Module::mux`].
     ///
     /// # Panics
     ///
@@ -866,9 +831,6 @@ impl<'a> Signal<'a> {
     /// let b = m.input("b", 8);
     /// m.output("my_output", cond.mux(a, b)); // Outputs a when cond is high, b otherwise
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`mux`]: ./struct.Module.html#method.mux
     // TODO: This is currently only used to support sugar; if it doesn't work out, remove this
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
@@ -988,8 +950,7 @@ impl<'a> Add for &'a Signal<'a> {
     /// let carry = carry_sum.bit(32); // Equivalent to m.lit(true, 1)
     /// ```
     ///
-    /// [`concat`]: #method.concat
-    /// [`Module`]: ./struct.Module.html
+    /// [`concat`]: Signal::concat
     fn add(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1040,8 +1001,6 @@ impl<'a> BitAnd for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitand = lhs & rhs;
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     fn bitand(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1092,8 +1051,6 @@ impl<'a> BitOr for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitor = lhs | rhs;
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     fn bitor(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1144,8 +1101,6 @@ impl<'a> BitXor for &'a Signal<'a> {
     /// let rhs = m.input("in2", 3);
     /// let multi_bitxor = lhs ^ rhs;
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     fn bitxor(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1208,9 +1163,6 @@ impl<'a> Mul for &'a Signal<'a> {
     /// let rhs = m.lit(5u32, 4);
     /// let sum = lhs * rhs; // Equivalent to m.lit(20u32, 7)
     /// ```
-    ///
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Module`]: ./struct.Module.html
     fn mul(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1285,8 +1237,6 @@ impl<'a> Shl for &'a Signal<'a> {
     /// let rhs = m.lit(2u32, 2);
     /// let shifted = lhs << rhs; // Equivalent to m.lit(12u32, 32)
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     fn shl(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1328,8 +1278,6 @@ impl<'a> Shr for &'a Signal<'a> {
     /// let rhs = m.lit(2u32, 2);
     /// let shifted = lhs >> rhs; // Equivalent to m.lit(3u32, 32)
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     fn shr(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
@@ -1371,9 +1319,6 @@ impl<'a> Sub for &'a Signal<'a> {
     /// let rhs = m.lit(2u32, 32);
     /// let difference = lhs - rhs; // Equivalent to m.lit(1u32, 32)
     /// ```
-    ///
-    /// [`concat`]: #method.concat
-    /// [`Module`]: ./struct.Module.html
     fn sub(self, rhs: Self) -> Self {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");

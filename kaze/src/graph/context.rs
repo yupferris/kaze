@@ -23,8 +23,6 @@ use std::collections::BTreeMap;
 /// let m = c.module("MyModule");
 /// m.output("out", m.input("in", 1));
 /// ```
-///
-/// [`Module`]: ./struct.Module.html
 #[must_use]
 pub struct Context<'a> {
     module_arena: Arena<Module<'a>>,
@@ -91,8 +89,6 @@ impl<'a> Context<'a> {
     ///
     /// let _ = c.module("A"); // Non-unique name, panic!
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn module<S: Into<String>>(&'a self, name: S) -> &Module {
         let name = name.into();
         let mut modules = self.modules.borrow_mut();
@@ -123,8 +119,6 @@ impl<'a> Context<'a> {
     ///
     /// assert_eq!(c.modules().len(), 2);
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn modules(&'a self) -> Ref<BTreeMap<String, &'a Module<'a>>> {
         self.modules.borrow()
     }

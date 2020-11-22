@@ -1,6 +1,6 @@
 //! An [HDL](https://en.wikipedia.org/wiki/Hardware_description_language) embedded in [Rust](https://www.rust-lang.org/).
 //!
-//! kaze provides an API to describe [`Module`]s composed of [`Signal`]s, which can then be used to generate [Rust simulator code](sim/fn.generate.html) or [Verilog modules](verilog/fn.generate.html).
+//! kaze provides an API to describe [`Module`]s composed of [`Signal`]s, which can then be used to generate [Rust simulator code](sim::generate) or [Verilog modules](verilog::generate).
 //!
 //! kaze's API is designed to be as minimal as possible while still being expressive.
 //! It's designed to prevent the user from being able to describe buggy or incorrect hardware as much as possible.
@@ -35,9 +35,6 @@
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! [`Module`]: ./struct.Module.html
-//! [`Signal`]: ./struct.Signal.html
 
 // Must be kept up-to-date with version in Cargo.toml
 #![doc(html_root_url = "https://docs.rs/kaze/0.1.13")]

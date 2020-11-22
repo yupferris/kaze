@@ -9,9 +9,9 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
 
-/// A self-contained and potentially-reusable hardware design unit, created by the [`Context`]::[`module`] method.
+/// A self-contained and potentially-reusable hardware design unit, created by the [`Context::module`] method.
 ///
-/// Once a `Module` is specified, it can be [instantiated](#method.instance) in another `Module` to form a hierarchy, or it can be used to generate [Rust simulator code](sim/fn.generate.html) or a [Verilog module](verilog/fn.generate.html).
+/// Once a `Module` is specified, it can be [instantiated](Self::instance) in another `Module` to form a hierarchy, or it can be used to generate [Rust simulator code](crate::sim::generate) or a [Verilog module](crate::verilog::generate).
 ///
 /// All `Module`s in kaze have an implicit reset and clock. These are only visible in generated code. It's assumed that all kaze modules operate in the same clock domain.
 ///
@@ -25,9 +25,6 @@ use std::ptr;
 /// let m = c.module("MyModule");
 /// m.output("out", m.input("in", 1));
 /// ```
-///
-/// [`Context`]: ./struct.Context.html
-/// [`module`]: ./struct.Context.html#method.module
 // TODO: Validation error if a module has no inputs/outputs
 #[must_use]
 pub struct Module<'a> {
@@ -78,10 +75,6 @@ impl<'a> Module<'a> {
     /// let one_bit_const = m.lit(0u32, 1);
     /// let twenty_seven_bit_const = m.lit(true, 27);
     /// ```
-    ///
-    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Signal`]: ./struct.Signal.html
     pub fn lit<C: Into<Constant>>(&'a self, value: C, bit_width: u32) -> &Signal<'a> {
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
@@ -124,8 +117,6 @@ impl<'a> Module<'a> {
     /// let low1 = m.low();
     /// let low2 = m.lit(false, 1);
     /// ```
-    ///
-    /// [`Signal`]: ./struct.Signal.html
     pub fn low(&'a self) -> &Signal<'a> {
         self.lit(false, 1)
     }
@@ -145,8 +136,6 @@ impl<'a> Module<'a> {
     /// let high1 = m.high();
     /// let high2 = m.lit(true, 1);
     /// ```
-    ///
-    /// [`Signal`]: ./struct.Signal.html
     pub fn high(&'a self) -> &Signal<'a> {
         self.lit(true, 1)
     }
@@ -168,10 +157,6 @@ impl<'a> Module<'a> {
     ///
     /// let my_input = m.input("my_input", 80);
     /// ```
-    ///
-    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Signal`]: ./struct.Signal.html
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
         // TODO: Error if name already exists in this context
@@ -246,10 +231,6 @@ impl<'a> Module<'a> {
     /// my_reg.drive_next(!my_reg.value);
     /// m.output("my_output", my_reg.value);
     /// ```
-    ///
-    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Register`]: ./struct.Register.html
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
         // TODO: Error if name already exists in this context
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
@@ -367,9 +348,6 @@ impl<'a> Module<'a> {
     /// inner_inst.drive_input("i", outer.input("i", 32));
     /// outer.output("o", inner_inst.output("o"));
     /// ```
-    ///
-    /// [`Context`]: ./struct.Context.html
-    /// [`Instance`]: ./struct.Instance.html
     pub fn instance<S: Into<String>>(
         &'a self,
         instance_name: S,
@@ -417,10 +395,6 @@ impl<'a> Module<'a> {
     /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
     /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
     /// ```
-    ///
-    /// [`MIN_SIGNAL_BIT_WIDTH`]: ./constant.MIN_SIGNAL_BIT_WIDTH.html
-    /// [`MAX_SIGNAL_BIT_WIDTH`]: ./constant.MAX_SIGNAL_BIT_WIDTH.html
-    /// [`Mem`]: ./struct.Mem.html
     pub fn mem<S: Into<String>>(
         &'a self,
         name: S,

@@ -7,7 +7,7 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::ptr;
 
-/// A synchronous memory, created by the [`Module`]::[`mem`] method.
+/// A synchronous memory, created by the [`Module::mem`] method.
 ///
 /// Memories in kaze are always sequential/synchronous-read, sequential/synchronous-write memories.
 /// This means that when a read and/or write is asserted, the read/write will be visible on the cycle immediately following the cycle in which it's asserted.
@@ -35,9 +35,6 @@ use std::ptr;
 /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
 /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
 /// ```
-///
-/// [`Module`]: ./struct.Module.html
-/// [`mem`]: ./struct.Module.html#method.mem
 #[must_use]
 pub struct Mem<'a> {
     pub(super) context: &'a Context<'a>,
@@ -83,8 +80,6 @@ impl<'a> Mem<'a> {
     /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
     /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
     pub fn initial_contents<C: Clone + Into<Constant>>(&'a self, contents: &[C]) {
         if self.initial_contents.borrow().is_some() {
             panic!("Attempted to specify initial contents for memory \"{}\" in module \"{}\", but this memory already has initial contents.", self.name, self.module.name);
@@ -131,9 +126,6 @@ impl<'a> Mem<'a> {
     /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
     /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`Signal`]: ./struct.Signal.html
     pub fn read_port(&'a self, address: &'a Signal<'a>, enable: &'a Signal<'a>) -> &Signal<'a> {
         // TODO: Limit amount of read ports added?
         if address.bit_width() != self.address_bit_width {
@@ -184,9 +176,6 @@ impl<'a> Mem<'a> {
     /// my_mem.write_port(m.high(), m.lit(0xabad1deau32, 32), m.high());
     /// m.output("my_output", my_mem.read_port(m.high(), m.high()));
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`Signal`]: ./struct.Signal.html
     // TODO: byte/word enable? How might that interface look?
     pub fn write_port(
         &'a self,

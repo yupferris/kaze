@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
 use std::ptr;
 
-/// An instance of a [`Module`], created by the [`Module`]::[`instance`] method.
+/// An instance of a [`Module`], created by the [`Module::instance`] method.
 ///
 /// # Examples
 ///
@@ -26,9 +26,6 @@ use std::ptr;
 /// inner_inst.drive_input("i", outer.input("i", 32));
 /// outer.output("o", inner_inst.output("o"));
 /// ```
-///
-/// [`instance`]: ./struct.Module.html#method.instance
-/// [`Module`]: ./struct.Module.html
 #[must_use]
 pub struct Instance<'a> {
     pub(super) context: &'a Context<'a>,
@@ -61,9 +58,6 @@ impl<'a> Instance<'a> {
     /// // Drive inner_inst's "i" input with a 32-bit literal
     /// inner_inst.drive_input("i", outer.lit(0xfadebabeu32, 32));
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`Signal`]: ./struct.Signal.html
     pub fn drive_input<S: Into<String>>(&'a self, name: S, i: &'a Signal<'a>) {
         let name = name.into();
         let mut driven_inputs = self.driven_inputs.borrow_mut();
@@ -104,9 +98,6 @@ impl<'a> Instance<'a> {
     /// // Forward inner_inst's "o" output to a new output on outer with the same name
     /// outer.output("o", inner_inst.output("o"));
     /// ```
-    ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`Signal`]: ./struct.Signal.html
     pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
         let name = name.into();
         if !self

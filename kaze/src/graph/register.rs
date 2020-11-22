@@ -5,7 +5,7 @@ use super::signal::*;
 use std::cell::RefCell;
 use std::ptr;
 
-/// A hardware register, created by the [`Module`]::[`reg`] method.
+/// A hardware register, created by the [`Module::reg`] method.
 ///
 /// A `Register` is a stateful component that behaves like a [D flip-flop](https://en.wikipedia.org/wiki/Flip-flop_(electronics)#D_flip-flop) (more precisely as a [positive-edge-triggered D flip-flop](https://en.wikipedia.org/wiki/Flip-flop_(electronics)#Classical_positive-edge-triggered_D_flip-flop)).
 ///
@@ -30,17 +30,13 @@ use std::ptr;
 /// m.output("my_output", my_reg.value);
 /// ```
 ///
-/// [`default_value`]: #method.default_value
-/// [`drive_next`]: #method.drive_next
-/// [`Module`]: ./struct.Module.html
-/// [`reg`]: ./struct.Module.html#method.reg
-/// [`value`]: #structfield.value
+/// [`default_value`]: Self::default_value
+/// [`drive_next`]: Self::drive_next
+/// [`value`]: Self::value
 #[must_use]
 pub struct Register<'a> {
     pub(crate) data: &'a RegisterData<'a>,
     /// This `Register`'s current value.
-    ///
-    /// [`Signal`]: ./struct.Signal.html
     pub value: &'a Signal<'a>,
 }
 
@@ -70,8 +66,7 @@ impl<'a> Register<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`value`]: #structfield.value
+    /// [`value`]: Self::value
     pub fn default_value<C: Into<Constant>>(&'a self, value: C) {
         if self.data.initial_value.borrow().is_some() {
             panic!("Attempted to specify a default value for register \"{}\" in module \"{}\", but this register already has a default value.", self.data.name, self.data.module.name);
@@ -108,8 +103,7 @@ impl<'a> Register<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     ///
-    /// [`Module`]: ./struct.Module.html
-    /// [`value`]: #structfield.value
+    /// [`value`]: Self::value
     pub fn drive_next(&'a self, n: &'a Signal<'a>) {
         if !ptr::eq(self.data.module, n.module) {
             panic!("Attempted to drive register \"{}\"'s next value with a signal from another module.", self.data.name);

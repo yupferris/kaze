@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Changed
+- Doc comments link to items by name instead of by path, as this is now supported as of [Rust 1.48.0](https://blog.rust-lang.org/2020/11/19/Rust-1.48.html).
+
 ### Fixed
 - Invalid/outdated code in README.md
 

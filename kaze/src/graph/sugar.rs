@@ -4,7 +4,7 @@ use super::signal::*;
 ///
 /// # Panics
 ///
-/// Since this construct wraps the returned values with [`mux`], any panic conditions from that method apply to the generated code as well.
+/// Since this construct wraps the returned values with [`Signal::mux`], any panic conditions from that method apply to the generated code as well.
 ///
 /// # Examples
 ///
@@ -23,8 +23,6 @@ use super::signal::*;
 /// });
 /// m.output("o", o);
 /// ```
-///
-/// [`mux`]: ./struct.Signal.html#method.mux
 // TODO: Can we constrain T more than this to make sure it's only a supported type?
 pub fn if_<'a, T>(cond: &'a Signal<'a>, when_true: T) -> If<'a, T> {
     If::new(cond, when_true)
