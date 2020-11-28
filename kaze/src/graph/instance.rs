@@ -100,23 +100,20 @@ impl<'a> Instance<'a> {
     /// ```
     pub fn output<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
         let name = name.into();
-        if !self
-            .instantiated_module
-            .outputs
-            .borrow()
-            .contains_key(&name)
-        {
-            panic!("Attempted to create a signal for an output called \"{}\" on an instance of \"{}\", but no such output with this name exists on this module.", name, self.instantiated_module.name);
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        let outputs = self.instantiated_module.outputs.borrow();
+        match outputs.get(&name) {
+            Some(output) => self.context.signal_arena.alloc(Signal {
+                context: self.context,
+                module: self.module,
 
-            data: SignalData::InstanceOutput {
-                instance: self,
-                name,
-            },
-        })
+                data: SignalData::InstanceOutput {
+                    instance: self,
+                    name,
+                    bit_width: output.bit_width(),
+                },
+            }),
+            _ => panic!("Attempted to create a signal for an output called \"{}\" on an instance of \"{}\", but no such output with this name exists on this module.", name, self.instantiated_module.name)
+        }
     }
 }
 

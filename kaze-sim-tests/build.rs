@@ -234,6 +234,11 @@ fn main() -> Result<()> {
         },
         &mut file,
     )?;
+    sim::generate(
+        deep_graph_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
 
     Ok(())
 }
@@ -801,11 +806,11 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
                 let i2 = !i2;
                 (i1, i2)
             })
-            .else_({ (i1, i2) })
+            .else_((i1, i2))
         })
-        .else_({ (i1, i2) })
+        .else_((i1, i2))
     })
-    .else_({ (m.low(), m.low()) });
+    .else_((m.low(), m.low()));
 
     m.output("o1", i1);
     m.output("o2", i2);
@@ -1000,6 +1005,20 @@ fn trace_test_module_3<'a>(c: &'a Context<'a>) -> &Module<'a> {
         "read_data",
         mem.read_port(m.input("read_addr", 1), m.input("read_enable", 1)),
     );
+
+    m
+}
+
+fn deep_graph_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("DeepGraphTestModule");
+
+    let mut x = m.input("i", 1);
+
+    for _ in 0..3001 {
+        x = !x;
+    }
+
+    m.output("o", x);
 
     m
 }

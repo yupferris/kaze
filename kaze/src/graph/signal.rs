@@ -87,28 +87,26 @@ impl<'a> Signal<'a> {
     /// ```
     #[must_use]
     pub fn bit_width(&self) -> u32 {
-        match &self.data {
-            SignalData::Lit { bit_width, .. } => *bit_width,
-            SignalData::Input { bit_width, .. } => *bit_width,
-            SignalData::Reg { data } => data.bit_width,
-            SignalData::UnOp { source, .. } => source.bit_width(),
-            SignalData::SimpleBinOp { lhs, .. } => lhs.bit_width(),
-            SignalData::AdditiveBinOp { lhs, .. } => lhs.bit_width(),
+        match self.data {
+            SignalData::Lit { bit_width, .. } => bit_width,
+            SignalData::Input { bit_width, .. } => bit_width,
+            SignalData::Reg { ref data } => data.bit_width,
+            SignalData::UnOp { bit_width, .. } => bit_width,
+            SignalData::SimpleBinOp { bit_width, .. } => bit_width,
+            SignalData::AdditiveBinOp { bit_width, .. } => bit_width,
             SignalData::ComparisonBinOp { .. } => 1,
-            SignalData::ShiftBinOp { lhs, .. } => lhs.bit_width(),
-            SignalData::Mul { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
-            SignalData::MulSigned { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
+            SignalData::ShiftBinOp { bit_width, .. } => bit_width,
+            SignalData::Mul { bit_width, .. } => bit_width,
+            SignalData::MulSigned { bit_width, .. } => bit_width,
             SignalData::Bits {
                 range_high,
                 range_low,
                 ..
             } => range_high - range_low + 1,
-            SignalData::Repeat { source, count } => source.bit_width() * count,
-            SignalData::Concat { lhs, rhs } => lhs.bit_width() + rhs.bit_width(),
-            SignalData::Mux { when_true, .. } => when_true.bit_width(),
-            SignalData::InstanceOutput { instance, name } => {
-                instance.instantiated_module.outputs.borrow()[name].bit_width()
-            }
+            SignalData::Repeat { bit_width, .. } => bit_width,
+            SignalData::Concat { bit_width, .. } => bit_width,
+            SignalData::Mux { bit_width, .. } => bit_width,
+            SignalData::InstanceOutput { bit_width, .. } => bit_width,
             SignalData::MemReadPortOutput { mem, .. } => mem.element_bit_width,
         }
     }
@@ -216,12 +214,12 @@ impl<'a> Signal<'a> {
     /// let repeat_8 = lit.repeat(8); // Equivalent to 32-bit lit with value 0xaaaaaaaa
     /// ```
     pub fn repeat(&'a self, count: u32) -> &Signal<'a> {
-        let target_bit_width = self.bit_width() * count;
-        if target_bit_width < MIN_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MIN_SIGNAL_BIT_WIDTH);
+        let bit_width = self.bit_width() * count;
+        if bit_width < MIN_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, bit_width, MIN_SIGNAL_BIT_WIDTH);
         }
-        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
@@ -230,6 +228,7 @@ impl<'a> Signal<'a> {
             data: SignalData::Repeat {
                 source: self,
                 count,
+                bit_width,
             },
         })
     }
@@ -261,15 +260,19 @@ impl<'a> Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        let target_bit_width = self.bit_width() + rhs.bit_width();
-        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        let bit_width = self.bit_width() + rhs.bit_width();
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,
 
-            data: SignalData::Concat { lhs: self, rhs },
+            data: SignalData::Concat {
+                lhs: self,
+                rhs,
+                bit_width,
+            },
         })
     }
 
@@ -768,6 +771,7 @@ impl<'a> Signal<'a> {
                 lhs: self,
                 rhs,
                 op: ShiftBinOp::ShrArithmetic,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -797,15 +801,19 @@ impl<'a> Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        let target_bit_width = self.bit_width() + rhs.bit_width();
-        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        let bit_width = self.bit_width() + rhs.bit_width();
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,
 
-            data: SignalData::MulSigned { lhs: self, rhs },
+            data: SignalData::MulSigned {
+                lhs: self,
+                rhs,
+                bit_width,
+            },
         })
     }
 
@@ -855,16 +863,19 @@ pub(crate) enum SignalData<'a> {
     UnOp {
         source: &'a Signal<'a>,
         op: UnOp,
+        bit_width: u32,
     },
     SimpleBinOp {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: SimpleBinOp,
+        bit_width: u32,
     },
     AdditiveBinOp {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: AdditiveBinOp,
+        bit_width: u32,
     },
     ComparisonBinOp {
         lhs: &'a Signal<'a>,
@@ -875,15 +886,18 @@ pub(crate) enum SignalData<'a> {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
         op: ShiftBinOp,
+        bit_width: u32,
     },
 
     Mul {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
+        bit_width: u32,
     },
     MulSigned {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
+        bit_width: u32,
     },
 
     Bits {
@@ -895,21 +909,25 @@ pub(crate) enum SignalData<'a> {
     Repeat {
         source: &'a Signal<'a>,
         count: u32,
+        bit_width: u32,
     },
     Concat {
         lhs: &'a Signal<'a>,
         rhs: &'a Signal<'a>,
+        bit_width: u32,
     },
 
     Mux {
         cond: &'a Signal<'a>,
         when_true: &'a Signal<'a>,
         when_false: &'a Signal<'a>,
+        bit_width: u32,
     },
 
     InstanceOutput {
         instance: &'a Instance<'a>,
         name: String,
+        bit_width: u32,
     },
 
     MemReadPortOutput {
@@ -970,6 +988,7 @@ impl<'a> Add for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: AdditiveBinOp::Add,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1020,6 +1039,7 @@ impl<'a> BitAnd for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: SimpleBinOp::BitAnd,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1070,6 +1090,7 @@ impl<'a> BitOr for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: SimpleBinOp::BitOr,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1120,6 +1141,7 @@ impl<'a> BitXor for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: SimpleBinOp::BitXor,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1167,15 +1189,19 @@ impl<'a> Mul for &'a Signal<'a> {
         if !ptr::eq(self.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        let target_bit_width = self.bit_width() + rhs.bit_width();
-        if target_bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), target_bit_width, MAX_SIGNAL_BIT_WIDTH);
+        let bit_width = self.bit_width() + rhs.bit_width();
+        if bit_width > MAX_SIGNAL_BIT_WIDTH {
+            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
         self.context.signal_arena.alloc(Signal {
             context: self.context,
             module: self.module,
 
-            data: SignalData::Mul { lhs: self, rhs },
+            data: SignalData::Mul {
+                lhs: self,
+                rhs,
+                bit_width,
+            },
         })
     }
 }
@@ -1208,6 +1234,7 @@ impl<'a> Not for &'a Signal<'a> {
             data: SignalData::UnOp {
                 source: self,
                 op: UnOp::Not,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1249,6 +1276,7 @@ impl<'a> Shl for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: ShiftBinOp::Shl,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1290,6 +1318,7 @@ impl<'a> Shr for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: ShiftBinOp::Shr,
+                bit_width: self.bit_width(),
             },
         })
     }
@@ -1338,6 +1367,7 @@ impl<'a> Sub for &'a Signal<'a> {
                 lhs: self,
                 rhs,
                 op: AdditiveBinOp::Sub,
+                bit_width: self.bit_width(),
             },
         })
     }

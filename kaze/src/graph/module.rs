@@ -321,6 +321,7 @@ impl<'a> Module<'a> {
                 cond,
                 when_true,
                 when_false,
+                bit_width: when_true.bit_width(),
             },
         })
     }

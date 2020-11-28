@@ -165,7 +165,7 @@ fn detect_combinational_loops<'graph, 'arena>(
 }
 
 fn trace_signal<'graph, 'arena>(
-    signal: &graph::Signal<'graph>,
+    signal: &'graph graph::Signal<'graph>,
     context: &'arena ModuleContext<'graph, 'arena>,
     context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
     source_output: (
@@ -174,94 +174,174 @@ fn trace_signal<'graph, 'arena>(
     ),
     root: &graph::Module<'graph>,
 ) {
-    match signal.data {
-        graph::SignalData::Lit { .. } => (),
+    struct Node<'graph, 'arena> {
+        signal: &'graph graph::Signal<'graph>,
+        context: &'arena ModuleContext<'graph, 'arena>,
+    }
 
-        graph::SignalData::Input { ref name, .. } => {
-            if let Some((instance, parent)) = context.instance_and_parent {
-                trace_signal(
-                    instance.driven_inputs.borrow()[name],
-                    parent,
-                    context_arena,
-                    source_output,
-                    root,
-                );
+    let mut nodes = Vec::new();
+    nodes.push(Node { signal, context });
+
+    while let Some(node) = nodes.pop() {
+        let signal = node.signal;
+        let context = node.context;
+
+        match signal.data {
+            graph::SignalData::Lit { .. } => (),
+
+            graph::SignalData::Input { ref name, .. } => {
+                if let Some((instance, parent)) = context.instance_and_parent {
+                    nodes.push(Node {
+                        signal: instance.driven_inputs.borrow()[name],
+                        context: parent,
+                    });
+                }
             }
-        }
 
-        graph::SignalData::Reg { .. } => (),
+            graph::SignalData::Reg { .. } => (),
 
-        graph::SignalData::UnOp { ref source, .. } => {
-            trace_signal(source, context, context_arena, source_output, root);
-        }
-        graph::SignalData::SimpleBinOp {
-            ref lhs, ref rhs, ..
-        } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-        graph::SignalData::AdditiveBinOp {
-            ref lhs, ref rhs, ..
-        } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-        graph::SignalData::ComparisonBinOp {
-            ref lhs, ref rhs, ..
-        } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-        graph::SignalData::ShiftBinOp {
-            ref lhs, ref rhs, ..
-        } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-
-        graph::SignalData::Mul { ref lhs, ref rhs } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-        graph::SignalData::MulSigned { ref lhs, ref rhs } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-
-        graph::SignalData::Bits { ref source, .. } => {
-            trace_signal(source, context, context_arena, source_output, root);
-        }
-
-        graph::SignalData::Repeat { ref source, .. } => {
-            trace_signal(source, context, context_arena, source_output, root);
-        }
-        graph::SignalData::Concat {
-            ref lhs, ref rhs, ..
-        } => {
-            trace_signal(lhs, context, context_arena, source_output, root);
-            trace_signal(rhs, context, context_arena, source_output, root);
-        }
-
-        graph::SignalData::Mux {
-            ref cond,
-            ref when_true,
-            ref when_false,
-        } => {
-            trace_signal(cond, context, context_arena, source_output, root);
-            trace_signal(when_true, context, context_arena, source_output, root);
-            trace_signal(when_false, context, context_arena, source_output, root);
-        }
-
-        graph::SignalData::InstanceOutput { instance, ref name } => {
-            let instantiated_module = instance.instantiated_module;
-            let output = instantiated_module.outputs.borrow()[name];
-            let context = context.get_child(instance, context_arena);
-            if context == source_output.0 && output == source_output.1 {
-                panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
+            graph::SignalData::UnOp { ref source, .. } => {
+                nodes.push(Node {
+                    signal: source,
+                    context,
+                });
             }
-            trace_signal(output, context, context_arena, source_output, root);
-        }
+            graph::SignalData::SimpleBinOp {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+            graph::SignalData::AdditiveBinOp {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+            graph::SignalData::ComparisonBinOp {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+            graph::SignalData::ShiftBinOp {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
 
-        graph::SignalData::MemReadPortOutput { .. } => (),
+            graph::SignalData::Mul {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+            graph::SignalData::MulSigned {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+
+            graph::SignalData::Bits { ref source, .. } => {
+                nodes.push(Node {
+                    signal: source,
+                    context,
+                });
+            }
+
+            graph::SignalData::Repeat { ref source, .. } => {
+                nodes.push(Node {
+                    signal: source,
+                    context,
+                });
+            }
+            graph::SignalData::Concat {
+                ref lhs, ref rhs, ..
+            } => {
+                nodes.push(Node {
+                    signal: lhs,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: rhs,
+                    context,
+                });
+            }
+
+            graph::SignalData::Mux {
+                ref cond,
+                ref when_true,
+                ref when_false,
+                ..
+            } => {
+                nodes.push(Node {
+                    signal: cond,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: when_true,
+                    context,
+                });
+                nodes.push(Node {
+                    signal: when_false,
+                    context,
+                });
+            }
+
+            graph::SignalData::InstanceOutput {
+                instance, ref name, ..
+            } => {
+                let instantiated_module = instance.instantiated_module;
+                let output = instantiated_module.outputs.borrow()[name];
+                let context = context.get_child(instance, context_arena);
+                if context == source_output.0 && output == source_output.1 {
+                    panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
+                }
+                nodes.push(Node {
+                    signal: output,
+                    context,
+                });
+            }
+
+            graph::SignalData::MemReadPortOutput { .. } => (),
+        }
     }
 }

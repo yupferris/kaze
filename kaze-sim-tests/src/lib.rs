@@ -2786,4 +2786,17 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn deep_graph_test_module() {
+        let mut m = DeepGraphTestModule::new();
+
+        m.i = false;
+        m.prop();
+        assert_eq!(m.o, true);
+
+        m.i = true;
+        m.prop();
+        assert_eq!(m.o, false);
+    }
 }
