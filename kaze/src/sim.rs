@@ -178,6 +178,7 @@ pub fn generate<'a, W: Write>(
 
     let mut w = code_writer::CodeWriter::new(w);
 
+    w.append_indent()?;
     w.append(&format!("pub struct {}", m.name))?;
     if options.tracing {
         w.append("<T: kaze::runtime::tracing::Trace>")?;
@@ -279,6 +280,7 @@ pub fn generate<'a, W: Write>(
     w.append_line("}")?;
     w.append_newline()?;
 
+    w.append_indent()?;
     w.append("impl")?;
     if options.tracing {
         w.append("<T: kaze::runtime::tracing::Trace>")?;
@@ -291,6 +293,7 @@ pub fn generate<'a, W: Write>(
     w.append_newline()?;
     w.indent();
 
+    w.append_indent()?;
     w.append("pub fn new(")?;
     if options.tracing {
         w.append(&format!(
@@ -339,6 +342,7 @@ pub fn generate<'a, W: Write>(
         w.append_newline()?;
     }
 
+    w.append_indent()?;
     if options.tracing {
         w.append("Ok(")?;
     }
@@ -463,6 +467,7 @@ pub fn generate<'a, W: Write>(
     }
 
     w.unindent();
+    w.append_indent()?;
     w.append("}")?;
     if options.tracing {
         w.append(")")?;
