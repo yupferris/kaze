@@ -13,5 +13,5 @@ categories = ["development-tools", "emulators", "simulation"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-typed-arena = "2.0.0"
-vcd = "0.6"
+typed-arena = "2.0.1"
+vcd = "0.6.1"
