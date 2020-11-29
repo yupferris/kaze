@@ -5,11 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.14] - 2020-11-29
 ### Changed
 - Doc comments link to items by name instead of by path, as this is now supported as of [Rust 1.48.0](https://blog.rust-lang.org/2020/11/19/Rust-1.48.html).
+- Dependencies updated to latest versions
 
 ### Fixed
+- Stack overflow bugs by eliminating recursive graph traversals
 - Invalid/outdated code in README.md
+- Code formatting lints in kaze-sim-tests
 
 ## [0.1.13] - 2020-10-12
 ### Added
@@ -106,7 +111,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.13...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.14...HEAD
+[0.1.14]: https://github.com/yupferris/kaze/compare/v0.1.13..v0.1.14
 [0.1.13]: https://github.com/yupferris/kaze/compare/v0.1.12..v0.1.13
 [0.1.12]: https://github.com/yupferris/kaze/compare/v0.1.11..v0.1.12
 [0.1.11]: https://github.com/yupferris/kaze/compare/v0.1.10..v0.1.11
