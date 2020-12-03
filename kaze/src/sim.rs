@@ -280,6 +280,7 @@ pub fn generate<'a, W: Write>(
     w.append_line("}")?;
     w.append_newline()?;
 
+    w.append_line("#[automatically_derived]")?;
     w.append_indent()?;
     w.append("impl")?;
     if options.tracing {
