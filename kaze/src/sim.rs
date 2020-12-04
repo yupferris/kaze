@@ -36,8 +36,14 @@ pub fn generate<'a, W: Write>(
     let root_context = context_arena.alloc(ModuleContext::new());
 
     let mut state_elements = StateElements::new();
+    let mut signal_reference_counts = HashMap::new();
     for (_, output) in m.outputs.borrow().iter() {
-        state_elements.gather(&output, root_context, &context_arena);
+        state_elements.gather(
+            &output,
+            root_context,
+            &context_arena,
+            &mut signal_reference_counts,
+        );
     }
 
     struct TraceSignal {
@@ -63,7 +69,7 @@ pub fn generate<'a, W: Write>(
     };
 
     let mut prop_context = AssignmentContext::new();
-    let mut c = Compiler::new(&state_elements, &context_arena);
+    let mut c = Compiler::new(&state_elements, &signal_reference_counts, &context_arena);
     for (name, input) in m.inputs.borrow().iter() {
         add_trace_signal(root_context, name.clone(), name.clone(), input.bit_width());
     }
@@ -280,6 +286,7 @@ pub fn generate<'a, W: Write>(
     w.append_line("}")?;
     w.append_newline()?;
 
+    w.append_line("#[allow(unused_parens)]")?;
     w.append_line("#[automatically_derived]")?;
     w.append_indent()?;
     w.append("impl")?;

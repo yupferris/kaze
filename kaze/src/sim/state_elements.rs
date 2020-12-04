@@ -51,30 +51,47 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
         }
     }
 
+    // TODO: Move this to ctor and iterate over input module outputs there?
     pub fn gather(
         &mut self,
         signal: &'graph graph::Signal<'graph>,
         context: &'arena ModuleContext<'graph, 'arena>,
         context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+        signal_reference_counts: &mut HashMap<
+            (
+                &'arena ModuleContext<'graph, 'arena>,
+                &'graph graph::Signal<'graph>,
+            ),
+            u32,
+        >,
     ) {
-        struct Node<'graph, 'arena> {
+        struct Frame<'graph, 'arena> {
             signal: &'graph graph::Signal<'graph>,
             context: &'arena ModuleContext<'graph, 'arena>,
         }
 
-        let mut nodes = Vec::new();
-        nodes.push(Node { signal, context });
+        let mut frames = Vec::new();
+        frames.push(Frame { signal, context });
 
-        while let Some(node) = nodes.pop() {
-            let signal = node.signal;
-            let context = node.context;
+        while let Some(frame) = frames.pop() {
+            let signal = frame.signal;
+            let context = frame.context;
+
+            let reference_count = signal_reference_counts
+                .entry((context, signal))
+                .or_insert(0);
+            *reference_count += 1;
+
+            if *reference_count > 1 {
+                continue;
+            }
 
             match signal.data {
                 graph::SignalData::Lit { .. } => (),
 
                 graph::SignalData::Input { ref name, .. } => {
                     if let Some((instance, parent)) = context.instance_and_parent {
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: instance.driven_inputs.borrow()[name],
                             context: parent,
                         });
@@ -83,9 +100,6 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
 
                 graph::SignalData::Reg { data } => {
                     let key = (context, signal);
-                    if self.regs.contains_key(&key) {
-                        continue;
-                    }
                     let value_name = format!("__reg_{}_{}", data.name, self.regs.len());
                     let next_name = format!("{}_next", value_name);
                     self.regs.insert(
@@ -96,99 +110,99 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                             next_name,
                         },
                     );
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: data.next.borrow().unwrap(),
                         context,
                     });
                 }
 
                 graph::SignalData::UnOp { source, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: source,
                         context,
                     });
                 }
                 graph::SignalData::SimpleBinOp { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
                 graph::SignalData::AdditiveBinOp { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
                 graph::SignalData::ComparisonBinOp { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
                 graph::SignalData::ShiftBinOp { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
 
                 graph::SignalData::Mul { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
                 graph::SignalData::MulSigned { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
                 }
 
                 graph::SignalData::Bits { source, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: source,
                         context,
                     });
                 }
 
                 graph::SignalData::Repeat { source, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: source,
                         context,
                     });
                 }
                 graph::SignalData::Concat { lhs, rhs, .. } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: lhs,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: rhs,
                         context,
                     });
@@ -200,15 +214,15 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                     when_false,
                     ..
                 } => {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: cond,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: when_true,
                         context,
                     });
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: when_false,
                         context,
                     });
@@ -219,7 +233,7 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                 } => {
                     let output = instance.instantiated_module.outputs.borrow()[name];
                     let context = context.get_child(instance, context_arena);
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: output,
                         context,
                     });
@@ -227,9 +241,6 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
 
                 graph::SignalData::MemReadPortOutput { mem, .. } => {
                     let key = (context, mem);
-                    if self.mems.contains_key(&key) {
-                        continue;
-                    }
                     let mem_name = format!("{}_{}", mem.name, self.mems.len());
                     // TODO: It might actually be too conservative to trace all read ports,
                     //  as we only know that the write port and _this_ read port are reachable
@@ -263,25 +274,25 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                         },
                     );
                     for (address, enable) in mem.read_ports.borrow().iter() {
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: address,
                             context,
                         });
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: enable,
                             context,
                         });
                     }
                     if let Some((address, value, enable)) = *mem.write_port.borrow() {
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: address,
                             context,
                         });
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: value,
                             context,
                         });
-                        nodes.push(Node {
+                        frames.push(Frame {
                             signal: enable,
                             context,
                         });

@@ -174,24 +174,24 @@ fn trace_signal<'graph, 'arena>(
     ),
     root: &graph::Module<'graph>,
 ) {
-    struct Node<'graph, 'arena> {
+    struct Frame<'graph, 'arena> {
         signal: &'graph graph::Signal<'graph>,
         context: &'arena ModuleContext<'graph, 'arena>,
     }
 
-    let mut nodes = Vec::new();
-    nodes.push(Node { signal, context });
+    let mut frames = Vec::new();
+    frames.push(Frame { signal, context });
 
-    while let Some(node) = nodes.pop() {
-        let signal = node.signal;
-        let context = node.context;
+    while let Some(frame) = frames.pop() {
+        let signal = frame.signal;
+        let context = frame.context;
 
         match signal.data {
             graph::SignalData::Lit { .. } => (),
 
             graph::SignalData::Input { ref name, .. } => {
                 if let Some((instance, parent)) = context.instance_and_parent {
-                    nodes.push(Node {
+                    frames.push(Frame {
                         signal: instance.driven_inputs.borrow()[name],
                         context: parent,
                     });
@@ -201,7 +201,7 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::Reg { .. } => (),
 
             graph::SignalData::UnOp { ref source, .. } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: source,
                     context,
                 });
@@ -209,11 +209,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::SimpleBinOp {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -221,11 +221,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::AdditiveBinOp {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -233,11 +233,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::ComparisonBinOp {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -245,11 +245,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::ShiftBinOp {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -258,11 +258,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::Mul {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -270,25 +270,25 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::MulSigned {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
             }
 
             graph::SignalData::Bits { ref source, .. } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: source,
                     context,
                 });
             }
 
             graph::SignalData::Repeat { ref source, .. } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: source,
                     context,
                 });
@@ -296,11 +296,11 @@ fn trace_signal<'graph, 'arena>(
             graph::SignalData::Concat {
                 ref lhs, ref rhs, ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: lhs,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: rhs,
                     context,
                 });
@@ -312,15 +312,15 @@ fn trace_signal<'graph, 'arena>(
                 ref when_false,
                 ..
             } => {
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: cond,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: when_true,
                     context,
                 });
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: when_false,
                     context,
                 });
@@ -335,7 +335,7 @@ fn trace_signal<'graph, 'arena>(
                 if context == source_output.0 && output == source_output.1 {
                     panic!("Cannot generate code for module \"{}\" because module \"{}\" contains an output called \"{}\" which forms a combinational loop with itself.", root.name, instantiated_module.name, name);
                 }
-                nodes.push(Node {
+                frames.push(Frame {
                     signal: output,
                     context,
                 });

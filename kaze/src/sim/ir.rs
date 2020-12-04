@@ -17,20 +17,26 @@ impl AssignmentContext {
     }
 
     pub fn gen_temp(&mut self, expr: Expr) -> Expr {
-        let name = format!("__temp_{}", self.local_count);
-        self.local_count += 1;
+        match expr {
+            // We don't need to generate a temp for Constants or Refs
+            Expr::Constant { .. } | Expr::Ref { .. } => expr,
+            _ => {
+                let name = format!("__temp_{}", self.local_count);
+                self.local_count += 1;
 
-        self.assignments.push(Assignment {
-            target: Expr::Ref {
-                name: name.clone(),
-                scope: Scope::Local,
-            },
-            expr,
-        });
+                self.assignments.push(Assignment {
+                    target: Expr::Ref {
+                        name: name.clone(),
+                        scope: Scope::Local,
+                    },
+                    expr,
+                });
 
-        Expr::Ref {
-            name,
-            scope: Scope::Local,
+                Expr::Ref {
+                    name,
+                    scope: Scope::Local,
+                }
+            }
         }
     }
 
@@ -84,14 +90,14 @@ pub enum Expr {
         target: Box<Expr>,
         index: Box<Expr>,
     },
-    Cast {
-        source: Box<Expr>,
-        target_type: ValueType,
-    },
     BinaryFunctionCall {
         name: String,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+    },
+    Cast {
+        source: Box<Expr>,
+        target_type: ValueType,
     },
     Constant {
         value: Constant,
@@ -138,86 +144,126 @@ impl Expr {
     }
 
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        match self {
-            Expr::ArrayIndex { target, index } => {
-                target.write(w)?;
-                w.append("[")?;
-                index.write(w)?;
-                w.append(" as usize]")?;
-            }
-            Expr::Cast {
-                source,
-                target_type,
-            } => {
-                source.write(w)?;
-                w.append(&format!(" as {}", target_type.name()))?;
-            }
-            Expr::BinaryFunctionCall { name, lhs, rhs } => {
-                w.append(&format!("{}(", name))?;
-                lhs.write(w)?;
-                w.append(", ")?;
-                rhs.write(w)?;
-                w.append(")")?;
-            }
-            Expr::Constant { value } => {
-                w.append(&match value {
-                    Constant::Bool(value) => format!("{}", value),
-                    Constant::U32(value) => format!("0x{:x}u32", value),
-                    Constant::U64(value) => format!("0x{:x}u64", value),
-                    Constant::U128(value) => format!("0x{:x}u128", value),
-                })?;
-            }
-            Expr::InfixBinOp { lhs, rhs, op } => {
-                lhs.write(w)?;
-                w.append(&format!(
-                    " {} ",
-                    match op {
-                        InfixBinOp::BitAnd => "&",
-                        InfixBinOp::BitOr => "|",
-                        InfixBinOp::BitXor => "^",
-                        InfixBinOp::Equal => "==",
-                        InfixBinOp::NotEqual => "!=",
-                        InfixBinOp::LessThan => "<",
-                        InfixBinOp::LessThanEqual => "<=",
-                        InfixBinOp::GreaterThan => ">",
-                        InfixBinOp::GreaterThanEqual => ">=",
-                        InfixBinOp::Shl => "<<",
-                        InfixBinOp::Shr => ">>",
-                        InfixBinOp::Mul => "*",
+        enum Command<'a> {
+            Expr { expr: &'a Expr },
+            Str { s: &'a str },
+        }
+
+        let mut commands = Vec::new();
+        commands.push(Command::Expr { expr: self });
+
+        while let Some(command) = commands.pop() {
+            match command {
+                Command::Expr { expr } => match *expr {
+                    Expr::ArrayIndex {
+                        ref target,
+                        ref index,
+                    } => {
+                        commands.push(Command::Str { s: " as usize]" });
+                        commands.push(Command::Expr { expr: index });
+                        commands.push(Command::Str { s: "[" });
+                        commands.push(Command::Expr { expr: target });
                     }
-                ))?;
-                rhs.write(w)?;
-            }
-            Expr::Ref { name, scope } => {
-                if let Scope::Member = scope {
-                    w.append("self.")?;
+                    Expr::BinaryFunctionCall {
+                        ref name,
+                        ref lhs,
+                        ref rhs,
+                    } => {
+                        commands.push(Command::Str { s: ")" });
+                        commands.push(Command::Expr { expr: rhs });
+                        commands.push(Command::Str { s: ", " });
+                        commands.push(Command::Expr { expr: lhs });
+                        w.append(&format!("{}(", name))?;
+                    }
+                    Expr::Cast {
+                        ref source,
+                        target_type,
+                    } => {
+                        commands.push(Command::Str { s: ")" });
+                        commands.push(Command::Str {
+                            s: &target_type.name(),
+                        });
+                        commands.push(Command::Str { s: " as " });
+                        commands.push(Command::Expr { expr: source });
+                        w.append("(")?;
+                    }
+                    Expr::Constant { ref value } => {
+                        w.append(&match value {
+                            Constant::Bool(value) => format!("{}", value),
+                            Constant::U32(value) => format!("0x{:x}u32", value),
+                            Constant::U64(value) => format!("0x{:x}u64", value),
+                            Constant::U128(value) => format!("0x{:x}u128", value),
+                        })?;
+                    }
+                    Expr::InfixBinOp {
+                        ref lhs,
+                        ref rhs,
+                        op,
+                    } => {
+                        commands.push(Command::Str { s: ")" });
+                        commands.push(Command::Expr { expr: rhs });
+                        commands.push(Command::Str { s: " " });
+                        commands.push(Command::Str {
+                            s: match op {
+                                InfixBinOp::BitAnd => "&",
+                                InfixBinOp::BitOr => "|",
+                                InfixBinOp::BitXor => "^",
+                                InfixBinOp::Equal => "==",
+                                InfixBinOp::NotEqual => "!=",
+                                InfixBinOp::LessThan => "<",
+                                InfixBinOp::LessThanEqual => "<=",
+                                InfixBinOp::GreaterThan => ">",
+                                InfixBinOp::GreaterThanEqual => ">=",
+                                InfixBinOp::Shl => "<<",
+                                InfixBinOp::Shr => ">>",
+                                InfixBinOp::Mul => "*",
+                            },
+                        });
+                        commands.push(Command::Str { s: " " });
+                        commands.push(Command::Expr { expr: lhs });
+                        w.append("(")?;
+                    }
+                    Expr::Ref { ref name, scope } => {
+                        if let Scope::Member = scope {
+                            w.append("self.")?;
+                        }
+                        w.append(name)?;
+                    }
+                    Expr::Ternary {
+                        ref cond,
+                        ref when_true,
+                        ref when_false,
+                    } => {
+                        commands.push(Command::Str { s: "}" });
+                        commands.push(Command::Expr { expr: when_false });
+                        commands.push(Command::Str { s: " } else { " });
+                        commands.push(Command::Expr { expr: when_true });
+                        commands.push(Command::Str { s: " { " });
+                        commands.push(Command::Expr { expr: cond });
+                        w.append("if ")?;
+                    }
+                    Expr::UnaryMemberCall {
+                        ref target,
+                        ref name,
+                        ref arg,
+                    } => {
+                        commands.push(Command::Str { s: ")" });
+                        commands.push(Command::Expr { expr: arg });
+                        commands.push(Command::Str { s: "(" });
+                        commands.push(Command::Str { s: name });
+                        commands.push(Command::Str { s: "." });
+                        commands.push(Command::Expr { expr: target });
+                    }
+                    Expr::UnOp { ref source, op } => {
+                        w.append(match op {
+                            UnOp::Not => "!",
+                        })?;
+                        commands.push(Command::Expr { expr: source });
+                    }
+                },
+                Command::Str { s } => {
+                    w.append(s)?;
                 }
-                w.append(name)?;
-            }
-            Expr::Ternary {
-                cond,
-                when_true,
-                when_false,
-            } => {
-                w.append("if ")?;
-                cond.write(w)?;
-                w.append(" { ")?;
-                when_true.write(w)?;
-                w.append(" } else { ")?;
-                when_false.write(w)?;
-                w.append(" }")?;
-            }
-            Expr::UnaryMemberCall { target, name, arg } => {
-                target.write(w)?;
-                w.append(&format!(".{}(", name))?;
-                arg.write(w)?;
-                w.append(")")?;
-            }
-            Expr::UnOp { source, op } => {
-                w.append(match op {
-                    UnOp::Not => "!",
-                })?;
-                source.write(w)?;
             }
         }
 
@@ -233,7 +279,7 @@ pub enum Constant {
     U128(u128),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum InfixBinOp {
     BitAnd,
     BitOr,
@@ -249,13 +295,13 @@ pub enum InfixBinOp {
     Mul,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum Scope {
     Local,
     Member,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum UnOp {
     Not,
 }

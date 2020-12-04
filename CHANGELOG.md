@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Mark generated rust simulator impl's with `#[automatically_derived]` to skip expensive lints during compilation.
+- Reduced the amount of temporary bindings used in the generated sim code, which reduces rustc compile time dramatically.
 
 ## [0.1.14] - 2020-11-29
 ### Changed

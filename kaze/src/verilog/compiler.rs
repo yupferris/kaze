@@ -22,19 +22,19 @@ impl<'graph> Compiler<'graph> {
         module_decls: &ModuleDecls<'graph>,
         a: &mut AssignmentContext,
     ) -> Expr {
-        enum Node<'graph> {
+        enum Frame<'graph> {
             Enter(&'graph graph::Signal<'graph>),
             Leave(&'graph graph::Signal<'graph>),
         }
 
-        let mut nodes = Vec::new();
-        nodes.push(Node::Enter(signal));
+        let mut frames = Vec::new();
+        frames.push(Frame::Enter(signal));
 
         let mut results = Vec::new();
 
-        while let Some(node) = nodes.pop() {
-            if let Some(expr) = match node {
-                Node::Enter(signal) => {
+        while let Some(frame) = frames.pop() {
+            if let Some(expr) = match frame {
+                Frame::Enter(signal) => {
                     if let Some(expr) = self.signal_exprs.get(&signal) {
                         results.push(expr.clone());
                         continue;
@@ -55,63 +55,63 @@ impl<'graph> Compiler<'graph> {
                         }),
 
                         graph::SignalData::UnOp { source, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(source));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
                         graph::SignalData::SimpleBinOp { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         graph::SignalData::AdditiveBinOp { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         graph::SignalData::ComparisonBinOp { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         graph::SignalData::ShiftBinOp { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
                         graph::SignalData::Mul { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         graph::SignalData::MulSigned { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
                         graph::SignalData::Bits { source, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(source));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
 
                         graph::SignalData::Repeat { source, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(source));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
                         graph::SignalData::Concat { lhs, rhs, .. } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(lhs));
-                            nodes.push(Node::Enter(rhs));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
@@ -121,10 +121,10 @@ impl<'graph> Compiler<'graph> {
                             when_false,
                             ..
                         } => {
-                            nodes.push(Node::Leave(signal));
-                            nodes.push(Node::Enter(cond));
-                            nodes.push(Node::Enter(when_true));
-                            nodes.push(Node::Enter(when_false));
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(cond));
+                            frames.push(Frame::Enter(when_true));
+                            frames.push(Frame::Enter(when_false));
                             None
                         }
 
@@ -150,7 +150,7 @@ impl<'graph> Compiler<'graph> {
                         }
                     }
                 }
-                Node::Leave(signal) => {
+                Frame::Leave(signal) => {
                     match signal.data {
                         graph::SignalData::Lit { .. } => unreachable!(),
 
