@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.15] - 2020-12-07
 ### Changed
-- Mark generated rust simulator impl's with `#[automatically_derived]` to skip expensive lints during compilation.
-- Reduced the amount of temporary bindings used in the generated sim code, which reduces rustc compile time dramatically.
+- Reduced the amount of temporary bindings used in the generated sim code, which reduces rustc compile time dramatically!
+- Mark generated rust simulator impl's with `#[automatically_derived]` to skip expensive lints during compilation
 
 ## [0.1.14] - 2020-11-29
 ### Changed
@@ -114,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.14...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.15...HEAD
+[0.1.14]: https://github.com/yupferris/kaze/compare/v0.1.14..v0.1.15
 [0.1.14]: https://github.com/yupferris/kaze/compare/v0.1.13..v0.1.14
 [0.1.13]: https://github.com/yupferris/kaze/compare/v0.1.12..v0.1.13
 [0.1.12]: https://github.com/yupferris/kaze/compare/v0.1.11..v0.1.12
