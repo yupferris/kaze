@@ -2,5 +2,5 @@
 
 members = [
     "kaze",
-    "kaze-sim-tests",
+    "sim-tests",
 ]
