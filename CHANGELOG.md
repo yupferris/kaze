@@ -6,19 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.18] - 2020-12-13
+### Fixed
+- Duplicate trace member names in Rust sim gen in some cases
+
 ## [0.1.17] - 2020-12-13
 ### Added
 - Cycle delay helpers to `Signal` API (`reg_next`, `reg_next_with_default`)
 
 ## [0.1.16] - 2020-12-13
 ### Fixed
-- Stack overflow bugs that were still present when cloning IR expressions in the rust sim compiler
+- Stack overflow bugs that were still present when cloning IR expressions in the Rust sim compiler
 - Broken changelog link for [0.1.15]
 
 ## [0.1.15] - 2020-12-07
 ### Changed
 - Reduced the amount of temporary bindings used in the generated sim code, which reduces rustc compile time dramatically!
-- Mark generated rust simulator impl's with `#[automatically_derived]` to skip expensive lints during compilation
+- Mark generated Rust simulator impl's with `#[automatically_derived]` to skip expensive lints during compilation
 
 ## [0.1.14] - 2020-11-29
 ### Changed
@@ -125,7 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.17...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.18...HEAD
+[0.1.18]: https://github.com/yupferris/kaze/compare/v0.1.17..v0.1.18
 [0.1.17]: https://github.com/yupferris/kaze/compare/v0.1.16..v0.1.17
 [0.1.16]: https://github.com/yupferris/kaze/compare/v0.1.15..v0.1.16
 [0.1.15]: https://github.com/yupferris/kaze/compare/v0.1.14..v0.1.15
