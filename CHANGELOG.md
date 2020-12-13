@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.1.16] - 2020-12-13
 ### Fixed
 - Stack overflow bugs that were still present when cloning IR expressions in the rust sim compiler
 - Broken changelog link for [0.1.15]
@@ -119,7 +121,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.15...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.16...HEAD
+[0.1.16]: https://github.com/yupferris/kaze/compare/v0.1.15..v0.1.16
 [0.1.15]: https://github.com/yupferris/kaze/compare/v0.1.14..v0.1.15
 [0.1.14]: https://github.com/yupferris/kaze/compare/v0.1.13..v0.1.14
 [0.1.13]: https://github.com/yupferris/kaze/compare/v0.1.12..v0.1.13
