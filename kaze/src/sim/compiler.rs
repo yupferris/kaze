@@ -8,42 +8,45 @@ use typed_arena::Arena;
 
 use std::collections::HashMap;
 
-pub(super) struct Compiler<'graph, 'arena> {
-    state_elements: &'arena StateElements<'graph, 'arena>,
-    signal_reference_counts: &'arena HashMap<
+pub(super) struct Compiler<'graph, 'context_arena, 'expr_arena> {
+    state_elements: &'context_arena StateElements<'graph, 'context_arena>,
+    signal_reference_counts: &'context_arena HashMap<
         (
-            &'arena ModuleContext<'graph, 'arena>,
+            &'context_arena ModuleContext<'graph, 'context_arena>,
             &'graph graph::Signal<'graph>,
         ),
         u32,
     >,
-    context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
+    context_arena: &'context_arena Arena<ModuleContext<'graph, 'context_arena>>,
+    expr_arena: &'expr_arena Arena<Expr<'expr_arena>>,
 
     signal_exprs: HashMap<
         (
-            &'arena ModuleContext<'graph, 'arena>,
+            &'context_arena ModuleContext<'graph, 'context_arena>,
             &'graph graph::Signal<'graph>,
         ),
-        Expr,
+        &'expr_arena Expr<'expr_arena>,
     >,
 }
 
-impl<'graph, 'arena> Compiler<'graph, 'arena> {
+impl<'graph, 'context_arena, 'expr_arena> Compiler<'graph, 'context_arena, 'expr_arena> {
     pub fn new(
-        state_elements: &'arena StateElements<'graph, 'arena>,
-        signal_reference_counts: &'arena HashMap<
+        state_elements: &'context_arena StateElements<'graph, 'context_arena>,
+        signal_reference_counts: &'context_arena HashMap<
             (
-                &'arena ModuleContext<'graph, 'arena>,
+                &'context_arena ModuleContext<'graph, 'context_arena>,
                 &'graph graph::Signal<'graph>,
             ),
             u32,
         >,
-        context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
-    ) -> Compiler<'graph, 'arena> {
+        context_arena: &'context_arena Arena<ModuleContext<'graph, 'context_arena>>,
+        expr_arena: &'expr_arena Arena<Expr<'expr_arena>>,
+    ) -> Compiler<'graph, 'context_arena, 'expr_arena> {
         Compiler {
             state_elements,
             signal_reference_counts,
             context_arena,
+            expr_arena,
 
             signal_exprs: HashMap::new(),
         }
@@ -52,17 +55,17 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
     pub fn compile_signal(
         &mut self,
         signal: &'graph graph::Signal<'graph>,
-        context: &'arena ModuleContext<'graph, 'arena>,
-        a: &mut AssignmentContext,
-    ) -> Expr {
-        enum Frame<'graph, 'arena> {
+        context: &'context_arena ModuleContext<'graph, 'context_arena>,
+        a: &mut AssignmentContext<'expr_arena>,
+    ) -> &'expr_arena Expr<'expr_arena> {
+        enum Frame<'graph, 'context_arena> {
             Enter {
                 signal: &'graph graph::Signal<'graph>,
-                context: &'arena ModuleContext<'graph, 'arena>,
+                context: &'context_arena ModuleContext<'graph, 'context_arena>,
             },
             Leave {
                 signal: &'graph graph::Signal<'graph>,
-                context: &'arena ModuleContext<'graph, 'arena>,
+                context: &'context_arena ModuleContext<'graph, 'context_arena>,
             },
         }
 
@@ -76,7 +79,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 Frame::Enter { signal, context } => {
                     let key = (context, signal);
                     if let Some(expr) = self.signal_exprs.get(&key) {
-                        results.push(expr.clone());
+                        results.push(*expr);
                         continue;
                     }
 
@@ -84,7 +87,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                         graph::SignalData::Lit {
                             ref value,
                             bit_width,
-                        } => Some((key, Expr::from_constant(value, bit_width))),
+                        } => Some((key, Expr::from_constant(value, bit_width, &self.expr_arena))),
 
                         graph::SignalData::Input {
                             ref name,
@@ -98,20 +101,20 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                 None
                             } else {
                                 let target_type = ValueType::from_bit_width(bit_width);
-                                let expr = Expr::Ref {
+                                let expr = self.expr_arena.alloc(Expr::Ref {
                                     name: name.clone(),
                                     scope: Scope::Member,
-                                };
+                                });
                                 Some((key, self.gen_mask(expr, bit_width, target_type)))
                             }
                         }
 
                         graph::SignalData::Reg { .. } => Some((
                             key,
-                            Expr::Ref {
+                            &*self.expr_arena.alloc(Expr::Ref {
                                 name: self.state_elements.regs[&key].value_name.clone(),
                                 scope: Scope::Member,
-                            },
+                            }),
                         )),
 
                         graph::SignalData::UnOp { source, .. } => {
@@ -268,10 +271,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             let read_signal_names = &mem.read_signal_names[&(address, enable)];
                             Some((
                                 key,
-                                Expr::Ref {
+                                &*self.expr_arena.alloc(Expr::Ref {
                                     name: read_signal_names.value_name.clone(),
                                     scope: Scope::Member,
-                                },
+                                }),
                             ))
                         }
                     }
@@ -288,12 +291,12 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
 
                         graph::SignalData::UnOp { op, bit_width, .. } => {
                             let expr = results.pop().unwrap();
-                            let expr = Expr::UnOp {
-                                source: Box::new(expr),
+                            let expr = self.expr_arena.alloc(Expr::UnOp {
+                                source: expr,
                                 op: match op {
                                     graph::UnOp::Not => UnOp::Not,
                                 },
-                            };
+                            });
 
                             let target_type = ValueType::from_bit_width(bit_width);
                             Some((key, self.gen_mask(expr, bit_width, target_type)))
@@ -303,15 +306,15 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             let rhs = results.pop().unwrap();
                             Some((
                                 key,
-                                Expr::InfixBinOp {
-                                    lhs: Box::new(lhs),
-                                    rhs: Box::new(rhs),
+                                &*self.expr_arena.alloc(Expr::InfixBinOp {
+                                    lhs,
+                                    rhs,
                                     op: match op {
                                         graph::SimpleBinOp::BitAnd => InfixBinOp::BitAnd,
                                         graph::SimpleBinOp::BitOr => InfixBinOp::BitOr,
                                         graph::SimpleBinOp::BitXor => InfixBinOp::BitXor,
                                     },
-                                },
+                                }),
                             ))
                         }
                         graph::SignalData::AdditiveBinOp { lhs, op, .. } => {
@@ -325,14 +328,14 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             };
                             let lhs = self.gen_cast(lhs, source_type, op_input_type);
                             let rhs = self.gen_cast(rhs, source_type, op_input_type);
-                            let expr = Expr::UnaryMemberCall {
-                                target: Box::new(lhs),
+                            let expr = self.expr_arena.alloc(Expr::UnaryMemberCall {
+                                target: lhs,
                                 name: match op {
                                     graph::AdditiveBinOp::Add => "wrapping_add".into(),
                                     graph::AdditiveBinOp::Sub => "wrapping_sub".into(),
                                 },
-                                arg: Box::new(rhs),
-                            };
+                                arg: rhs,
+                            });
                             let op_output_type = op_input_type;
                             let target_bit_width = signal.bit_width();
                             let target_type = ValueType::from_bit_width(target_bit_width);
@@ -367,9 +370,9 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             }
                             Some((
                                 key,
-                                Expr::InfixBinOp {
-                                    lhs: Box::new(lhs),
-                                    rhs: Box::new(rhs),
+                                &*self.expr_arena.alloc(Expr::InfixBinOp {
+                                    lhs,
+                                    rhs,
                                     op: match op {
                                         graph::ComparisonBinOp::Equal => InfixBinOp::Equal,
                                         graph::ComparisonBinOp::NotEqual => InfixBinOp::NotEqual,
@@ -390,7 +393,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                             InfixBinOp::GreaterThanEqual
                                         }
                                     },
-                                },
+                                }),
                             ))
                         }
                         graph::SignalData::ShiftBinOp {
@@ -431,10 +434,10 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                 _ => rhs_source_type,
                             };
                             let rhs = self.gen_cast(rhs, rhs_source_type, rhs_op_input_type);
-                            let rhs = Expr::BinaryFunctionCall {
+                            let rhs = self.expr_arena.alloc(Expr::BinaryFunctionCall {
                                 name: "std::cmp::min".into(),
-                                lhs: Box::new(rhs),
-                                rhs: Box::new(Expr::Constant {
+                                lhs: rhs,
+                                rhs: self.expr_arena.alloc(Expr::Constant {
                                     value: match rhs_op_input_type {
                                         ValueType::Bool
                                         | ValueType::I32
@@ -445,24 +448,24 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                         ValueType::U128 => Constant::U128(std::u32::MAX as _),
                                     },
                                 }),
-                            };
+                            });
                             let rhs = self.gen_cast(rhs, lhs_op_input_type, ValueType::U32);
-                            let expr = Expr::UnaryMemberCall {
-                                target: Box::new(lhs.clone()),
+                            let expr = self.expr_arena.alloc(Expr::UnaryMemberCall {
+                                target: lhs,
                                 name: match op {
                                     graph::ShiftBinOp::Shl => "checked_shl".into(),
                                     graph::ShiftBinOp::Shr | graph::ShiftBinOp::ShrArithmetic => {
                                         "checked_shr".into()
                                     }
                                 },
-                                arg: Box::new(rhs),
-                            };
-                            let expr = Expr::UnaryMemberCall {
-                                target: Box::new(expr),
+                                arg: rhs,
+                            });
+                            let expr = self.expr_arena.alloc(Expr::UnaryMemberCall {
+                                target: expr,
                                 name: "unwrap_or".into(),
-                                arg: Box::new(match op {
+                                arg: match op {
                                     graph::ShiftBinOp::Shl | graph::ShiftBinOp::Shr => {
-                                        Expr::Constant {
+                                        self.expr_arena.alloc(Expr::Constant {
                                             value: match lhs_op_input_type {
                                                 ValueType::Bool
                                                 | ValueType::I32
@@ -472,17 +475,21 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                                 ValueType::U64 => Constant::U64(0),
                                                 ValueType::U128 => Constant::U128(0),
                                             },
-                                        }
+                                        })
                                     }
-                                    graph::ShiftBinOp::ShrArithmetic => Expr::InfixBinOp {
-                                        lhs: Box::new(lhs),
-                                        rhs: Box::new(Expr::Constant {
-                                            value: Constant::U32(lhs_op_input_type.bit_width() - 1),
-                                        }),
-                                        op: InfixBinOp::Shr,
-                                    },
-                                }),
-                            };
+                                    graph::ShiftBinOp::ShrArithmetic => {
+                                        self.expr_arena.alloc(Expr::InfixBinOp {
+                                            lhs,
+                                            rhs: self.expr_arena.alloc(Expr::Constant {
+                                                value: Constant::U32(
+                                                    lhs_op_input_type.bit_width() - 1,
+                                                ),
+                                            }),
+                                            op: InfixBinOp::Shr,
+                                        })
+                                    }
+                                },
+                            });
                             let op_output_type = lhs_op_input_type;
                             let expr = match op {
                                 graph::ShiftBinOp::Shl | graph::ShiftBinOp::Shr => expr,
@@ -511,11 +518,11 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             let rhs = self.gen_cast(rhs, rhs_type, target_type);
                             Some((
                                 key,
-                                Expr::InfixBinOp {
-                                    lhs: Box::new(lhs),
-                                    rhs: Box::new(rhs),
+                                &*self.expr_arena.alloc(Expr::InfixBinOp {
+                                    lhs,
+                                    rhs,
                                     op: InfixBinOp::Mul,
-                                },
+                                }),
                             ))
                         }
                         graph::SignalData::MulSigned {
@@ -538,11 +545,11 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                                 self.gen_sign_extend_shifts(lhs, lhs_bit_width, target_type_signed);
                             let rhs =
                                 self.gen_sign_extend_shifts(rhs, rhs_bit_width, target_type_signed);
-                            let expr = Expr::InfixBinOp {
-                                lhs: Box::new(lhs),
-                                rhs: Box::new(rhs),
+                            let expr = self.expr_arena.alloc(Expr::InfixBinOp {
+                                lhs,
+                                rhs,
                                 op: InfixBinOp::Mul,
-                            };
+                            });
                             let expr = self.gen_cast(expr, target_type_signed, target_type);
                             Some((key, self.gen_mask(expr, target_bit_width, target_type)))
                         }
@@ -575,18 +582,16 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             );
 
                             if count > 1 {
-                                let source_expr = a.gen_temp(expr.clone());
+                                let source_expr = a.gen_temp(expr);
 
                                 for i in 1..count {
-                                    let rhs = self.gen_shift_left(
-                                        source_expr.clone(),
-                                        i * source.bit_width(),
-                                    );
-                                    expr = Expr::InfixBinOp {
-                                        lhs: Box::new(expr),
-                                        rhs: Box::new(rhs),
+                                    let rhs =
+                                        self.gen_shift_left(source_expr, i * source.bit_width());
+                                    expr = self.expr_arena.alloc(Expr::InfixBinOp {
+                                        lhs: expr,
+                                        rhs,
                                         op: InfixBinOp::BitOr,
-                                    };
+                                    });
                                 }
                             }
 
@@ -608,11 +613,11 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             let lhs = self.gen_shift_left(lhs, rhs_bit_width);
                             Some((
                                 key,
-                                Expr::InfixBinOp {
-                                    lhs: Box::new(lhs),
-                                    rhs: Box::new(rhs),
+                                &*self.expr_arena.alloc(Expr::InfixBinOp {
+                                    lhs,
+                                    rhs,
                                     op: InfixBinOp::BitOr,
-                                },
+                                }),
                             ))
                         }
 
@@ -622,11 +627,11 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                             let when_false = results.pop().unwrap();
                             Some((
                                 key,
-                                Expr::Ternary {
-                                    cond: Box::new(cond),
-                                    when_true: Box::new(when_true),
-                                    when_false: Box::new(when_false),
-                                },
+                                &*self.expr_arena.alloc(Expr::Ternary {
+                                    cond,
+                                    when_true,
+                                    when_false,
+                                }),
                             ))
                         }
 
@@ -640,7 +645,7 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 if self.signal_reference_counts[&key] > 1 {
                     expr = a.gen_temp(expr);
                 }
-                self.signal_exprs.insert(key, expr.clone());
+                self.signal_exprs.insert(key, expr);
                 results.push(expr);
             }
         }
@@ -648,15 +653,20 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
         results.pop().unwrap()
     }
 
-    fn gen_mask(&mut self, expr: Expr, bit_width: u32, target_type: ValueType) -> Expr {
+    fn gen_mask(
+        &mut self,
+        expr: &'expr_arena Expr<'expr_arena>,
+        bit_width: u32,
+        target_type: ValueType,
+    ) -> &'expr_arena Expr<'expr_arena> {
         if bit_width == target_type.bit_width() {
             return expr;
         }
 
         let mask = (1u128 << bit_width) - 1;
-        Expr::InfixBinOp {
-            lhs: Box::new(expr),
-            rhs: Box::new(Expr::Constant {
+        self.expr_arena.alloc(Expr::InfixBinOp {
+            lhs: expr,
+            rhs: self.expr_arena.alloc(Expr::Constant {
                 value: match target_type {
                     ValueType::Bool | ValueType::I32 | ValueType::I64 | ValueType::I128 => {
                         unreachable!()
@@ -667,47 +677,60 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                 },
             }),
             op: InfixBinOp::BitAnd,
-        }
+        })
     }
 
-    fn gen_shift_left(&mut self, expr: Expr, shift: u32) -> Expr {
+    fn gen_shift_left(
+        &mut self,
+        expr: &'expr_arena Expr<'expr_arena>,
+        shift: u32,
+    ) -> &'expr_arena Expr<'expr_arena> {
         if shift == 0 {
             return expr;
         }
 
-        Expr::InfixBinOp {
-            lhs: Box::new(expr),
-            rhs: Box::new(Expr::Constant {
+        self.expr_arena.alloc(Expr::InfixBinOp {
+            lhs: expr,
+            rhs: self.expr_arena.alloc(Expr::Constant {
                 value: Constant::U32(shift),
             }),
             op: InfixBinOp::Shl,
-        }
+        })
     }
 
-    fn gen_shift_right(&mut self, expr: Expr, shift: u32) -> Expr {
+    fn gen_shift_right(
+        &mut self,
+        expr: &'expr_arena Expr<'expr_arena>,
+        shift: u32,
+    ) -> &'expr_arena Expr<'expr_arena> {
         if shift == 0 {
             return expr;
         }
 
-        Expr::InfixBinOp {
-            lhs: Box::new(expr),
-            rhs: Box::new(Expr::Constant {
+        self.expr_arena.alloc(Expr::InfixBinOp {
+            lhs: expr,
+            rhs: self.expr_arena.alloc(Expr::Constant {
                 value: Constant::U32(shift),
             }),
             op: InfixBinOp::Shr,
-        }
+        })
     }
 
-    fn gen_cast(&mut self, expr: Expr, source_type: ValueType, target_type: ValueType) -> Expr {
+    fn gen_cast(
+        &mut self,
+        expr: &'expr_arena Expr<'expr_arena>,
+        source_type: ValueType,
+        target_type: ValueType,
+    ) -> &'expr_arena Expr<'expr_arena> {
         if source_type == target_type {
             return expr;
         }
 
         if target_type == ValueType::Bool {
             let expr = self.gen_mask(expr, 1, source_type);
-            return Expr::InfixBinOp {
-                lhs: Box::new(expr),
-                rhs: Box::new(Expr::Constant {
+            return self.expr_arena.alloc(Expr::InfixBinOp {
+                lhs: expr,
+                rhs: self.expr_arena.alloc(Expr::Constant {
                     value: match source_type {
                         ValueType::Bool | ValueType::I32 | ValueType::I64 | ValueType::I128 => {
                             unreachable!()
@@ -718,21 +741,21 @@ impl<'graph, 'arena> Compiler<'graph, 'arena> {
                     },
                 }),
                 op: InfixBinOp::NotEqual,
-            };
+            });
         }
 
-        Expr::Cast {
-            source: Box::new(expr),
+        self.expr_arena.alloc(Expr::Cast {
+            source: expr,
             target_type,
-        }
+        })
     }
 
     fn gen_sign_extend_shifts(
         &mut self,
-        expr: Expr,
+        expr: &'expr_arena Expr,
         source_bit_width: u32,
         target_type: ValueType,
-    ) -> Expr {
+    ) -> &'expr_arena Expr<'expr_arena> {
         let shift = target_type.bit_width() - source_bit_width;
         let expr = self.gen_shift_left(expr, shift);
         self.gen_shift_right(expr, shift)

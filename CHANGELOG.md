@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
+- Stack overflow bugs that were still present when cloning IR expressions in the rust sim compiler
 - Broken changelog link for [0.1.15]
 
 ## [0.1.15] - 2020-12-07

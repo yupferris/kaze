@@ -68,18 +68,24 @@ pub fn generate<'a, W: Write>(
         }
     };
 
-    let mut prop_context = AssignmentContext::new();
-    let mut c = Compiler::new(&state_elements, &signal_reference_counts, &context_arena);
+    let expr_arena = Arena::new();
+    let mut prop_context = AssignmentContext::new(&expr_arena);
+    let mut c = Compiler::new(
+        &state_elements,
+        &signal_reference_counts,
+        &context_arena,
+        &expr_arena,
+    );
     for (name, input) in m.inputs.borrow().iter() {
         add_trace_signal(root_context, name.clone(), name.clone(), input.bit_width());
     }
     for (name, output) in m.outputs.borrow().iter() {
         let expr = c.compile_signal(&output, root_context, &mut prop_context);
         prop_context.push(Assignment {
-            target: Expr::Ref {
+            target: expr_arena.alloc(Expr::Ref {
                 name: name.clone(),
                 scope: Scope::Member,
-            },
+            }),
             expr,
         });
 
@@ -89,18 +95,18 @@ pub fn generate<'a, W: Write>(
         for ((address, enable), read_signal_names) in mem.read_signal_names.iter() {
             let address = c.compile_signal(address, context, &mut prop_context);
             prop_context.push(Assignment {
-                target: Expr::Ref {
+                target: expr_arena.alloc(Expr::Ref {
                     name: read_signal_names.address_name.clone(),
                     scope: Scope::Member,
-                },
+                }),
                 expr: address,
             });
             let enable = c.compile_signal(enable, context, &mut prop_context);
             prop_context.push(Assignment {
-                target: Expr::Ref {
+                target: expr_arena.alloc(Expr::Ref {
                     name: read_signal_names.enable_name.clone(),
                     scope: Scope::Member,
-                },
+                }),
                 expr: enable,
             });
 
@@ -120,26 +126,26 @@ pub fn generate<'a, W: Write>(
         if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
             let address = c.compile_signal(address, context, &mut prop_context);
             prop_context.push(Assignment {
-                target: Expr::Ref {
+                target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_address_name.clone(),
                     scope: Scope::Member,
-                },
+                }),
                 expr: address,
             });
             let value = c.compile_signal(value, context, &mut prop_context);
             prop_context.push(Assignment {
-                target: Expr::Ref {
+                target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_value_name.clone(),
                     scope: Scope::Member,
-                },
+                }),
                 expr: value,
             });
             let enable = c.compile_signal(enable, context, &mut prop_context);
             prop_context.push(Assignment {
-                target: Expr::Ref {
+                target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_enable_name.clone(),
                     scope: Scope::Member,
-                },
+                }),
                 expr: enable,
             });
 
@@ -167,10 +173,10 @@ pub fn generate<'a, W: Write>(
         let signal = reg.data.next.borrow().unwrap();
         let expr = c.compile_signal(signal, context, &mut prop_context);
         prop_context.push(Assignment {
-            target: Expr::Ref {
+            target: expr_arena.alloc(Expr::Ref {
                 name: reg.next_name.clone(),
                 scope: Scope::Member,
-            },
+            }),
             expr,
         });
 
@@ -484,90 +490,90 @@ pub fn generate<'a, W: Write>(
     w.unindent();
     w.append_line("}")?;
 
-    let mut reset_context = AssignmentContext::new();
-    let mut posedge_clk_context = AssignmentContext::new();
+    let mut reset_context = AssignmentContext::new(&expr_arena);
+    let mut posedge_clk_context = AssignmentContext::new(&expr_arena);
 
     for (_, reg) in state_elements.regs.iter() {
-        let target = Expr::Ref {
+        let target = expr_arena.alloc(Expr::Ref {
             name: reg.value_name.clone(),
             scope: Scope::Member,
-        };
+        });
 
         if let Some(ref initial_value) = *reg.data.initial_value.borrow() {
             reset_context.push(Assignment {
-                target: target.clone(),
-                expr: Expr::from_constant(initial_value, reg.data.bit_width),
+                target,
+                expr: Expr::from_constant(initial_value, reg.data.bit_width, &expr_arena),
             });
         }
 
         posedge_clk_context.push(Assignment {
             target,
-            expr: Expr::Ref {
+            expr: expr_arena.alloc(Expr::Ref {
                 name: reg.next_name.clone(),
                 scope: Scope::Member,
-            },
+            }),
         });
     }
 
     for (_, mem) in state_elements.mems.iter() {
         for (_, read_signal_names) in mem.read_signal_names.iter() {
-            let address = Expr::Ref {
+            let address = expr_arena.alloc(Expr::Ref {
                 name: read_signal_names.address_name.clone(),
                 scope: Scope::Member,
-            };
-            let enable = Expr::Ref {
+            });
+            let enable = expr_arena.alloc(Expr::Ref {
                 name: read_signal_names.enable_name.clone(),
                 scope: Scope::Member,
-            };
-            let value = Expr::Ref {
+            });
+            let value = expr_arena.alloc(Expr::Ref {
                 name: read_signal_names.value_name.clone(),
                 scope: Scope::Member,
-            };
-            let element = Expr::ArrayIndex {
-                target: Box::new(Expr::Ref {
+            });
+            let element = expr_arena.alloc(Expr::ArrayIndex {
+                target: expr_arena.alloc(Expr::Ref {
                     name: mem.mem_name.clone(),
                     scope: Scope::Member,
                 }),
-                index: Box::new(address),
-            };
+                index: address,
+            });
             // TODO: Conditional assign statement instead of always writing ternary
             posedge_clk_context.push(Assignment {
-                target: value.clone(),
-                expr: Expr::Ternary {
-                    cond: Box::new(enable),
-                    when_true: Box::new(element),
-                    when_false: Box::new(value),
-                },
+                target: value,
+                expr: expr_arena.alloc(Expr::Ternary {
+                    cond: enable,
+                    when_true: element,
+                    when_false: value,
+                }),
             });
         }
         if mem.mem.write_port.borrow().is_some() {
-            let address = Expr::Ref {
+            let address = expr_arena.alloc(Expr::Ref {
                 name: mem.write_address_name.clone(),
                 scope: Scope::Member,
-            };
-            let value = Expr::Ref {
+            });
+            let value = expr_arena.alloc(Expr::Ref {
                 name: mem.write_value_name.clone(),
                 scope: Scope::Member,
-            };
-            let enable = Expr::Ref {
+            });
+            let enable = expr_arena.alloc(Expr::Ref {
                 name: mem.write_enable_name.clone(),
                 scope: Scope::Member,
-            };
-            let element = Expr::ArrayIndex {
-                target: Box::new(Expr::Ref {
+            });
+            let element = expr_arena.alloc(Expr::ArrayIndex {
+                target: expr_arena.alloc(Expr::Ref {
                     name: mem.mem_name.clone(),
                     scope: Scope::Member,
                 }),
-                index: Box::new(address),
-            };
+                index: address,
+            });
             // TODO: Conditional assign statement instead of always writing ternary
             posedge_clk_context.push(Assignment {
-                target: element.clone(),
-                expr: Expr::Ternary {
-                    cond: Box::new(enable),
-                    when_true: Box::new(value),
-                    when_false: Box::new(element),
-                },
+                target: element,
+                expr: expr_arena.alloc(Expr::Ternary {
+                    cond: enable,
+                    when_true: value,
+                    when_false: element,
+                }),
             });
         }
     }

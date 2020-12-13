@@ -1,22 +1,26 @@
 use crate::code_writer;
 use crate::graph;
 
+use typed_arena::Arena;
+
 use std::io::{Result, Write};
 
-pub struct AssignmentContext {
-    assignments: Vec<Assignment>,
+pub struct AssignmentContext<'arena> {
+    arena: &'arena Arena<Expr<'arena>>,
+    assignments: Vec<Assignment<'arena>>,
     local_count: u32,
 }
 
-impl AssignmentContext {
-    pub fn new() -> AssignmentContext {
+impl<'arena> AssignmentContext<'arena> {
+    pub fn new(arena: &'arena Arena<Expr<'arena>>) -> AssignmentContext<'arena> {
         AssignmentContext {
+            arena,
             assignments: Vec::new(),
             local_count: 0,
         }
     }
 
-    pub fn gen_temp(&mut self, expr: Expr) -> Expr {
+    pub fn gen_temp(&mut self, expr: &'arena Expr<'arena>) -> &'arena Expr<'arena> {
         match expr {
             // We don't need to generate a temp for Constants or Refs
             Expr::Constant { .. } | Expr::Ref { .. } => expr,
@@ -25,17 +29,17 @@ impl AssignmentContext {
                 self.local_count += 1;
 
                 self.assignments.push(Assignment {
-                    target: Expr::Ref {
+                    target: self.arena.alloc(Expr::Ref {
                         name: name.clone(),
                         scope: Scope::Local,
-                    },
+                    }),
                     expr,
                 });
 
-                Expr::Ref {
+                self.arena.alloc(Expr::Ref {
                     name,
                     scope: Scope::Local,
-                }
+                })
             }
         }
     }
@@ -44,7 +48,7 @@ impl AssignmentContext {
         self.assignments.is_empty()
     }
 
-    pub fn push(&mut self, assignment: Assignment) {
+    pub fn push(&mut self, assignment: Assignment<'arena>) {
         self.assignments.push(assignment);
     }
 
@@ -57,12 +61,12 @@ impl AssignmentContext {
     }
 }
 
-pub struct Assignment {
-    pub target: Expr,
-    pub expr: Expr,
+pub struct Assignment<'arena> {
+    pub target: &'arena Expr<'arena>,
+    pub expr: &'arena Expr<'arena>,
 }
 
-impl Assignment {
+impl<'arena> Assignment<'arena> {
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
         w.append_indent()?;
         // TODO: I hate these kind of conditionals...
@@ -84,27 +88,26 @@ impl Assignment {
     }
 }
 
-#[derive(Clone)]
-pub enum Expr {
+pub enum Expr<'arena> {
     ArrayIndex {
-        target: Box<Expr>,
-        index: Box<Expr>,
+        target: &'arena Expr<'arena>,
+        index: &'arena Expr<'arena>,
     },
     BinaryFunctionCall {
         name: String,
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
+        lhs: &'arena Expr<'arena>,
+        rhs: &'arena Expr<'arena>,
     },
     Cast {
-        source: Box<Expr>,
+        source: &'arena Expr<'arena>,
         target_type: ValueType,
     },
     Constant {
         value: Constant,
     },
     InfixBinOp {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
+        lhs: &'arena Expr<'arena>,
+        rhs: &'arena Expr<'arena>,
         op: InfixBinOp,
     },
     Ref {
@@ -112,27 +115,31 @@ pub enum Expr {
         scope: Scope,
     },
     Ternary {
-        cond: Box<Expr>,
-        when_true: Box<Expr>,
-        when_false: Box<Expr>,
+        cond: &'arena Expr<'arena>,
+        when_true: &'arena Expr<'arena>,
+        when_false: &'arena Expr<'arena>,
     },
     UnaryMemberCall {
-        target: Box<Expr>,
+        target: &'arena Expr<'arena>,
         name: String,
-        arg: Box<Expr>,
+        arg: &'arena Expr<'arena>,
     },
     UnOp {
-        source: Box<Expr>,
+        source: &'arena Expr<'arena>,
         op: UnOp,
     },
 }
 
-impl Expr {
-    pub fn from_constant(value: &graph::Constant, bit_width: u32) -> Expr {
+impl<'arena> Expr<'arena> {
+    pub fn from_constant(
+        value: &graph::Constant,
+        bit_width: u32,
+        arena: &'arena Arena<Expr<'arena>>,
+    ) -> &'arena Expr<'arena> {
         let value = value.numeric_value();
 
         let target_type = ValueType::from_bit_width(bit_width);
-        Expr::Constant {
+        arena.alloc(Expr::Constant {
             value: match target_type {
                 ValueType::Bool => Constant::Bool(value != 0),
                 ValueType::I32 | ValueType::I64 | ValueType::I128 => unreachable!(),
@@ -140,13 +147,13 @@ impl Expr {
                 ValueType::U64 => Constant::U64(value as _),
                 ValueType::U128 => Constant::U128(value),
             },
-        }
+        })
     }
 
     pub fn write<W: Write>(&self, w: &mut code_writer::CodeWriter<W>) -> Result<()> {
-        enum Command<'a> {
-            Expr { expr: &'a Expr },
-            Str { s: &'a str },
+        enum Command<'arena> {
+            Expr { expr: &'arena Expr<'arena> },
+            Str { s: &'arena str },
         }
 
         let mut commands = Vec::new();
@@ -271,7 +278,6 @@ impl Expr {
     }
 }
 
-#[derive(Clone)]
 pub enum Constant {
     Bool(bool),
     U32(u32),
