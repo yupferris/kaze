@@ -49,7 +49,7 @@ impl<'a> Register<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if this `Register` already has a default value specified, or if the specified [`value`] doesn't fit into this `Register`'s bit width.
+    /// Panics if this `Register` already has a default value specified, or if the specified `value` doesn't fit into this `Register`'s bit width.
     ///
     /// # Examples
     ///

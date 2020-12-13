@@ -232,7 +232,7 @@ impl<'a> Module<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
-        // TODO: Error if name already exists in this context
+        // TODO: Error if name already exists in this context and update docs for Signal::reg_next and Signal::reg_next_with_default to reflect this
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a register with {} bit(s). Signals must not be narrower than {} bit(s).",

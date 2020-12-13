@@ -1518,6 +1518,55 @@ mod tests {
     }
 
     #[test]
+    fn reg_next_test_module() {
+        let mut m = RegNextTestModule::new();
+
+        // Check (undefined) initial value
+        m.prop();
+        assert_eq!(m.o2, false);
+
+        m.i = false;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+
+        m.i = true;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, false);
+
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+    }
+
+    #[test]
+    fn reg_next_with_default_test_module() {
+        let mut m = RegNextWithDefaultTestModule::new();
+
+        // Check initial value
+        m.reset();
+        m.prop();
+        assert_eq!(m.o2, true);
+
+        m.i = true;
+        m.prop();
+        assert_eq!(m.o1, true);
+        assert_eq!(m.o2, true);
+
+        m.i = false;
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, true);
+
+        m.posedge_clk();
+        m.prop();
+        assert_eq!(m.o1, false);
+        assert_eq!(m.o2, false);
+    }
+
+    #[test]
     fn instantiation_test_module_comb() {
         let mut m = InstantiationTestModuleComb::new();
 

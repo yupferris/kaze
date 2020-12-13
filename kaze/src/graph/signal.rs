@@ -68,6 +68,8 @@ impl<'a> Signal<'a> {
     /// assert_eq!((m.lit(25u8, 8) + m.lit(42u8, 8)).bit_width(), 8);
     /// assert_eq!((m.lit(1u8, 1) * m.lit(2u8, 2)).bit_width(), 3);
     /// assert_eq!(m.lit(1u8, 1).mul_signed(m.lit(2u8, 2)).bit_width(), 3);
+    /// assert_eq!(m.lit(false, 1).reg_next("some_other_reg").bit_width(), 1);
+    /// assert_eq!(m.lit(true, 1).reg_next_with_default("yet_another_reg", false).bit_width(), 1);
     /// assert_eq!((m.high() & m.low()).bit_width(), 1);
     /// assert_eq!((m.high() | m.low()).bit_width(), 1);
     /// assert_eq!(m.lit(12u32, 100).bit(30).bit_width(), 1);
@@ -842,6 +844,63 @@ impl<'a> Signal<'a> {
     // TODO: This is currently only used to support sugar; if it doesn't work out, remove this
     pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
         self.module.mux(self, when_true, when_false)
+    }
+
+    /// Creates a [`Signal`] that represents the same value as this [`Signal`], but delayed by one cycle.
+    ///
+    /// This is achieved by creating a new [`Register`] called `name`, and specifying this [`Signal`] as the next value for the [`Register`]. Note that no default value is provided for this [`Register`], so the returned [`Signal`]'s value is undefined until the first clock edge, and its value is not affected by its [`Module`]'s implicit reset. If a default value is desired, use [`reg_next_with_default`] instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let a = m.lit(true, 1);
+    /// let a_delayed = a.reg_next("a_delayed");
+    /// ```
+    ///
+    /// [`reg_next_with_default`]: Self::reg_next_with_default
+    pub fn reg_next<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
+        let reg = self.module.reg(name, self.bit_width());
+        reg.drive_next(self);
+        reg.value
+    }
+
+    /// Creates a [`Signal`] that represents the same value as this [`Signal`], but delayed by one cycle, except when this [`Signal`]'s [`Module`]'s implicit reset is asserted, at which point it will represent `default_value`.
+    ///
+    /// This is achieved by creating a new [`Register`] called `name`, specifying `default_value` as its default value, and specifying this [`Signal`] as the next value for the [`Register`]. If a default value is not desired, use [`reg_next`] instead.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the specified `value` doesn't fit into this [`Signal`]'s bit width.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use kaze::*;
+    ///
+    /// let c = Context::new();
+    ///
+    /// let m = c.module("MyModule");
+    ///
+    /// let a = m.lit(true, 1);
+    /// let a_delayed = a.reg_next_with_default("a_delayed", false);
+    /// ```
+    ///
+    /// [`reg_next`]: Self::reg_next
+    pub fn reg_next_with_default<S: Into<String>, C: Into<Constant>>(
+        &'a self,
+        name: S,
+        default_value: C,
+    ) -> &Signal<'a> {
+        let reg = self.module.reg(name, self.bit_width());
+        reg.default_value(default_value);
+        reg.drive_next(self);
+        reg.value
     }
 }
 

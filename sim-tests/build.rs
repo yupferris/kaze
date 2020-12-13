@@ -173,6 +173,16 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     sim::generate(
+        reg_next_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
+        reg_next_with_default_test_module(&c),
+        sim::GenerationOptions::default(),
+        &mut file,
+    )?;
+    sim::generate(
         instantiation_test_module_comb(&c),
         sim::GenerationOptions::default(),
         &mut file,
@@ -814,6 +824,28 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
 
     m.output("o1", i1);
     m.output("o2", i2);
+
+    m
+}
+
+fn reg_next_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("RegNextTestModule");
+
+    let i = m.input("i", 1);
+
+    m.output("o1", i);
+    m.output("o2", i.reg_next("i_delayed"));
+
+    m
+}
+
+fn reg_next_with_default_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
+    let m = c.module("RegNextWithDefaultTestModule");
+
+    let i = m.input("i", 1);
+
+    m.output("o1", i);
+    m.output("o2", i.reg_next_with_default("i_delayed", true));
 
     m
 }
