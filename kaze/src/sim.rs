@@ -54,9 +54,10 @@ pub fn generate<'a, W: Write>(
         type_: TraceValueType,
     }
     let mut trace_signals: HashMap<&ModuleContext, Vec<TraceSignal>> = HashMap::new();
+    let mut num_trace_signals = 0;
     let mut add_trace_signal = |context, name, value_name, bit_width| {
         if options.tracing {
-            let member_name = format!("__trace_signal_id_{}_{}", name, trace_signals.len());
+            let member_name = format!("__trace_signal_id_{}_{}", name, num_trace_signals);
             let context_trace_signals = trace_signals.entry(context).or_insert(Vec::new());
             context_trace_signals.push(TraceSignal {
                 name,
@@ -65,6 +66,7 @@ pub fn generate<'a, W: Write>(
                 bit_width,
                 type_: TraceValueType::from_bit_width(bit_width),
             });
+            num_trace_signals += 1;
         }
     };
 
