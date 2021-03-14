@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.19] - 2021-03-14
+### Fixed
+- Bits indexing bug in verilog gen when indexing results in a scalar `Signal`
+
 ## [0.1.18] - 2020-12-13
 ### Fixed
 - Duplicate trace member names in Rust sim gen in some cases
@@ -129,7 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.1.0] - 2020-01-25 (Initial release)
 
-[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.18...HEAD
+[Unreleased]: https://github.com/yupferris/kaze/compare/v0.1.19...HEAD
+[0.1.19]: https://github.com/yupferris/kaze/compare/v0.1.18..v0.1.19
 [0.1.18]: https://github.com/yupferris/kaze/compare/v0.1.17..v0.1.18
 [0.1.17]: https://github.com/yupferris/kaze/compare/v0.1.16..v0.1.17
 [0.1.16]: https://github.com/yupferris/kaze/compare/v0.1.15..v0.1.16
