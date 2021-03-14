@@ -294,14 +294,15 @@ impl<'graph> Compiler<'graph> {
                         }
 
                         graph::SignalData::Bits {
+                            source,
                             range_high,
                             range_low,
-                            ..
                         } => {
+                            let source_bit_width = source.bit_width();
                             let bit_width = signal.bit_width();
                             let source = results.pop().unwrap();
                             // Verilog doesn't allow indexing scalars
-                            Some(if bit_width == 1 {
+                            Some(if source_bit_width == 1 {
                                 source
                             } else {
                                 a.gen_temp(
