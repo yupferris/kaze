@@ -102,7 +102,7 @@ mod tests {
                 w.unindent();
 
                 Ok(())
-            };
+            }
             print_module(&mut w, name, module)?;
 
             Ok(())

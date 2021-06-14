@@ -353,7 +353,7 @@ pub fn generate<'a, W: Write>(
             w.append_line("trace.pop_module()?;")?;
 
             Ok(())
-        };
+        }
         visit_context(root_context, &trace_signals, &mut w)?;
         w.append_newline()?;
     }
