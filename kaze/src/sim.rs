@@ -12,7 +12,6 @@ use typed_arena::Arena;
 
 use crate::code_writer;
 use crate::graph;
-use crate::module_context::*;
 use crate::runtime::tracing::*;
 use crate::validation::*;
 
@@ -21,6 +20,7 @@ use std::io::{Result, Write};
 
 #[derive(Default)]
 pub struct GenerationOptions {
+    pub override_module_name: Option<String>,
     pub tracing: bool,
 }
 
@@ -32,18 +32,10 @@ pub fn generate<'a, W: Write>(
 ) -> Result<()> {
     validate_module_hierarchy(m);
 
-    let context_arena = Arena::new();
-    let root_context = context_arena.alloc(ModuleContext::new());
-
     let mut state_elements = StateElements::new();
     let mut signal_reference_counts = HashMap::new();
     for (_, output) in m.outputs.borrow().iter() {
-        state_elements.gather(
-            &output,
-            root_context,
-            &context_arena,
-            &mut signal_reference_counts,
-        );
+        state_elements.gather(output.data.source, &mut signal_reference_counts);
     }
 
     struct TraceSignal {
@@ -53,13 +45,13 @@ pub fn generate<'a, W: Write>(
         bit_width: u32,
         type_: TraceValueType,
     }
-    let mut trace_signals: HashMap<&ModuleContext, Vec<TraceSignal>> = HashMap::new();
+    let mut trace_signals: HashMap<&'a graph::Module<'a>, Vec<TraceSignal>> = HashMap::new();
     let mut num_trace_signals = 0;
-    let mut add_trace_signal = |context, name, value_name, bit_width| {
+    let mut add_trace_signal = |module, name, value_name, bit_width| {
         if options.tracing {
             let member_name = format!("__trace_signal_id_{}_{}", name, num_trace_signals);
-            let context_trace_signals = trace_signals.entry(context).or_insert(Vec::new());
-            context_trace_signals.push(TraceSignal {
+            let module_trace_signals = trace_signals.entry(module).or_insert(Vec::new());
+            module_trace_signals.push(TraceSignal {
                 name,
                 member_name,
                 value_name,
@@ -72,17 +64,12 @@ pub fn generate<'a, W: Write>(
 
     let expr_arena = Arena::new();
     let mut prop_context = AssignmentContext::new(&expr_arena);
-    let mut c = Compiler::new(
-        &state_elements,
-        &signal_reference_counts,
-        &context_arena,
-        &expr_arena,
-    );
+    let mut c = Compiler::new(&state_elements, &signal_reference_counts, &expr_arena);
     for (name, input) in m.inputs.borrow().iter() {
-        add_trace_signal(root_context, name.clone(), name.clone(), input.bit_width());
+        add_trace_signal(m, name.clone(), name.clone(), input.data.bit_width);
     }
     for (name, output) in m.outputs.borrow().iter() {
-        let expr = c.compile_signal(&output, root_context, &mut prop_context);
+        let expr = c.compile_signal(output.data.source, &mut prop_context);
         prop_context.push(Assignment {
             target: expr_arena.alloc(Expr::Ref {
                 name: name.clone(),
@@ -91,11 +78,11 @@ pub fn generate<'a, W: Write>(
             expr,
         });
 
-        add_trace_signal(root_context, name.clone(), name.clone(), output.bit_width());
+        add_trace_signal(m, name.clone(), name.clone(), output.data.bit_width);
     }
-    for ((context, _), mem) in state_elements.mems.iter() {
+    for (graph_mem, mem) in state_elements.mems.iter() {
         for ((address, enable), read_signal_names) in mem.read_signal_names.iter() {
-            let address = c.compile_signal(address, context, &mut prop_context);
+            let address = c.compile_signal(address, &mut prop_context);
             prop_context.push(Assignment {
                 target: expr_arena.alloc(Expr::Ref {
                     name: read_signal_names.address_name.clone(),
@@ -103,7 +90,7 @@ pub fn generate<'a, W: Write>(
                 }),
                 expr: address,
             });
-            let enable = c.compile_signal(enable, context, &mut prop_context);
+            let enable = c.compile_signal(enable, &mut prop_context);
             prop_context.push(Assignment {
                 target: expr_arena.alloc(Expr::Ref {
                     name: read_signal_names.enable_name.clone(),
@@ -113,20 +100,20 @@ pub fn generate<'a, W: Write>(
             });
 
             add_trace_signal(
-                context,
+                graph_mem.module,
                 read_signal_names.address_name.clone(),
                 read_signal_names.address_name.clone(),
-                mem.mem.address_bit_width,
+                graph_mem.address_bit_width,
             );
             add_trace_signal(
-                context,
+                graph_mem.module,
                 read_signal_names.enable_name.clone(),
                 read_signal_names.enable_name.clone(),
                 1,
             );
         }
-        if let Some((address, value, enable)) = *mem.mem.write_port.borrow() {
-            let address = c.compile_signal(address, context, &mut prop_context);
+        if let Some((address, value, enable)) = *graph_mem.write_port.borrow() {
+            let address = c.compile_signal(address, &mut prop_context);
             prop_context.push(Assignment {
                 target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_address_name.clone(),
@@ -134,7 +121,7 @@ pub fn generate<'a, W: Write>(
                 }),
                 expr: address,
             });
-            let value = c.compile_signal(value, context, &mut prop_context);
+            let value = c.compile_signal(value, &mut prop_context);
             prop_context.push(Assignment {
                 target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_value_name.clone(),
@@ -142,7 +129,7 @@ pub fn generate<'a, W: Write>(
                 }),
                 expr: value,
             });
-            let enable = c.compile_signal(enable, context, &mut prop_context);
+            let enable = c.compile_signal(enable, &mut prop_context);
             prop_context.push(Assignment {
                 target: expr_arena.alloc(Expr::Ref {
                     name: mem.write_enable_name.clone(),
@@ -152,28 +139,28 @@ pub fn generate<'a, W: Write>(
             });
 
             add_trace_signal(
-                context,
+                graph_mem.module,
                 mem.write_address_name.clone(),
                 mem.write_address_name.clone(),
-                mem.mem.address_bit_width,
+                graph_mem.address_bit_width,
             );
             add_trace_signal(
-                context,
+                graph_mem.module,
                 mem.write_value_name.clone(),
                 mem.write_value_name.clone(),
-                mem.mem.element_bit_width,
+                graph_mem.element_bit_width,
             );
             add_trace_signal(
-                context,
+                graph_mem.module,
                 mem.write_enable_name.clone(),
                 mem.write_enable_name.clone(),
                 1,
             );
         }
     }
-    for ((context, _), reg) in state_elements.regs.iter() {
+    for (_, reg) in state_elements.regs.iter() {
         let signal = reg.data.next.borrow().unwrap();
-        let expr = c.compile_signal(signal, context, &mut prop_context);
+        let expr = c.compile_signal(signal, &mut prop_context);
         prop_context.push(Assignment {
             target: expr_arena.alloc(Expr::Ref {
                 name: reg.next_name.clone(),
@@ -183,7 +170,7 @@ pub fn generate<'a, W: Write>(
         });
 
         add_trace_signal(
-            context,
+            signal.module,
             reg.data.name.clone(),
             reg.value_name.clone(),
             signal.bit_width(),
@@ -192,8 +179,12 @@ pub fn generate<'a, W: Write>(
 
     let mut w = code_writer::CodeWriter::new(w);
 
+    let module_name = options
+        .override_module_name
+        .unwrap_or_else(|| m.name.clone());
+
     w.append_indent()?;
-    w.append(&format!("pub struct {}", m.name))?;
+    w.append(&format!("pub struct {}", module_name))?;
     if options.tracing {
         w.append("<T: kaze::runtime::tracing::Trace>")?;
     }
@@ -208,8 +199,8 @@ pub fn generate<'a, W: Write>(
             w.append_line(&format!(
                 "pub {}: {}, // {} bit(s)",
                 name,
-                ValueType::from_bit_width(input.bit_width()).name(),
-                input.bit_width()
+                ValueType::from_bit_width(input.data.bit_width).name(),
+                input.data.bit_width
             ))?;
         }
     }
@@ -221,8 +212,8 @@ pub fn generate<'a, W: Write>(
             w.append_line(&format!(
                 "pub {}: {}, // {} bit(s)",
                 name,
-                ValueType::from_bit_width(output.bit_width()).name(),
-                output.bit_width()
+                ValueType::from_bit_width(output.data.bit_width).name(),
+                output.data.bit_width
             ))?;
         }
     }
@@ -283,8 +274,8 @@ pub fn generate<'a, W: Write>(
     if options.tracing {
         w.append_newline()?;
         w.append_line("__trace: T,")?;
-        for context_trace_signals in trace_signals.values() {
-            for trace_signal in context_trace_signals.iter() {
+        for module_trace_signals in trace_signals.values() {
+            for trace_signal in module_trace_signals.iter() {
                 w.append_line(&format!("{}: T::SignalId,", trace_signal.member_name))?;
             }
         }
@@ -301,7 +292,7 @@ pub fn generate<'a, W: Write>(
     if options.tracing {
         w.append("<T: kaze::runtime::tracing::Trace>")?;
     }
-    w.append(&format!(" {}", m.name))?;
+    w.append(&format!(" {}", module_name))?;
     if options.tracing {
         w.append("<T>")?;
     }
@@ -313,29 +304,27 @@ pub fn generate<'a, W: Write>(
     w.append("pub fn new(")?;
     if options.tracing {
         w.append(&format!(
-            "instance_name: &'static str, mut trace: T) -> std::io::Result<{}<T>> {{",
-            m.name
+            "mut trace: T) -> std::io::Result<{}<T>> {{",
+            module_name
         ))?;
     } else {
-        w.append(&format!(") -> {} {{", m.name))?;
+        w.append(&format!(") -> {} {{", module_name))?;
     }
     w.append_newline()?;
     w.indent();
 
     if options.tracing {
-        fn visit_context<'graph, 'arena, W: Write>(
-            context: &'arena ModuleContext<'graph, 'arena>,
-            trace_signals: &HashMap<&'arena ModuleContext<'graph, 'arena>, Vec<TraceSignal>>,
+        fn visit_module<'a, W: Write>(
+            module: &'a graph::Module<'a>,
+            trace_signals: &HashMap<&'a graph::Module<'a>, Vec<TraceSignal>>,
             w: &mut code_writer::CodeWriter<W>,
         ) -> Result<()> {
-            let module_name = if let Some((instance, _)) = context.instance_and_parent {
-                format!("\"{}\"", instance.name)
-            } else {
-                "instance_name".into()
-            };
-            w.append_line(&format!("trace.push_module({})?;", module_name))?;
+            w.append_line(&format!(
+                "trace.push_module(\"{}\")?;",
+                module.instance_name
+            ))?;
 
-            if let Some(module_trace_signals) = trace_signals.get(&context) {
+            if let Some(module_trace_signals) = trace_signals.get(&module) {
                 for trace_signal in module_trace_signals.iter() {
                     w.append_line(&format!("let {} = trace.add_signal(\"{}\", {}, kaze::runtime::tracing::TraceValueType::{})?;", trace_signal.member_name, trace_signal.name, trace_signal.bit_width, match trace_signal.type_ {
                         TraceValueType::Bool => "Bool",
@@ -346,15 +335,15 @@ pub fn generate<'a, W: Write>(
                 }
             }
 
-            for child in context.children().values() {
-                visit_context(child, trace_signals, w)?;
+            for child in module.modules.borrow().iter() {
+                visit_module(child, trace_signals, w)?;
             }
 
             w.append_line("trace.pop_module()?;")?;
 
             Ok(())
         }
-        visit_context(root_context, &trace_signals, &mut w)?;
+        visit_module(m, &trace_signals, &mut w)?;
         w.append_newline()?;
     }
 
@@ -362,7 +351,7 @@ pub fn generate<'a, W: Write>(
     if options.tracing {
         w.append("Ok(")?;
     }
-    w.append(&format!("{} {{", m.name))?;
+    w.append(&format!("{} {{", module_name))?;
     w.append_newline()?;
     w.indent();
 
@@ -372,8 +361,8 @@ pub fn generate<'a, W: Write>(
             w.append_line(&format!(
                 "{}: {}, // {} bit(s)",
                 name,
-                ValueType::from_bit_width(input.bit_width()).zero_str(),
-                input.bit_width()
+                ValueType::from_bit_width(input.data.bit_width).zero_str(),
+                input.data.bit_width
             ))?;
         }
     }
@@ -384,8 +373,8 @@ pub fn generate<'a, W: Write>(
             w.append_line(&format!(
                 "{}: {}, // {} bit(s)",
                 name,
-                ValueType::from_bit_width(output.bit_width()).zero_str(),
-                output.bit_width()
+                ValueType::from_bit_width(output.data.bit_width).zero_str(),
+                output.data.bit_width
             ))?;
         }
     }
@@ -475,8 +464,8 @@ pub fn generate<'a, W: Write>(
     if options.tracing {
         w.append_newline()?;
         w.append_line("__trace: trace,")?;
-        for context_trace_signals in trace_signals.values() {
-            for trace_signal in context_trace_signals.iter() {
+        for module_trace_signals in trace_signals.values() {
+            for trace_signal in module_trace_signals.iter() {
                 w.append_line(&format!("{},", trace_signal.member_name))?;
             }
         }
@@ -619,8 +608,8 @@ pub fn generate<'a, W: Write>(
         w.append_line("self.__trace.update_time_stamp(time_stamp)?;")?;
         w.append_newline()?;
 
-        for context_trace_signals in trace_signals.values() {
-            for trace_signal in context_trace_signals.iter() {
+        for module_trace_signals in trace_signals.values() {
+            for trace_signal in module_trace_signals.iter() {
                 w.append_line(&format!("self.__trace.update_signal(&self.{}, kaze::runtime::tracing::TraceValue::{}(self.{}))?;", trace_signal.member_name, match trace_signal.type_ {
                     TraceValueType::Bool => "Bool",
                     TraceValueType::U32 => "U32",
@@ -652,48 +641,14 @@ mod tests {
 
     #[test]
     #[should_panic(
-        expected = "Cannot generate code for module \"A\" because it has a recursive definition formed by an instance of itself called \"a\"."
-    )]
-    fn recursive_module_definition_error1() {
-        let c = Context::new();
-
-        let a = c.module("A");
-
-        let _ = a.instance("a", "A");
-
-        // Panic
-        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
-    }
-
-    #[test]
-    #[should_panic(
-        expected = "Cannot generate code for module \"A\" because it has a recursive definition formed by an instance of itself called \"a\" in module \"B\"."
-    )]
-    fn recursive_module_definition_error2() {
-        let c = Context::new();
-
-        let a = c.module("A");
-        let b = c.module("B");
-
-        let _ = a.instance("b", "B");
-        let _ = b.instance("a", "A");
-
-        // Panic
-        generate(a, GenerationOptions::default(), Vec::new()).unwrap();
-    }
-
-    #[test]
-    #[should_panic(
         expected = "Cannot generate code for module \"A\" because module \"A\" contains an instance of module \"B\" called \"b\" whose input \"i\" is not driven."
     )]
     fn undriven_instance_input_error() {
         let c = Context::new();
 
-        let a = c.module("A");
-        let b = c.module("B");
+        let a = c.module("a", "A");
+        let b = a.module("b", "B");
         let _ = b.input("i", 1);
-
-        let _ = a.instance("b", "B");
 
         // Panic
         generate(a, GenerationOptions::default(), Vec::new()).unwrap();
@@ -706,7 +661,7 @@ mod tests {
     fn undriven_register_error1() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let _ = a.reg("r", 1);
 
         // Panic
@@ -720,11 +675,9 @@ mod tests {
     fn undriven_register_error2() {
         let c = Context::new();
 
-        let a = c.module("A");
-        let b = c.module("B");
+        let a = c.module("a", "A");
+        let b = a.module("b", "B");
         let _ = b.reg("r", 1);
-
-        let _ = a.instance("b", "B");
 
         // Panic
         generate(a, GenerationOptions::default(), Vec::new()).unwrap();
@@ -737,7 +690,7 @@ mod tests {
     fn mem_without_read_ports_error1() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let _ = a.mem("m", 1, 1);
 
         // Panic
@@ -751,11 +704,9 @@ mod tests {
     fn mem_without_read_ports_error2() {
         let c = Context::new();
 
-        let a = c.module("A");
-        let b = c.module("B");
+        let a = c.module("a", "A");
+        let b = a.module("b", "B");
         let _ = b.mem("m", 1, 1);
-
-        let _ = a.instance("b", "B");
 
         // Panic
         generate(a, GenerationOptions::default(), Vec::new()).unwrap();
@@ -768,7 +719,7 @@ mod tests {
     fn mem_without_initial_contents_or_write_port_error1() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let m = a.mem("m", 1, 1);
         let _ = m.read_port(a.low(), a.low());
 
@@ -783,12 +734,10 @@ mod tests {
     fn mem_without_initial_contents_or_write_port_error2() {
         let c = Context::new();
 
-        let a = c.module("A");
-        let b = c.module("B");
+        let a = c.module("a", "A");
+        let b = a.module("b", "B");
         let m = b.mem("m", 1, 1);
         let _ = m.read_port(b.low(), b.low());
-
-        let _ = a.instance("b", "B");
 
         // Panic
         generate(a, GenerationOptions::default(), Vec::new()).unwrap();
@@ -801,13 +750,11 @@ mod tests {
     fn combinational_loop_error() {
         let c = Context::new();
 
-        let a = c.module("a");
-        a.output("o", a.input("i", 1));
-
-        let b = c.module("b");
-        let a_inst = b.instance("a_inst", "a");
-        let a_inst_o = a_inst.output("o");
-        a_inst.drive_input("i", a_inst_o);
+        let b = c.module("b", "b");
+        let a = b.module("a", "a");
+        let a_i = a.input("i", 1);
+        let a_o = a.output("o", a_i);
+        a_i.drive(a_o);
 
         // Panic
         generate(b, GenerationOptions::default(), Vec::new()).unwrap();

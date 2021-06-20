@@ -10,210 +10,210 @@ fn main() -> Result<()> {
     let dest_path = Path::new(&out_dir).join("modules.rs");
     let mut file = File::create(&dest_path).unwrap();
 
-    let c = Context::new();
+    let p = Context::new();
 
     sim::generate(
-        input_masking(&c),
+        input_masking(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        widest_input(&c),
+        widest_input(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        add_test_module(&c),
+        add_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        sub_test_module(&c),
+        sub_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mul_test_module(&c),
+        mul_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mul_signed_test_module(&c),
+        mul_signed_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        shl_test_module(&c),
+        shl_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        shr_test_module(&c),
+        shr_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        shr_arithmetic_test_module(&c),
+        shr_arithmetic_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bit_and_test_module(&c),
+        bit_and_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bit_or_test_module(&c),
+        bit_or_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bit_xor_test_module(&c),
+        bit_xor_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        not_test_module(&c),
+        not_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        reg_test_module(&c),
+        reg_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        simple_reg_delay(&c),
+        simple_reg_delay(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bit_test_module_0(&c),
+        bit_test_module_0(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bit_test_module_1(&c),
+        bit_test_module_1(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bits_test_module_0(&c),
+        bits_test_module_0(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        bits_test_module_1(&c),
+        bits_test_module_1(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        repeat_test_module(&c),
+        repeat_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        concat_test_module(&c),
+        concat_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        eq_test_module(&c),
+        eq_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        ne_test_module(&c),
+        ne_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        lt_test_module(&c),
+        lt_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        le_test_module(&c),
+        le_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        gt_test_module(&c),
+        gt_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        ge_test_module(&c),
+        ge_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        lt_signed_test_module(&c),
+        lt_signed_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        le_signed_test_module(&c),
+        le_signed_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        gt_signed_test_module(&c),
+        gt_signed_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        ge_signed_test_module(&c),
+        ge_signed_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mux_test_module(&c),
+        mux_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        reg_next_test_module(&c),
+        reg_next_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        reg_next_with_default_test_module(&c),
+        reg_next_with_default_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        instantiation_test_module_comb(&c),
+        instantiation_test_module_comb(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        instantiation_test_module_reg(&c),
+        instantiation_test_module_reg(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        nested_instantiation_test_module(&c),
+        nested_instantiation_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mem_test_module_0(&c),
+        mem_test_module_0(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mem_test_module_1(&c),
+        mem_test_module_1(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        mem_test_module_2(&c),
+        mem_test_module_2(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
     sim::generate(
-        trace_test_module_0(&c),
+        trace_test_module_0(&p),
         sim::GenerationOptions {
             tracing: true,
             ..sim::GenerationOptions::default()
@@ -221,7 +221,7 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     sim::generate(
-        trace_test_module_1(&c),
+        trace_test_module_1(&p),
         sim::GenerationOptions {
             tracing: true,
             ..sim::GenerationOptions::default()
@@ -229,7 +229,7 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     sim::generate(
-        trace_test_module_2(&c),
+        trace_test_module_2(&p),
         sim::GenerationOptions {
             tracing: true,
             ..sim::GenerationOptions::default()
@@ -237,7 +237,7 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     sim::generate(
-        trace_test_module_3(&c),
+        trace_test_module_3(&p),
         sim::GenerationOptions {
             tracing: true,
             ..sim::GenerationOptions::default()
@@ -245,7 +245,7 @@ fn main() -> Result<()> {
         &mut file,
     )?;
     sim::generate(
-        deep_graph_test_module(&c),
+        deep_graph_test_module(&p),
         sim::GenerationOptions::default(),
         &mut file,
     )?;
@@ -253,24 +253,24 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn input_masking<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("InputMasking");
+fn input_masking<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("input_masking", "InputMasking");
 
     m.output("o", m.input("i", 27));
 
     m
 }
 
-fn widest_input<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("WidestInput");
+fn widest_input<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("widest_input", "WidestInput");
 
     m.output("o", m.input("i", 128));
 
     m
 }
 
-fn add_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("AddTestModule");
+fn add_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("add_test_module", "AddTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -299,8 +299,8 @@ fn add_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn sub_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("SubTestModule");
+fn sub_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("sub_test_module", "SubTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -329,8 +329,8 @@ fn sub_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn mul_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MulTestModule");
+fn mul_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mul_test_module", "MulTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -363,8 +363,8 @@ fn mul_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn mul_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MulSignedTestModule");
+fn mul_signed_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mul_signed_test_module", "MulSignedTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -397,8 +397,8 @@ fn mul_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn shl_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ShlTestModule");
+fn shl_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("shl_test_module", "ShlTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -439,8 +439,8 @@ fn shl_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn shr_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ShrTestModule");
+fn shr_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("shr_test_module", "ShrTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -481,8 +481,8 @@ fn shr_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn shr_arithmetic_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ShrArithmeticTestModule");
+fn shr_arithmetic_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("shr_arithmetic_test_module", "ShrArithmeticTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -523,8 +523,8 @@ fn shr_arithmetic_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bit_and_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitAndTestModule");
+fn bit_and_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bit_and_test_module", "BitAndTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -533,8 +533,8 @@ fn bit_and_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bit_or_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitOrTestModule");
+fn bit_or_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bit_or_test_module", "BitOrTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -543,8 +543,8 @@ fn bit_or_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bit_xor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitXorTestModule");
+fn bit_xor_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bit_xor_test_module", "BitXorTestModule");
 
     let i1 = m.input("i1", 1);
     let i2 = m.input("i2", 1);
@@ -553,8 +553,8 @@ fn bit_xor_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn not_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("NotTestModule");
+fn not_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("not_test_module", "NotTestModule");
 
     let i = m.input("i", 4);
     m.output("o", !i);
@@ -562,40 +562,40 @@ fn not_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn reg_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("RegTestModule");
+fn reg_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("reg_test_module", "RegTestModule");
 
     let r1 = m.reg("r1", 32);
     r1.default_value(0u32);
     r1.drive_next(m.input("i1", 32));
-    m.output("o1", r1.value);
+    m.output("o1", r1);
 
     let r2 = m.reg("r2", 32);
     r2.drive_next(m.input("i2", 32));
-    m.output("o2", r2.value);
+    m.output("o2", r2);
 
     m
 }
 
-fn simple_reg_delay<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("SimpleRegDelay");
+fn simple_reg_delay<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("simple_reg_delay", "SimpleRegDelay");
 
     let r1 = m.reg("r1", 100);
     r1.default_value(0u32);
     r1.drive_next(m.input("i", 100));
     let r2 = m.reg("r2", 100);
     r2.default_value(0u32);
-    r2.drive_next(r1.value);
+    r2.drive_next(r1);
     let r3 = m.reg("r3", 100);
     r3.default_value(0u32);
-    r3.drive_next(r2.value);
-    m.output("o", r3.value);
+    r3.drive_next(r2);
+    m.output("o", r3);
 
     m
 }
 
-fn bit_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitTestModule0");
+fn bit_test_module_0<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bit_test_module_0", "BitTestModule0");
 
     let i = m.input("i", 1);
     m.output("o", i.bit(0));
@@ -603,8 +603,8 @@ fn bit_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bit_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitTestModule1");
+fn bit_test_module_1<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bit_test_module_1", "BitTestModule1");
 
     let i = m.input("i", 4);
     m.output("o0", i.bit(0));
@@ -615,8 +615,8 @@ fn bit_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bits_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitsTestModule0");
+fn bits_test_module_0<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bits_test_module_0", "BitsTestModule0");
 
     let i = m.input("i", 4);
 
@@ -629,8 +629,8 @@ fn bits_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("BitsTestModule1");
+fn bits_test_module_1<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("bits_test_module_1", "BitsTestModule1");
 
     let i = m.input("i", 128);
 
@@ -650,8 +650,8 @@ fn bits_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("RepeatTestModule");
+fn repeat_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("repeat_test_module", "RepeatTestModule");
 
     let i = m.input("i", 4);
 
@@ -668,8 +668,8 @@ fn repeat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn concat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("ConcatTestModule");
+fn concat_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("concat_test_module", "ConcatTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -686,8 +686,8 @@ fn concat_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn eq_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("EqTestModule");
+fn eq_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("eq_test_module", "EqTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -697,8 +697,8 @@ fn eq_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn ne_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("NeTestModule");
+fn ne_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("ne_test_module", "NeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -708,8 +708,8 @@ fn ne_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn lt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("LtTestModule");
+fn lt_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("lt_test_module", "LtTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -719,8 +719,8 @@ fn lt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn le_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("LeTestModule");
+fn le_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("le_test_module", "LeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -730,8 +730,8 @@ fn le_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("GtTestModule");
+fn gt_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("gt_test_module", "GtTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -741,8 +741,8 @@ fn gt_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("GeTestModule");
+fn ge_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("ge_test_module", "GeTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -752,8 +752,8 @@ fn ge_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn lt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("LtSignedTestModule");
+fn lt_signed_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("lt_signed_test_module", "LtSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -763,8 +763,8 @@ fn lt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn le_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("LeSignedTestModule");
+fn le_signed_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("le_signed_test_module", "LeSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -774,8 +774,8 @@ fn le_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn gt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("GtSignedTestModule");
+fn gt_signed_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("gt_signed_test_module", "GtSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -785,8 +785,8 @@ fn gt_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn ge_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("GeSignedTestModule");
+fn ge_signed_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("ge_signed_test_module", "GeSignedTestModule");
 
     let i1 = m.input("i1", 4);
     let i2 = m.input("i2", 4);
@@ -796,8 +796,8 @@ fn ge_signed_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MuxTestModule");
+fn mux_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mux_test_module", "MuxTestModule");
 
     let invert = m.input("invert", 1);
 
@@ -828,8 +828,8 @@ fn mux_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn reg_next_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("RegNextTestModule");
+fn reg_next_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("reg_next_test_module", "RegNextTestModule");
 
     let i = m.input("i", 1);
 
@@ -839,8 +839,11 @@ fn reg_next_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn reg_next_with_default_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("RegNextWithDefaultTestModule");
+fn reg_next_with_default_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module(
+        "reg_next_with_default_test_module",
+        "RegNextWithDefaultTestModule",
+    );
 
     let i = m.input("i", 1);
 
@@ -850,80 +853,145 @@ fn reg_next_with_default_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn instantiation_test_module_comb<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("InstantiationTestModuleCombInner");
-    let i1 = m.input("i1", 32);
-    let i2 = m.input("i2", 32);
-    m.output("o", i1 & i2);
+fn instantiation_test_module_comb<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    // TODO: Do we want to restructure all of these test modules to follow this pattern?
+    struct InstantiationTestModuleCombInner<'a> {
+        i1: &'a Input<'a>,
+        i2: &'a Input<'a>,
+        o: &'a Output<'a>,
+    }
 
-    let m = c.module("InstantiationTestModuleComb");
-    let i1 = m.instance("inner1", "InstantiationTestModuleCombInner");
-    i1.drive_input("i1", m.input("i1", 32));
-    i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "InstantiationTestModuleCombInner");
-    i2.drive_input("i1", m.input("i3", 32));
-    i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "InstantiationTestModuleCombInner");
-    i3.drive_input("i1", i1.output("o"));
-    i3.drive_input("i2", i2.output("o"));
-    m.output("o", i3.output("o"));
+    impl<'a> InstantiationTestModuleCombInner<'a> {
+        fn new(
+            instance_name: impl Into<String>,
+            p: &'a impl ModuleParent<'a>,
+        ) -> InstantiationTestModuleCombInner<'a> {
+            let m = p.module(instance_name, "InstantiationTestModuleCombInner");
+            let i1 = m.input("i1", 32);
+            let i2 = m.input("i2", 32);
+            let o = m.output("o", i1 & i2);
+            InstantiationTestModuleCombInner { i1, i2, o }
+        }
+    }
 
-    m
-}
-
-fn instantiation_test_module_reg<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("InstantiationTestModuleRegInner");
-    let i1 = m.input("i1", 32);
-    let i2 = m.input("i2", 32);
-    let r = m.reg("r", 32);
-    r.default_value(0u32);
-    r.drive_next(i1 & i2);
-    m.output("o", r.value);
-
-    let m = c.module("InstantiationTestModuleReg");
-    let i1 = m.instance("inner1", "InstantiationTestModuleRegInner");
-    i1.drive_input("i1", m.input("i1", 32));
-    i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "InstantiationTestModuleRegInner");
-    i2.drive_input("i1", m.input("i3", 32));
-    i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "InstantiationTestModuleRegInner");
-    i3.drive_input("i1", i1.output("o"));
-    i3.drive_input("i2", i2.output("o"));
-    m.output("o", i3.output("o"));
+    let m = p.module(
+        "instantiation_test_module_comb",
+        "InstantiationTestModuleComb",
+    );
+    let inner1 = InstantiationTestModuleCombInner::new("inner1", m);
+    inner1.i1.drive(m.input("i1", 32));
+    inner1.i2.drive(m.input("i2", 32));
+    let inner2 = InstantiationTestModuleCombInner::new("inner2", m);
+    inner2.i1.drive(m.input("i3", 32));
+    inner2.i2.drive(m.input("i4", 32));
+    let inner3 = InstantiationTestModuleCombInner::new("inner3", m);
+    inner3.i1.drive(inner1.o);
+    inner3.i2.drive(inner2.o);
+    m.output("o", inner3.o);
 
     m
 }
 
-fn nested_instantiation_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("NestedInstantiationTestModuleInnerInner");
-    let i = m.input("i", 32);
-    m.output("o", i);
+fn instantiation_test_module_reg<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    struct InstantiationTestModuleRegInner<'a> {
+        i1: &'a Input<'a>,
+        i2: &'a Input<'a>,
+        o: &'a Output<'a>,
+    }
 
-    let m = c.module("NestedInstantiationTestModuleInner");
-    let i = m.instance("inner", "NestedInstantiationTestModuleInnerInner");
-    let i1 = m.input("i1", 32);
-    let i2 = m.input("i2", 32);
-    i.drive_input("i", i1 & i2);
-    m.output("o", i.output("o"));
+    impl<'a> InstantiationTestModuleRegInner<'a> {
+        fn new(
+            instance_name: impl Into<String>,
+            p: &'a impl ModuleParent<'a>,
+        ) -> InstantiationTestModuleRegInner<'a> {
+            let m = p.module(instance_name, "InstantiationTestModuleRegInner");
+            let i1 = m.input("i1", 32);
+            let i2 = m.input("i2", 32);
+            let r = m.reg("r", 32);
+            r.default_value(0u32);
+            r.drive_next(i1 & i2);
+            let o = m.output("o", r);
+            InstantiationTestModuleRegInner { i1, i2, o }
+        }
+    }
 
-    let m = c.module("NestedInstantiationTestModule");
-    let i1 = m.instance("inner1", "NestedInstantiationTestModuleInner");
-    i1.drive_input("i1", m.input("i1", 32));
-    i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "NestedInstantiationTestModuleInner");
-    i2.drive_input("i1", m.input("i3", 32));
-    i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "NestedInstantiationTestModuleInner");
-    i3.drive_input("i1", i1.output("o"));
-    i3.drive_input("i2", i2.output("o"));
-    m.output("o", i3.output("o"));
+    let m = p.module(
+        "instantiation_test_module_reg",
+        "InstantiationTestModuleReg",
+    );
+    let inner1 = InstantiationTestModuleRegInner::new("inner1", m);
+    inner1.i1.drive(m.input("i1", 32));
+    inner1.i2.drive(m.input("i2", 32));
+    let inner2 = InstantiationTestModuleRegInner::new("inner2", m);
+    inner2.i1.drive(m.input("i3", 32));
+    inner2.i2.drive(m.input("i4", 32));
+    let inner3 = InstantiationTestModuleRegInner::new("inner3", m);
+    inner3.i1.drive(inner1.o);
+    inner3.i2.drive(inner2.o);
+    m.output("o", inner3.o);
 
     m
 }
 
-fn mem_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MemTestModule0");
+fn nested_instantiation_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    struct NestedInstantiationTestModuleInnerInner<'a> {
+        i: &'a Input<'a>,
+        o: &'a Output<'a>,
+    }
+
+    impl<'a> NestedInstantiationTestModuleInnerInner<'a> {
+        fn new(
+            instance_name: impl Into<String>,
+            p: &'a impl ModuleParent<'a>,
+        ) -> NestedInstantiationTestModuleInnerInner<'a> {
+            let m = p.module(instance_name, "NestedInstantiationTestModuleInnerInner");
+            let i = m.input("i", 32);
+            let o = m.output("o", i);
+            NestedInstantiationTestModuleInnerInner { i, o }
+        }
+    }
+
+    struct NestedInstantiationTestModuleInner<'a> {
+        i1: &'a Input<'a>,
+        i2: &'a Input<'a>,
+        o: &'a Output<'a>,
+    }
+
+    impl<'a> NestedInstantiationTestModuleInner<'a> {
+        fn new(
+            instance_name: impl Into<String>,
+            p: &'a impl ModuleParent<'a>,
+        ) -> NestedInstantiationTestModuleInner<'a> {
+            let m = p.module(instance_name, "NestedInstantiationTestModuleInner");
+            let inner = NestedInstantiationTestModuleInnerInner::new("inner", m);
+            let i1 = m.input("i1", 32);
+            let i2 = m.input("i2", 32);
+            inner.i.drive(i1 & i2);
+            let o = m.output("o", inner.o);
+            NestedInstantiationTestModuleInner { i1, i2, o }
+        }
+    }
+
+    let m = p.module(
+        "nested_instantiation_test_module",
+        "NestedInstantiationTestModule",
+    );
+    let inner1 = NestedInstantiationTestModuleInner::new("inner1", m);
+    inner1.i1.drive(m.input("i1", 32));
+    inner1.i2.drive(m.input("i2", 32));
+    let inner2 = NestedInstantiationTestModuleInner::new("inner2", m);
+    inner2.i1.drive(m.input("i3", 32));
+    inner2.i2.drive(m.input("i4", 32));
+    let inner3 = NestedInstantiationTestModuleInner::new("inner3", m);
+    inner3.i1.drive(inner1.o);
+    inner3.i2.drive(inner2.o);
+    m.output("o", inner3.o);
+
+    m
+}
+
+fn mem_test_module_0<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mem_test_module_0", "MemTestModule0");
 
     // No initial contents, single write port, single read port
     let mem = m.mem("mem", 1, 4);
@@ -940,8 +1008,8 @@ fn mem_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn mem_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MemTestModule1");
+fn mem_test_module_1<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mem_test_module_1", "MemTestModule1");
 
     // Initial contents, no write ports, single read port
     let mem = m.mem("mem", 2, 32);
@@ -954,8 +1022,8 @@ fn mem_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn mem_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("MemTestModule2");
+fn mem_test_module_2<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("mem_test_module_2", "MemTestModule2");
 
     // No initial contents, single write port, single read port
     let mem = m.mem("mem", 1, 1);
@@ -972,8 +1040,8 @@ fn mem_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn trace_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("TraceTestModule0");
+fn trace_test_module_0<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("trace_test_module_0", "TraceTestModule0");
 
     m.output("o0", m.input("i0", 1));
     m.output("o1", m.input("i1", 2));
@@ -984,47 +1052,61 @@ fn trace_test_module_0<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn trace_test_module_1<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("TraceTestModule1");
+fn trace_test_module_1<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("trace_test_module_1", "TraceTestModule1");
 
     let r1 = m.reg("r1", 32);
     r1.default_value(0u32);
     r1.drive_next(m.input("i1", 32));
-    m.output("o1", r1.value);
+    m.output("o1", r1);
 
     let r2 = m.reg("r2", 32);
     r2.drive_next(m.input("i2", 32));
-    m.output("o2", r2.value);
+    m.output("o2", r2);
 
     m
 }
 
-fn trace_test_module_2<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("TraceTestModule2Inner");
-    let i1 = m.input("i1", 32);
-    let i2 = m.input("i2", 32);
-    let r = m.reg("r", 32);
-    r.default_value(0u32);
-    r.drive_next(i1 & i2);
-    m.output("o", r.value);
+fn trace_test_module_2<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    struct TraceTestModule2Inner<'a> {
+        i1: &'a Input<'a>,
+        i2: &'a Input<'a>,
+        o: &'a Output<'a>,
+    }
 
-    let m = c.module("TraceTestModule2");
-    let i1 = m.instance("inner1", "TraceTestModule2Inner");
-    i1.drive_input("i1", m.input("i1", 32));
-    i1.drive_input("i2", m.input("i2", 32));
-    let i2 = m.instance("inner2", "TraceTestModule2Inner");
-    i2.drive_input("i1", m.input("i3", 32));
-    i2.drive_input("i2", m.input("i4", 32));
-    let i3 = m.instance("inner3", "TraceTestModule2Inner");
-    i3.drive_input("i1", i1.output("o"));
-    i3.drive_input("i2", i2.output("o"));
-    m.output("o", i3.output("o"));
+    impl<'a> TraceTestModule2Inner<'a> {
+        fn new(
+            instance_name: impl Into<String>,
+            p: &'a impl ModuleParent<'a>,
+        ) -> TraceTestModule2Inner<'a> {
+            let m = p.module(instance_name, "TraceTestModule2Inner");
+            let i1 = m.input("i1", 32);
+            let i2 = m.input("i2", 32);
+            let r = m.reg("r", 32);
+            r.default_value(0u32);
+            r.drive_next(i1 & i2);
+            let o = m.output("o", r);
+            TraceTestModule2Inner { i1, i2, o }
+        }
+    }
+
+    let m = p.module("trace_test_module_2", "TraceTestModule2");
+    let inner1 = TraceTestModule2Inner::new("inner1", m);
+    inner1.i1.drive(m.input("i1", 32));
+    inner1.i2.drive(m.input("i2", 32));
+    let inner2 = TraceTestModule2Inner::new("inner2", m);
+    inner2.i1.drive(m.input("i3", 32));
+    inner2.i2.drive(m.input("i4", 32));
+    let inner3 = TraceTestModule2Inner::new("inner3", m);
+    inner3.i1.drive(inner1.o);
+    inner3.i2.drive(inner2.o);
+    m.output("o", inner3.o);
 
     m
 }
 
-fn trace_test_module_3<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("TraceTestModule3");
+fn trace_test_module_3<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("trace_test_module_3", "TraceTestModule3");
 
     // No initial contents, single write port, single read port
     let mem = m.mem("mem", 1, 4);
@@ -1041,10 +1123,10 @@ fn trace_test_module_3<'a>(c: &'a Context<'a>) -> &Module<'a> {
     m
 }
 
-fn deep_graph_test_module<'a>(c: &'a Context<'a>) -> &Module<'a> {
-    let m = c.module("DeepGraphTestModule");
+fn deep_graph_test_module<'a>(p: &'a impl ModuleParent<'a>) -> &Module<'a> {
+    let m = p.module("deep_graph_test_module", "DeepGraphTestModule");
 
-    let mut x = m.input("i", 1);
+    let mut x: &'a dyn Signal<'a> = m.input("i", 1);
 
     for _ in 0..3001 {
         x = !x;

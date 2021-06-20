@@ -7,9 +7,9 @@
 /// ```
 /// use kaze::*;
 ///
-/// let c = Context::new();
+/// let p = Context::new();
 ///
-/// let m = c.module("MyModule");
+/// let m = p.module("m", "MyModule");
 ///
 /// let a = m.lit(true, 16);
 /// let b = m.lit(0xdeadbeefu32, 47);

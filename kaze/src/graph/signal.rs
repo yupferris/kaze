@@ -1,11 +1,6 @@
 use super::constant::*;
-use super::context::*;
-use super::instance::*;
-use super::mem::*;
-use super::module::*;
-use super::register::*;
+use super::internal_signal::*;
 
-use std::hash::{Hash, Hasher};
 use std::ops::{Add, BitAnd, BitOr, BitXor, Mul, Not, Shl, Shr, Sub};
 use std::ptr;
 
@@ -31,7 +26,7 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 ///
 /// let c = Context::new();
 ///
-/// let m = c.module("MyModule");
+/// let m = c.module("m", "MyModule");
 /// let a = m.lit(0xffu8, 8); // 8-bit signal
 /// let b = m.input("my_input", 27); // 27-bit signal
 /// let c = b.bits(7, 0); // 8-bit signal
@@ -41,15 +36,7 @@ pub const MAX_SIGNAL_BIT_WIDTH: u32 = 128;
 ///
 /// [`concat`]: Self::concat
 /// [`lit`]: Module::lit
-#[must_use]
-pub struct Signal<'a> {
-    pub(super) context: &'a Context<'a>,
-    pub(super) module: &'a Module<'a>,
-
-    pub(crate) data: SignalData<'a>,
-}
-
-impl<'a> Signal<'a> {
+pub trait Signal<'a>: GetInternalSignal<'a> {
     /// Returns the bit width of the given `Signal`.
     ///
     /// # Examples
@@ -59,11 +46,11 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// assert_eq!(m.lit(42u32, 7).bit_width(), 7);
     /// assert_eq!(m.input("i", 27).bit_width(), 27);
-    /// assert_eq!(m.reg("some_reg", 46).value.bit_width(), 46);
+    /// assert_eq!(m.reg("some_reg", 46).bit_width(), 46);
     /// assert_eq!((!m.low()).bit_width(), 1);
     /// assert_eq!((m.lit(25u8, 8) + m.lit(42u8, 8)).bit_width(), 8);
     /// assert_eq!((m.lit(1u8, 1) * m.lit(2u8, 2)).bit_width(), 3);
@@ -88,29 +75,9 @@ impl<'a> Signal<'a> {
     /// assert_eq!(m.mux(m.low(), m.lit(5u32, 4), m.lit(6u32, 4)).bit_width(), 4);
     /// ```
     #[must_use]
-    pub fn bit_width(&self) -> u32 {
-        match self.data {
-            SignalData::Lit { bit_width, .. } => bit_width,
-            SignalData::Input { bit_width, .. } => bit_width,
-            SignalData::Reg { ref data } => data.bit_width,
-            SignalData::UnOp { bit_width, .. } => bit_width,
-            SignalData::SimpleBinOp { bit_width, .. } => bit_width,
-            SignalData::AdditiveBinOp { bit_width, .. } => bit_width,
-            SignalData::ComparisonBinOp { .. } => 1,
-            SignalData::ShiftBinOp { bit_width, .. } => bit_width,
-            SignalData::Mul { bit_width, .. } => bit_width,
-            SignalData::MulSigned { bit_width, .. } => bit_width,
-            SignalData::Bits {
-                range_high,
-                range_low,
-                ..
-            } => range_high - range_low + 1,
-            SignalData::Repeat { bit_width, .. } => bit_width,
-            SignalData::Concat { bit_width, .. } => bit_width,
-            SignalData::Mux { bit_width, .. } => bit_width,
-            SignalData::InstanceOutput { bit_width, .. } => bit_width,
-            SignalData::MemReadPortOutput { mem, .. } => mem.element_bit_width,
-        }
+    fn bit_width(&'a self) -> u32 {
+        let s = self.internal_signal();
+        s.bit_width()
     }
 
     /// Creates a `Signal` that represents the value of the single bit of this `Signal` at index `index`, where `index` equal to `0` represents this `Signal`'s least significant bit.
@@ -126,7 +93,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit = m.lit(0b0110u32, 4);
     /// let bit_0 = lit.bit(0); // Represents 0
@@ -134,16 +101,17 @@ impl<'a> Signal<'a> {
     /// let bit_2 = lit.bit(2); // Represents 1
     /// let bit_3 = lit.bit(3); // Represents 0
     /// ```
-    pub fn bit(&'a self, index: u32) -> &Signal<'a> {
-        if index >= self.bit_width() {
-            panic!("Attempted to take bit index {} from a signal with a width of {} bits. Bit indices must be in the range [0, {}] for a signal with a width of {} bits.", index, self.bit_width(), self.bit_width() - 1, self.bit_width());
+    fn bit(&'a self, index: u32) -> &'a dyn Signal<'a> {
+        let s = self.internal_signal();
+        if index >= s.bit_width() {
+            panic!("Attempted to take bit index {} from a signal with a width of {} bits. Bit indices must be in the range [0, {}] for a signal with a width of {} bits.", index, s.bit_width(), s.bit_width() - 1, s.bit_width());
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        s.context.signal_arena.alloc(InternalSignal {
+            context: s.context,
+            module: s.module,
 
             data: SignalData::Bits {
-                source: self,
+                source: s,
                 range_high: index,
                 range_low: index,
             },
@@ -163,7 +131,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit = m.lit(0b0110u32, 4);
     /// let bits_210 = lit.bits(2, 0); // Represents 0b110
@@ -172,22 +140,23 @@ impl<'a> Signal<'a> {
     /// let bits_32 = lit.bits(3, 2); // Represents 0b01
     /// let bits_2 = lit.bits(2, 2); // Represents 1, equivalent to lit.bit(2)
     /// ```
-    pub fn bits(&'a self, range_high: u32, range_low: u32) -> &Signal<'a> {
-        if range_low >= self.bit_width() {
-            panic!("Cannot specify a range of bits where the lower bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but a lower bound of {} was given.", self.bit_width() - 1, self.bit_width(), range_low);
+    fn bits(&'a self, range_high: u32, range_low: u32) -> &'a dyn Signal<'a> {
+        let s = self.internal_signal();
+        if range_low >= s.bit_width() {
+            panic!("Cannot specify a range of bits where the lower bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but a lower bound of {} was given.", s.bit_width() - 1, s.bit_width(), range_low);
         }
-        if range_high >= self.bit_width() {
-            panic!("Cannot specify a range of bits where the upper bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but an upper bound of {} was given.", self.bit_width() - 1, self.bit_width(), range_high);
+        if range_high >= s.bit_width() {
+            panic!("Cannot specify a range of bits where the upper bound is greater than or equal to the number of bits in the source signal. The bounds must be in the range [0, {}] for a signal with a width of {} bits, but an upper bound of {} was given.", s.bit_width() - 1, s.bit_width(), range_high);
         }
         if range_low > range_high {
             panic!("Cannot specify a range of bits where the lower bound is greater than the upper bound.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        s.context.signal_arena.alloc(InternalSignal {
+            context: s.context,
+            module: s.module,
 
             data: SignalData::Bits {
-                source: self,
+                source: s,
                 range_high,
                 range_low,
             },
@@ -207,7 +176,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit = m.lit(0xau32, 4);
     /// let repeat_1 = lit.repeat(1); // Equivalent to just lit
@@ -215,20 +184,21 @@ impl<'a> Signal<'a> {
     /// let repeat_5 = lit.repeat(5); // Equivalent to 20-bit lit with value 0xaaaaa
     /// let repeat_8 = lit.repeat(8); // Equivalent to 32-bit lit with value 0xaaaaaaaa
     /// ```
-    pub fn repeat(&'a self, count: u32) -> &Signal<'a> {
-        let bit_width = self.bit_width() * count;
+    fn repeat(&'a self, count: u32) -> &'a dyn Signal<'a> {
+        let s = self.internal_signal();
+        let bit_width = s.bit_width() * count;
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", self.bit_width(), count, bit_width, MIN_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is less than the minimal signal bit width of {} bit(s).", s.bit_width(), count, bit_width, MIN_SIGNAL_BIT_WIDTH);
         }
         if bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), count, bit_width, MAX_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to repeat a {}-bit signal {} times, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", s.bit_width(), count, bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        s.context.signal_arena.alloc(InternalSignal {
+            context: s.context,
+            module: s.module,
 
             data: SignalData::Repeat {
-                source: self,
+                source: s,
                 count,
                 bit_width,
             },
@@ -250,7 +220,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xffu32, 8);
@@ -258,20 +228,22 @@ impl<'a> Signal<'a> {
     /// let concat_2 = lit_b.concat(lit_a); // Equivalent to 12-bit lit with value 0xffa
     /// let concat_3 = lit_a.concat(lit_a); // Equivalent to 8-bit lit with value 0xaa
     /// ```
-    pub fn concat(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn concat(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        let bit_width = self.bit_width() + rhs.bit_width();
+        let bit_width = lhs.bit_width() + rhs.bit_width();
         if bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to concatenate signals with {} bit(s) and {} bit(s) respectively, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", lhs.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::Concat {
-                lhs: self,
+                lhs,
                 rhs,
                 bit_width,
             },
@@ -291,7 +263,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -300,23 +272,25 @@ impl<'a> Signal<'a> {
     /// let eq_3 = lit_a.eq(lit_b); // Equivalent to m.low()
     /// let eq_4 = lit_b.eq(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn eq(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn eq(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::Equal,
             },
@@ -336,7 +310,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -345,23 +319,25 @@ impl<'a> Signal<'a> {
     /// let ne_3 = lit_a.ne(lit_b); // Equivalent to m.high()
     /// let ne_4 = lit_b.ne(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn ne(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn ne(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::NotEqual,
             },
@@ -381,7 +357,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -390,23 +366,25 @@ impl<'a> Signal<'a> {
     /// let lt_3 = lit_a.lt(lit_b); // Equivalent to m.high()
     /// let lt_4 = lit_b.lt(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn lt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn lt(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::LessThan,
             },
@@ -426,7 +404,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -435,23 +413,25 @@ impl<'a> Signal<'a> {
     /// let le_3 = lit_a.le(lit_b); // Equivalent to m.high()
     /// let le_4 = lit_b.le(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn le(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn le(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::LessThanEqual,
             },
@@ -471,7 +451,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -480,23 +460,25 @@ impl<'a> Signal<'a> {
     /// let gt_3 = lit_a.gt(lit_b); // Equivalent to m.low()
     /// let gt_4 = lit_b.gt(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn gt(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn gt(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::GreaterThan,
             },
@@ -516,7 +498,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -525,23 +507,25 @@ impl<'a> Signal<'a> {
     /// let ge_3 = lit_a.ge(lit_b); // Equivalent to m.low()
     /// let ge_4 = lit_b.ge(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn ge(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn ge(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::GreaterThanEqual,
             },
@@ -561,7 +545,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -570,26 +554,28 @@ impl<'a> Signal<'a> {
     /// let lt_signed_3 = lit_a.lt_signed(lit_b); // Equivalent to m.high()
     /// let lt_signed_4 = lit_b.lt_signed(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn lt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn lt_signed(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        if self.bit_width() == 1 {
+        if lhs.bit_width() == 1 {
             panic!("Cannot perform signed comparison of 1-bit signals.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::LessThanSigned,
             },
@@ -609,7 +595,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -618,26 +604,28 @@ impl<'a> Signal<'a> {
     /// let le_signed_3 = lit_a.le_signed(lit_b); // Equivalent to m.high()
     /// let le_signed_4 = lit_b.le_signed(lit_a); // Equivalent to m.low()
     /// ```
-    pub fn le_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn le_signed(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        if self.bit_width() == 1 {
+        if lhs.bit_width() == 1 {
             panic!("Cannot perform signed comparison of 1-bit signals.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::LessThanEqualSigned,
             },
@@ -657,7 +645,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -666,26 +654,28 @@ impl<'a> Signal<'a> {
     /// let gt_signed_3 = lit_a.gt_signed(lit_b); // Equivalent to m.low()
     /// let gt_signed_4 = lit_b.gt_signed(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn gt_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn gt_signed(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        if self.bit_width() == 1 {
+        if lhs.bit_width() == 1 {
             panic!("Cannot perform signed comparison of 1-bit signals.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::GreaterThanSigned,
             },
@@ -705,7 +695,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lit_a = m.lit(0xau32, 4);
     /// let lit_b = m.lit(0xbu32, 4);
@@ -714,26 +704,28 @@ impl<'a> Signal<'a> {
     /// let ge_signed_3 = lit_a.ge_signed(lit_b); // Equivalent to m.low()
     /// let ge_signed_4 = lit_b.ge_signed(lit_a); // Equivalent to m.high()
     /// ```
-    pub fn ge_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn ge_signed(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        if self.bit_width() != rhs.bit_width() {
+        if lhs.bit_width() != rhs.bit_width() {
             panic!(
                 "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
+                lhs.bit_width(),
                 rhs.bit_width()
             );
         }
-        if self.bit_width() == 1 {
+        if lhs.bit_width() == 1 {
             panic!("Cannot perform signed comparison of 1-bit signals.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ComparisonBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ComparisonBinOp::GreaterThanEqualSigned,
             },
@@ -755,25 +747,27 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lhs = m.lit(0x80000000u32, 32);
     /// let rhs = m.lit(1u32, 1);
     /// let shifted = lhs.shr_arithmetic(rhs); // Equivalent to m.lit(0xc0000000u32, 32)
     /// ```
-    pub fn shr_arithmetic(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn shr_arithmetic(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::ShiftBinOp {
-                lhs: self,
+                lhs,
                 rhs,
                 op: ShiftBinOp::ShrArithmetic,
-                bit_width: self.bit_width(),
+                bit_width: lhs.bit_width(),
             },
         })
     }
@@ -793,26 +787,28 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let lhs = m.lit(4u32, 3); // -4
     /// let rhs = m.lit(5u32, 4);
     /// let sum = lhs.mul_signed(rhs); // Equivalent to m.lit(108u32, 7), -20
     /// ```
-    pub fn mul_signed(&'a self, rhs: &'a Signal<'a>) -> &Signal<'a> {
-        if !ptr::eq(self.module, rhs.module) {
+    fn mul_signed(&'a self, rhs: &'a dyn Signal<'a>) -> &dyn Signal<'a> {
+        let lhs = self.internal_signal();
+        let rhs = rhs.internal_signal();
+        if !ptr::eq(lhs.module, rhs.module) {
             panic!("Attempted to combine signals from different modules.");
         }
-        let bit_width = self.bit_width() + rhs.bit_width();
+        let bit_width = lhs.bit_width() + rhs.bit_width();
         if bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
+            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", lhs.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
         }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
+        lhs.context.signal_arena.alloc(InternalSignal {
+            context: lhs.context,
+            module: lhs.module,
 
             data: SignalData::MulSigned {
-                lhs: self,
+                lhs,
                 rhs,
                 bit_width,
             },
@@ -834,7 +830,7 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let cond = m.input("cond", 1);
     /// let a = m.input("a", 8);
@@ -842,10 +838,496 @@ impl<'a> Signal<'a> {
     /// m.output("my_output", cond.mux(a, b)); // Outputs a when cond is high, b otherwise
     /// ```
     // TODO: This is currently only used to support sugar; if it doesn't work out, remove this
-    pub fn mux(&'a self, when_true: &'a Signal<'a>, when_false: &'a Signal<'a>) -> &Signal<'a> {
-        self.module.mux(self, when_true, when_false)
+    fn mux(
+        &'a self,
+        when_true: &'a dyn Signal<'a>,
+        when_false: &'a dyn Signal<'a>,
+    ) -> &'a dyn Signal<'a> {
+        let s = self.internal_signal();
+        s.module.mux(s, when_true, when_false)
     }
+}
 
+macro_rules! impl_extensions {
+    ($($t:ty),*) => ($(
+        impl<'a, S: Into<&'a dyn Signal<'a>>> Add<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` that represents the sum of the original two `Signal`s.
+            ///
+            /// The sum is truncated to the `Signal`'s `bit_width`. If a carry bit is desired, the operands can be [`concat`]enated with a `0` bit before the operation.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.lit(1u32, 32);
+            /// let rhs = m.lit(2u32, 32);
+            /// let sum = lhs + rhs; // Equivalent to m.lit(3u32, 32)
+            ///
+            /// let lhs = m.low().concat(m.lit(0xffffffffu32, 32)); // Concat 0 bits with operands for carry
+            /// let rhs = m.low().concat(m.lit(0x00000001u32, 32));
+            /// let carry_sum = lhs + rhs; // Equivalent to m.lit(0x100000000u64, 33)
+            /// let sum = carry_sum.bits(31, 0); // Equivalent to m.lit(0u32, 32)
+            /// let carry = carry_sum.bit(32); // Equivalent to m.lit(true, 1)
+            /// ```
+            ///
+            /// [`concat`]: Signal::concat
+            fn add(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                if lhs.bit_width() != rhs.bit_width() {
+                    panic!(
+                        "Signals have different bit widths ({} and {}, respectively).",
+                        lhs.bit_width(),
+                        rhs.bit_width()
+                    );
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::AdditiveBinOp {
+                        lhs,
+                        rhs,
+                        op: AdditiveBinOp::Add,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> BitAnd<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `&` of each of the bits of the original two `Signal`s.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.low();
+            /// let rhs = m.high();
+            /// let single_bitand = lhs & rhs;
+            ///
+            /// let lhs = m.input("in1", 3);
+            /// let rhs = m.input("in2", 3);
+            /// let multi_bitand = lhs & rhs;
+            /// ```
+            fn bitand(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                if lhs.bit_width() != rhs.bit_width() {
+                    panic!(
+                        "Signals have different bit widths ({} and {}, respectively).",
+                        lhs.bit_width(),
+                        rhs.bit_width()
+                    );
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::SimpleBinOp {
+                        lhs,
+                        rhs,
+                        op: SimpleBinOp::BitAnd,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> BitOr<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `|` of each of the bits of the original two `Signal`s.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.low();
+            /// let rhs = m.high();
+            /// let single_bitor = lhs | rhs;
+            ///
+            /// let lhs = m.input("in1", 3);
+            /// let rhs = m.input("in2", 3);
+            /// let multi_bitor = lhs | rhs;
+            /// ```
+            fn bitor(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                if lhs.bit_width() != rhs.bit_width() {
+                    panic!(
+                        "Signals have different bit widths ({} and {}, respectively).",
+                        lhs.bit_width(),
+                        rhs.bit_width()
+                    );
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::SimpleBinOp {
+                        lhs,
+                        rhs,
+                        op: SimpleBinOp::BitOr,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> BitXor<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `^` of each of the bits of the original two `Signal`s.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.low();
+            /// let rhs = m.high();
+            /// let single_bitxor = lhs ^ rhs;
+            ///
+            /// let lhs = m.input("in1", 3);
+            /// let rhs = m.input("in2", 3);
+            /// let multi_bitxor = lhs ^ rhs;
+            /// ```
+            fn bitxor(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                if lhs.bit_width() != rhs.bit_width() {
+                    panic!(
+                        "Signals have different bit widths ({} and {}, respectively).",
+                        lhs.bit_width(),
+                        rhs.bit_width()
+                    );
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::SimpleBinOp {
+                        lhs,
+                        rhs,
+                        op: SimpleBinOp::BitXor,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> Mul<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` that represents the unsigned product of the original two `Signal`s.
+            ///
+            /// The product's `bit_width` is equal to `self.bit_width() + rhs.bit_width()`.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if `self.bit_width() + rhs.bit_width()` is greater than [`MAX_SIGNAL_BIT_WIDTH`].
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.lit(4u32, 3);
+            /// let rhs = m.lit(5u32, 4);
+            /// let sum = lhs * rhs; // Equivalent to m.lit(20u32, 7)
+            /// ```
+            fn mul(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                let bit_width = lhs.bit_width() + rhs.bit_width();
+                if bit_width > MAX_SIGNAL_BIT_WIDTH {
+                    panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::Mul {
+                        lhs,
+                        rhs,
+                        bit_width,
+                    },
+                })
+            }
+        }
+
+        impl<'a> Not for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Produces a new `Signal` whose bits represent the bitwise `!` of each of the bits of the original `Signal`.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let input1 = m.input("input1", 1);
+            /// let single_not = !input1;
+            ///
+            /// let input2 = m.input("input2", 6);
+            /// let multi_not = !input2;
+            /// ```
+            fn not(self) -> Self::Output {
+                let s = self.internal_signal();
+                s.context.signal_arena.alloc(InternalSignal {
+                    context: s.context,
+                    module: s.module,
+
+                    data: SignalData::UnOp {
+                        source: s,
+                        op: UnOp::Not,
+                        bit_width: self.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> Shl<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted left by `rhs` bits.
+            ///
+            /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.lit(3u32, 32);
+            /// let rhs = m.lit(2u32, 2);
+            /// let shifted = lhs << rhs; // Equivalent to m.lit(12u32, 32)
+            /// ```
+            fn shl(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::ShiftBinOp {
+                        lhs,
+                        rhs,
+                        op: ShiftBinOp::Shl,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> Shr<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted right by `rhs` bits.
+            ///
+            /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.lit(12u32, 32);
+            /// let rhs = m.lit(2u32, 2);
+            /// let shifted = lhs >> rhs; // Equivalent to m.lit(3u32, 32)
+            /// ```
+            fn shr(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::ShiftBinOp {
+                        lhs,
+                        rhs,
+                        op: ShiftBinOp::Shr,
+                        bit_width: lhs.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<&'a dyn Signal<'a>>> Sub<S> for &'a $t {
+            type Output = &'a dyn Signal<'a>;
+
+            /// Combines two `Signal`s, producing a new `Signal` that represents the difference of the original two `Signal`s.
+            ///
+            /// The difference is truncated to the `Signal`'s `bit_width`.
+            ///
+            /// # Panics
+            ///
+            /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
+            ///
+            /// # Examples
+            ///
+            /// ```
+            /// use kaze::*;
+            ///
+            /// let c = Context::new();
+            ///
+            /// let m = c.module("m", "MyModule");
+            ///
+            /// let lhs = m.lit(3u32, 32);
+            /// let rhs = m.lit(2u32, 32);
+            /// let difference = lhs - rhs; // Equivalent to m.lit(1u32, 32)
+            /// ```
+            fn sub(self, rhs: S) -> Self::Output {
+                let lhs = self.internal_signal();
+                let rhs = rhs.into().internal_signal();
+                if !ptr::eq(lhs.module, rhs.module) {
+                    panic!("Attempted to combine signals from different modules.");
+                }
+                if lhs.bit_width() != rhs.bit_width() {
+                    panic!(
+                        "Signals have different bit widths ({} and {}, respectively).",
+                        lhs.bit_width(),
+                        rhs.bit_width()
+                    );
+                }
+                lhs.context.signal_arena.alloc(InternalSignal {
+                    context: lhs.context,
+                    module: lhs.module,
+
+                    data: SignalData::AdditiveBinOp {
+                        lhs,
+                        rhs,
+                        op: AdditiveBinOp::Sub,
+                        bit_width: self.bit_width(),
+                    },
+                })
+            }
+        }
+
+        impl<'a, S: Into<String>> RegNext<'a, S> for &'a $t {
+            fn reg_next(self, name: S) -> &'a dyn Signal<'a> {
+                let s = self.internal_signal();
+                let reg = s.module.reg(name, s.bit_width());
+                reg.drive_next(s);
+                reg
+            }
+        }
+
+        impl<'a, S: Into<String>, C: Into<Constant>> RegNextWithDefault<'a, S, C> for &'a $t {
+            fn reg_next_with_default(
+                self,
+                name: S,
+                default_value: C,
+            ) -> &'a dyn Signal<'a> {
+                let s = self.internal_signal();
+                let reg = s.module.reg(name, s.bit_width());
+                reg.default_value(default_value);
+                reg.drive_next(s);
+                reg
+            }
+        }
+    )*);
+}
+
+// TODO: Move extension stuff?
+use super::module::{Input, Output};
+use super::register::Register;
+impl_extensions! { dyn Signal<'a>, Input<'a>, Output<'a>, Register<'a> }
+
+impl<'a, T: GetInternalSignal<'a>> Signal<'a> for T {}
+
+impl<'a, T: GetInternalSignal<'a>> From<&'a T> for &'a dyn Signal<'a> {
+    fn from(s: &'a T) -> &'a dyn Signal<'a> {
+        s.internal_signal()
+    }
+}
+
+pub trait RegNext<'a, S: Into<String>> {
     /// Creates a [`Signal`] that represents the same value as this [`Signal`], but delayed by one cycle.
     ///
     /// This is achieved by creating a new [`Register`] called `name`, and specifying this [`Signal`] as the next value for the [`Register`]. Note that no default value is provided for this [`Register`], so the returned [`Signal`]'s value is undefined until the first clock edge, and its value is not affected by its [`Module`]'s implicit reset. If a default value is desired, use [`reg_next_with_default`] instead.
@@ -857,19 +1339,17 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let a = m.lit(true, 1);
     /// let a_delayed = a.reg_next("a_delayed");
     /// ```
     ///
     /// [`reg_next_with_default`]: Self::reg_next_with_default
-    pub fn reg_next<S: Into<String>>(&'a self, name: S) -> &Signal<'a> {
-        let reg = self.module.reg(name, self.bit_width());
-        reg.drive_next(self);
-        reg.value
-    }
+    fn reg_next(self, name: S) -> &'a dyn Signal<'a>;
+}
 
+pub trait RegNextWithDefault<'a, S: Into<String>, C: Into<Constant>> {
     /// Creates a [`Signal`] that represents the same value as this [`Signal`], but delayed by one cycle, except when this [`Signal`]'s [`Module`]'s implicit reset is asserted, at which point it will represent `default_value`.
     ///
     /// This is achieved by creating a new [`Register`] called `name`, specifying `default_value` as its default value, and specifying this [`Signal`] as the next value for the [`Register`]. If a default value is not desired, use [`reg_next`] instead.
@@ -885,595 +1365,19 @@ impl<'a> Signal<'a> {
     ///
     /// let c = Context::new();
     ///
-    /// let m = c.module("MyModule");
+    /// let m = c.module("m", "MyModule");
     ///
     /// let a = m.lit(true, 1);
     /// let a_delayed = a.reg_next_with_default("a_delayed", false);
     /// ```
     ///
     /// [`reg_next`]: Self::reg_next
-    pub fn reg_next_with_default<S: Into<String>, C: Into<Constant>>(
-        &'a self,
-        name: S,
-        default_value: C,
-    ) -> &Signal<'a> {
-        let reg = self.module.reg(name, self.bit_width());
-        reg.default_value(default_value);
-        reg.drive_next(self);
-        reg.value
-    }
-}
-
-pub(crate) enum SignalData<'a> {
-    Lit {
-        value: Constant,
-        bit_width: u32,
-    },
-
-    Input {
-        name: String,
-        bit_width: u32,
-    },
-
-    Reg {
-        data: &'a RegisterData<'a>,
-    },
-
-    UnOp {
-        source: &'a Signal<'a>,
-        op: UnOp,
-        bit_width: u32,
-    },
-    SimpleBinOp {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        op: SimpleBinOp,
-        bit_width: u32,
-    },
-    AdditiveBinOp {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        op: AdditiveBinOp,
-        bit_width: u32,
-    },
-    ComparisonBinOp {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        op: ComparisonBinOp,
-    },
-    ShiftBinOp {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        op: ShiftBinOp,
-        bit_width: u32,
-    },
-
-    Mul {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        bit_width: u32,
-    },
-    MulSigned {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        bit_width: u32,
-    },
-
-    Bits {
-        source: &'a Signal<'a>,
-        range_high: u32,
-        range_low: u32,
-    },
-
-    Repeat {
-        source: &'a Signal<'a>,
-        count: u32,
-        bit_width: u32,
-    },
-    Concat {
-        lhs: &'a Signal<'a>,
-        rhs: &'a Signal<'a>,
-        bit_width: u32,
-    },
-
-    Mux {
-        cond: &'a Signal<'a>,
-        when_true: &'a Signal<'a>,
-        when_false: &'a Signal<'a>,
-        bit_width: u32,
-    },
-
-    InstanceOutput {
-        instance: &'a Instance<'a>,
-        name: String,
-        bit_width: u32,
-    },
-
-    MemReadPortOutput {
-        mem: &'a Mem<'a>,
-        address: &'a Signal<'a>,
-        enable: &'a Signal<'a>,
-    },
-}
-
-impl<'a> Add for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` that represents the sum of the original two `Signal`s.
-    ///
-    /// The sum is truncated to the `Signal`'s `bit_width`. If a carry bit is desired, the operands can be [`concat`]enated with a `0` bit before the operation.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.lit(1u32, 32);
-    /// let rhs = m.lit(2u32, 32);
-    /// let sum = lhs + rhs; // Equivalent to m.lit(3u32, 32)
-    ///
-    /// let lhs = m.low().concat(m.lit(0xffffffffu32, 32)); // Concat 0 bits with operands for carry
-    /// let rhs = m.low().concat(m.lit(0x00000001u32, 32));
-    /// let carry_sum = lhs + rhs; // Equivalent to m.lit(0x100000000u64, 33)
-    /// let sum = carry_sum.bits(31, 0); // Equivalent to m.lit(0u32, 32)
-    /// let carry = carry_sum.bit(32); // Equivalent to m.lit(true, 1)
-    /// ```
-    ///
-    /// [`concat`]: Signal::concat
-    fn add(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        if self.bit_width() != rhs.bit_width() {
-            panic!(
-                "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
-                rhs.bit_width()
-            );
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::AdditiveBinOp {
-                lhs: self,
-                rhs,
-                op: AdditiveBinOp::Add,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> BitAnd for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `&` of each of the bits of the original two `Signal`s.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.low();
-    /// let rhs = m.high();
-    /// let single_bitand = lhs & rhs;
-    ///
-    /// let lhs = m.input("in1", 3);
-    /// let rhs = m.input("in2", 3);
-    /// let multi_bitand = lhs & rhs;
-    /// ```
-    fn bitand(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        if self.bit_width() != rhs.bit_width() {
-            panic!(
-                "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
-                rhs.bit_width()
-            );
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::SimpleBinOp {
-                lhs: self,
-                rhs,
-                op: SimpleBinOp::BitAnd,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> BitOr for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `|` of each of the bits of the original two `Signal`s.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.low();
-    /// let rhs = m.high();
-    /// let single_bitor = lhs | rhs;
-    ///
-    /// let lhs = m.input("in1", 3);
-    /// let rhs = m.input("in2", 3);
-    /// let multi_bitor = lhs | rhs;
-    /// ```
-    fn bitor(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        if self.bit_width() != rhs.bit_width() {
-            panic!(
-                "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
-                rhs.bit_width()
-            );
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::SimpleBinOp {
-                lhs: self,
-                rhs,
-                op: SimpleBinOp::BitOr,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> BitXor for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` whose bits represent the bitwise `^` of each of the bits of the original two `Signal`s.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.low();
-    /// let rhs = m.high();
-    /// let single_bitxor = lhs ^ rhs;
-    ///
-    /// let lhs = m.input("in1", 3);
-    /// let rhs = m.input("in2", 3);
-    /// let multi_bitxor = lhs ^ rhs;
-    /// ```
-    fn bitxor(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        if self.bit_width() != rhs.bit_width() {
-            panic!(
-                "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
-                rhs.bit_width()
-            );
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::SimpleBinOp {
-                lhs: self,
-                rhs,
-                op: SimpleBinOp::BitXor,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> Eq for &'a Signal<'a> {}
-
-impl<'a> Hash for &'a Signal<'a> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        state.write_usize(*self as *const _ as usize)
-    }
-}
-
-impl<'a> PartialEq for &'a Signal<'a> {
-    fn eq(&self, other: &Self) -> bool {
-        ptr::eq(*self, *other)
-    }
-}
-
-impl<'a> Mul for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` that represents the unsigned product of the original two `Signal`s.
-    ///
-    /// The product's `bit_width` is equal to `self.bit_width() + rhs.bit_width()`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if `self.bit_width() + rhs.bit_width()` is greater than [`MAX_SIGNAL_BIT_WIDTH`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.lit(4u32, 3);
-    /// let rhs = m.lit(5u32, 4);
-    /// let sum = lhs * rhs; // Equivalent to m.lit(20u32, 7)
-    /// ```
-    fn mul(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        let bit_width = self.bit_width() + rhs.bit_width();
-        if bit_width > MAX_SIGNAL_BIT_WIDTH {
-            panic!("Attempted to multiply a {}-bit with a {}-bit signal, but this would result in a bit width of {}, which is greater than the maximum signal bit width of {} bit(s).", self.bit_width(), rhs.bit_width(), bit_width, MAX_SIGNAL_BIT_WIDTH);
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::Mul {
-                lhs: self,
-                rhs,
-                bit_width,
-            },
-        })
-    }
-}
-
-impl<'a> Not for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Produces a new `Signal` whose bits represent the bitwise `!` of each of the bits of the original `Signal`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let input1 = m.input("input1", 1);
-    /// let single_not = !input1;
-    ///
-    /// let input2 = m.input("input2", 6);
-    /// let multi_not = !input2;
-    /// ```
-    fn not(self) -> Self {
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::UnOp {
-                source: self,
-                op: UnOp::Not,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> Shl for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted left by `rhs` bits.
-    ///
-    /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.lit(3u32, 32);
-    /// let rhs = m.lit(2u32, 2);
-    /// let shifted = lhs << rhs; // Equivalent to m.lit(12u32, 32)
-    /// ```
-    fn shl(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::ShiftBinOp {
-                lhs: self,
-                rhs,
-                op: ShiftBinOp::Shl,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> Shr for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` that represents `self` logically shifted right by `rhs` bits.
-    ///
-    /// The result is truncated to `self`'s `bit_width`. If `rhs` specifies a value that's greater than or equal to `self`'s `bit_width`, the resulting value will be zero.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.lit(12u32, 32);
-    /// let rhs = m.lit(2u32, 2);
-    /// let shifted = lhs >> rhs; // Equivalent to m.lit(3u32, 32)
-    /// ```
-    fn shr(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::ShiftBinOp {
-                lhs: self,
-                rhs,
-                op: ShiftBinOp::Shr,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-impl<'a> Sub for &'a Signal<'a> {
-    type Output = Self;
-
-    /// Combines two `Signal`s, producing a new `Signal` that represents the difference of the original two `Signal`s.
-    ///
-    /// The difference is truncated to the `Signal`'s `bit_width`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `lhs` and `rhs` belong to different [`Module`]s, or if the bit widths of `lhs` and `rhs` aren't equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use kaze::*;
-    ///
-    /// let c = Context::new();
-    ///
-    /// let m = c.module("MyModule");
-    ///
-    /// let lhs = m.lit(3u32, 32);
-    /// let rhs = m.lit(2u32, 32);
-    /// let difference = lhs - rhs; // Equivalent to m.lit(1u32, 32)
-    /// ```
-    fn sub(self, rhs: Self) -> Self {
-        if !ptr::eq(self.module, rhs.module) {
-            panic!("Attempted to combine signals from different modules.");
-        }
-        if self.bit_width() != rhs.bit_width() {
-            panic!(
-                "Signals have different bit widths ({} and {}, respectively).",
-                self.bit_width(),
-                rhs.bit_width()
-            );
-        }
-        self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self.module,
-
-            data: SignalData::AdditiveBinOp {
-                lhs: self,
-                rhs,
-                op: AdditiveBinOp::Sub,
-                bit_width: self.bit_width(),
-            },
-        })
-    }
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum UnOp {
-    Not,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum SimpleBinOp {
-    BitAnd,
-    BitOr,
-    BitXor,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum ComparisonBinOp {
-    Equal,
-    GreaterThan,
-    GreaterThanEqual,
-    GreaterThanEqualSigned,
-    GreaterThanSigned,
-    LessThan,
-    LessThanEqual,
-    LessThanEqualSigned,
-    LessThanSigned,
-    NotEqual,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum AdditiveBinOp {
-    Add,
-    Sub,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum ShiftBinOp {
-    Shl,
-    Shr,
-    ShrArithmetic,
+    fn reg_next_with_default(self, name: S, default_value: C) -> &'a dyn Signal<'a>;
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::graph::*;
 
     #[test]
     #[should_panic(
@@ -1482,7 +1386,7 @@ mod tests {
     fn bit_index_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 3);
 
         let _ = i.bit(0); // OK
@@ -1499,7 +1403,7 @@ mod tests {
     fn bits_range_low_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1513,7 +1417,7 @@ mod tests {
     fn bits_range_high_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1527,7 +1431,7 @@ mod tests {
     fn bits_range_low_gt_high_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 3);
 
         // Panic
@@ -1541,7 +1445,7 @@ mod tests {
     fn repeat_count_zero_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 1);
 
         // Panic
@@ -1555,7 +1459,7 @@ mod tests {
     fn repeat_count_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i = m.input("i", 1);
 
         // Panic
@@ -1567,10 +1471,10 @@ mod tests {
     fn concat_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1584,7 +1488,7 @@ mod tests {
     fn concat_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("i1", 128);
         let i2 = m.input("i2", 1);
 
@@ -1597,10 +1501,10 @@ mod tests {
     fn eq_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1612,7 +1516,7 @@ mod tests {
     fn eq_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1625,10 +1529,10 @@ mod tests {
     fn ne_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1640,7 +1544,7 @@ mod tests {
     fn ne_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1653,10 +1557,10 @@ mod tests {
     fn lt_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1668,7 +1572,7 @@ mod tests {
     fn lt_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1681,10 +1585,10 @@ mod tests {
     fn le_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1696,7 +1600,7 @@ mod tests {
     fn le_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1709,10 +1613,10 @@ mod tests {
     fn gt_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1724,7 +1628,7 @@ mod tests {
     fn gt_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1737,10 +1641,10 @@ mod tests {
     fn ge_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1752,7 +1656,7 @@ mod tests {
     fn ge_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1765,10 +1669,10 @@ mod tests {
     fn lt_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1780,7 +1684,7 @@ mod tests {
     fn lt_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1793,7 +1697,7 @@ mod tests {
     fn lt_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1806,10 +1710,10 @@ mod tests {
     fn le_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1821,7 +1725,7 @@ mod tests {
     fn le_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1834,7 +1738,7 @@ mod tests {
     fn le_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1847,10 +1751,10 @@ mod tests {
     fn gt_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1862,7 +1766,7 @@ mod tests {
     fn gt_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1875,7 +1779,7 @@ mod tests {
     fn gt_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1888,10 +1792,10 @@ mod tests {
     fn ge_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1903,7 +1807,7 @@ mod tests {
     fn ge_signed_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -1916,7 +1820,7 @@ mod tests {
     fn ge_signed_bit_width_1_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 1);
         let i2 = m.input("b", 1);
 
@@ -1929,10 +1833,10 @@ mod tests {
     fn shr_arithmetic_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1944,10 +1848,10 @@ mod tests {
     fn mul_signed_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -1961,7 +1865,7 @@ mod tests {
     fn mul_signed_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 128);
         let i2 = m.input("b", 1);
 
@@ -1974,10 +1878,10 @@ mod tests {
     fn mux_cond_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let l1 = a.lit(false, 1);
 
-        let b = c.module("B");
+        let b = c.module("b", "B");
         let l2 = b.lit(32u8, 8);
         let l3 = b.lit(32u8, 8);
 
@@ -1990,10 +1894,10 @@ mod tests {
     fn mux_when_true_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("B");
+        let b = c.module("b", "B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -2006,10 +1910,10 @@ mod tests {
     fn mux_when_false_separate_module_error() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let l1 = a.lit(32u8, 8);
 
-        let b = c.module("B");
+        let b = c.module("b", "B");
         let l2 = b.lit(true, 1);
         let l3 = b.lit(32u8, 8);
 
@@ -2022,7 +1926,7 @@ mod tests {
     fn mux_cond_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let l1 = a.lit(2u8, 2);
         let l2 = a.lit(32u8, 8);
         let l3 = a.lit(32u8, 8);
@@ -2038,7 +1942,7 @@ mod tests {
     fn mux_true_false_bit_width_error() {
         let c = Context::new();
 
-        let a = c.module("A");
+        let a = c.module("a", "A");
         let l1 = a.lit(false, 1);
         let l2 = a.lit(3u8, 3);
         let l3 = a.lit(3u8, 5);
@@ -2052,10 +1956,10 @@ mod tests {
     fn add_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2067,7 +1971,7 @@ mod tests {
     fn add_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -2080,10 +1984,10 @@ mod tests {
     fn bitand_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2095,7 +1999,7 @@ mod tests {
     fn bitand_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -2108,10 +2012,10 @@ mod tests {
     fn bitor_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2123,7 +2027,7 @@ mod tests {
     fn bitor_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -2136,10 +2040,10 @@ mod tests {
     fn bitxor_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2151,7 +2055,7 @@ mod tests {
     fn bitxor_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 
@@ -2164,10 +2068,10 @@ mod tests {
     fn mul_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2181,7 +2085,7 @@ mod tests {
     fn mul_oob_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 128);
         let i2 = m.input("b", 1);
 
@@ -2194,10 +2098,10 @@ mod tests {
     fn shl_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2209,10 +2113,10 @@ mod tests {
     fn shr_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2224,10 +2128,10 @@ mod tests {
     fn sub_separate_module_error() {
         let c = Context::new();
 
-        let m1 = c.module("A");
+        let m1 = c.module("a", "A");
         let i1 = m1.input("a", 1);
 
-        let m2 = c.module("B");
+        let m2 = c.module("b", "B");
         let i2 = m2.high();
 
         // Panic
@@ -2239,7 +2143,7 @@ mod tests {
     fn sub_incompatible_bit_widths_error() {
         let c = Context::new();
 
-        let m = c.module("A");
+        let m = c.module("a", "A");
         let i1 = m.input("a", 3);
         let i2 = m.input("b", 5);
 

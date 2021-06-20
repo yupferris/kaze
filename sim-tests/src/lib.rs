@@ -2038,7 +2038,7 @@ mod tests {
         let mut capture = Capture::new();
         let trace = CaptureTrace::new(&mut capture);
 
-        let mut m = TraceTestModule0::new("m", trace)?;
+        let mut m = TraceTestModule0::new(trace)?;
         let mut time_stamp = 0;
 
         m.prop();
@@ -2061,7 +2061,7 @@ mod tests {
             capture,
             Capture {
                 root: Some((
-                    "m",
+                    "trace_test_module_0",
                     CaptureModule {
                         children: BTreeMap::new(),
                         signals: vec![
@@ -2201,7 +2201,7 @@ mod tests {
         let mut capture = Capture::new();
         let trace = CaptureTrace::new(&mut capture);
 
-        let mut m = TraceTestModule1::new("m", trace)?;
+        let mut m = TraceTestModule1::new(trace)?;
         let mut time_stamp = 0;
 
         // Check initial value
@@ -2237,7 +2237,7 @@ mod tests {
             capture,
             Capture {
                 root: Some((
-                    "m",
+                    "trace_test_module_1",
                     CaptureModule {
                         children: BTreeMap::new(),
                         signals: vec![
@@ -2347,7 +2347,7 @@ mod tests {
         let mut capture = Capture::new();
         let trace = CaptureTrace::new(&mut capture);
 
-        let mut m = TraceTestModule2::new("m", trace)?;
+        let mut m = TraceTestModule2::new(trace)?;
         let mut time_stamp = 0;
 
         // Check initial value
@@ -2379,7 +2379,7 @@ mod tests {
             capture,
             Capture {
                 root: Some((
-                    "m",
+                    "trace_test_module_2",
                     CaptureModule {
                         children: vec![
                             (
@@ -2530,7 +2530,7 @@ mod tests {
         let mut capture = Capture::new();
         let trace = CaptureTrace::new(&mut capture);
 
-        let mut m = TraceTestModule3::new("m", trace)?;
+        let mut m = TraceTestModule3::new(trace)?;
         let mut time_stamp = 0;
 
         // Initial state, no read/write
@@ -2612,7 +2612,7 @@ mod tests {
             capture,
             Capture {
                 root: Some((
-                    "m",
+                    "trace_test_module_3",
                     CaptureModule {
                         children: BTreeMap::new(),
                         signals: vec![

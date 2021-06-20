@@ -20,10 +20,10 @@
 //! use kaze::*;
 //!
 //! // Create a context, which will contain our module(s)
-//! let c = Context::new();
+//! let p = Context::new();
 //!
 //! // Create a module
-//! let inverter = c.module("Inverter");
+//! let inverter = p.module("inverter", "Inverter");
 //! let i = inverter.input("i", 1); // 1-bit input
 //! inverter.output("o", !i); // Output inverted input
 //!
@@ -31,7 +31,7 @@
 //! sim::generate(inverter, sim::GenerationOptions::default(), std::io::stdout())?;
 //!
 //! // Generate Verilog code
-//! verilog::generate(inverter, std::io::stdout())?;
+//! //verilog::generate(inverter, std::io::stdout())?;
 //! # Ok(())
 //! # }
 //! ```
@@ -41,10 +41,9 @@
 
 mod code_writer;
 mod graph;
-mod module_context;
 pub mod runtime;
 pub mod sim;
 mod validation;
-pub mod verilog;
+//pub mod verilog;
 
 pub use graph::*;
