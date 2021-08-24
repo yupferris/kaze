@@ -235,7 +235,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or when the name already exists in the module.
     ///
     /// # Examples
     ///
@@ -266,22 +267,32 @@ impl<'a> Module<'a> {
         }
         let name = name.into();
 
-        let data = self.context.register_data_arena.alloc(RegisterData {
-            module: self,
+        let mut map = self.registers.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let data = self.context.register_data_arena.alloc(RegisterData {
+                    module: self,
 
-            name: name.clone(),
-            initial_value: RefCell::new(None),
-            bit_width,
-            next: RefCell::new(None),
-        });
-        let value = self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
+                    name: name.clone(),
+                    initial_value: RefCell::new(None),
+                    bit_width,
+                    next: RefCell::new(None),
+                });
+                let value = self.context.signal_arena.alloc(Signal {
+                    context: self.context,
+                    module: self,
 
-            data: SignalData::Reg { data },
-        });
-        self.registers.borrow_mut().insert(name, value);
-        self.context.register_arena.alloc(Register { data, value })
+                    data: SignalData::Reg { data },
+                });
+
+                v.insert(value);
+
+                self.context.register_arena.alloc(Register { data, value })
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create a register with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `cond` is high, and `when_false`'s value when `cond` is low.
@@ -781,5 +792,17 @@ mod tests {
 
         m.output("o1", m.input("i", 1));
         m.output("o2", m.input("i", 1));
+    }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create a register with a name that already exists in this module."
+    )]
+    fn regs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        let _ = m.reg("r", 1);
+        let _ = m.reg("r", 1);
     }
 }
