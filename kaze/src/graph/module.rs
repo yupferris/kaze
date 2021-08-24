@@ -8,6 +8,7 @@ use super::signal::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
+use std::collections::btree_map::Entry;
 
 /// A self-contained and potentially-reusable hardware design unit, created by the [`Context::module`] method.
 ///
@@ -207,8 +208,16 @@ impl<'a> Module<'a> {
         if !ptr::eq(self, source.module) {
             panic!("Cannot output a signal from another module.");
         }
-        // TODO: Error if name already exists in this context
-        self.outputs.borrow_mut().insert(name.into(), source);
+
+        let mut map = self.outputs.borrow_mut();
+        match map.entry(name.into()) {
+            Entry::Vacant(v) => {
+                v.insert(source);
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an output with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates a [`Register`] in this `Module` called `name` with `bit_width` bits.
@@ -448,6 +457,7 @@ impl<'a> Module<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::verilog;
 
     #[test]
     #[should_panic(
@@ -734,5 +744,17 @@ mod tests {
 
         // Panic
         let _ = m.mem("mem", 1, 129);
+    }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an output with a name that already exists in this module."
+    )]
+    fn outputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o", m.input("i1", 1));
+        m.output("o", m.input("i2", 1));
     }
 }
