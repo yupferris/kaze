@@ -145,7 +145,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -160,7 +161,6 @@ impl<'a> Module<'a> {
     /// ```
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
-        // TODO: Error if name already exists in this context
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create an input with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -173,19 +173,20 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
-        let input = self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
-
-            data: SignalData::Input {
-                name: name.clone(),
-                bit_width,
-            },
-        });
-
         let mut map = self.inputs.borrow_mut();
         match map.entry(name) {
             Entry::Vacant(v) => {
+                let input = self.context.signal_arena.alloc(Signal {
+                    context: self.context,
+                    module: self,
+
+                    data: SignalData::Input {
+                        name: name.clone(),
+                        bit_width,
+                    },
+                });
+
+
                 v.insert(input);
             }
             Entry::Occupied(_) => {
@@ -199,7 +200,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics of `source` doesn't belong to this `Module`.
+    /// Panics of `source` doesn't belong to this `Module` or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -250,7 +251,6 @@ impl<'a> Module<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
-        // TODO: Error if name already exists in this context and update docs for Signal::reg_next and Signal::reg_next_with_default to reflect this
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a register with {} bit(s). Signals must not be narrower than {} bit(s).",
