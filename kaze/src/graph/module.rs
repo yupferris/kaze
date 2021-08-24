@@ -174,26 +174,27 @@ impl<'a> Module<'a> {
             );
         }
         let mut map = self.inputs.borrow_mut();
-        match map.entry(name) {
+        match map.entry(name.clone()) {
             Entry::Vacant(v) => {
                 let input = self.context.signal_arena.alloc(Signal {
                     context: self.context,
                     module: self,
 
                     data: SignalData::Input {
-                        name: name.clone(),
+                        name,
                         bit_width,
                     },
                 });
 
 
                 v.insert(input);
+
+                input
             }
             Entry::Occupied(_) => {
                 panic!("Cannot create an input with a name that already exists in this module.")
             }
         }
-        input
     }
 
     /// Creates an output for this `Module` called `name` with the same number of bits as `source`, and drives this output with `source`.
