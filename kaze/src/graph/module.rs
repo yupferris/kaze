@@ -35,9 +35,9 @@ pub struct Module<'a> {
 
     pub(crate) inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
     pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
-    pub(crate) registers: RefCell<Vec<&'a Signal<'a>>>,
-    pub(crate) instances: RefCell<Vec<&'a Instance<'a>>>,
-    pub(crate) mems: RefCell<Vec<&'a Mem<'a>>>,
+    pub(crate) registers: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) instances: RefCell<BTreeMap<String, &'a Instance<'a>>>,
+    pub(crate) mems: RefCell<BTreeMap<String, &'a Mem<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -47,11 +47,11 @@ impl<'a> Module<'a> {
 
             name,
 
-            inputs: RefCell::new(BTreeMap::new()),
-            outputs: RefCell::new(BTreeMap::new()),
-            registers: RefCell::new(Vec::new()),
-            instances: RefCell::new(Vec::new()),
-            mems: RefCell::new(Vec::new()),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            registers: Default::default(),
+            instances: Default::default(),
+            mems: Default::default(),
         }
     }
 
@@ -264,10 +264,12 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
+        let name = name.into();
+
         let data = self.context.register_data_arena.alloc(RegisterData {
             module: self,
 
-            name: name.into(),
+            name: name.clone(),
             initial_value: RefCell::new(None),
             bit_width,
             next: RefCell::new(None),
@@ -278,7 +280,7 @@ impl<'a> Module<'a> {
 
             data: SignalData::Reg { data },
         });
-        self.registers.borrow_mut().push(value);
+        self.registers.borrow_mut().insert(name, value);
         self.context.register_arena.alloc(Register { data, value })
     }
 
@@ -373,18 +375,19 @@ impl<'a> Module<'a> {
         instance_name: S,
         module_name: &str,
     ) -> &Instance<'a> {
-        // TODO: Error if instance_name already exists in this context
         match self.context.modules.borrow().get(module_name) {
             Some(instantiated_module) => {
+                let instance_name = instance_name.into();
+
                 let ret = self.context.instance_arena.alloc(Instance {
                     context: self.context,
                     module: self,
 
                     instantiated_module,
-                    name: instance_name.into(),
+                    name: instance_name.clone(),
                     driven_inputs: RefCell::new(BTreeMap::new()),
                 });
-                self.instances.borrow_mut().push(ret);
+                self.instances.borrow_mut().insert(instance_name, ret);
                 ret
             }
             _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
@@ -446,11 +449,12 @@ impl<'a> Module<'a> {
                 element_bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
+        let name = name.into();
         let ret = self.context.mem_arena.alloc(Mem {
             context: self.context,
             module: self,
 
-            name: name.into(),
+            name: name.clone(),
             address_bit_width,
             element_bit_width,
 
@@ -459,7 +463,7 @@ impl<'a> Module<'a> {
             read_ports: RefCell::new(Vec::new()),
             write_port: RefCell::new(None),
         });
-        self.mems.borrow_mut().push(ret);
+        self.mems.borrow_mut().insert(name, ret);
         ret
     }
 }
