@@ -182,7 +182,16 @@ impl<'a> Module<'a> {
                 bit_width,
             },
         });
-        self.inputs.borrow_mut().insert(name, input);
+
+        let mut map = self.inputs.borrow_mut();
+        match map.entry(name) {
+            Entry::Vacant(v) => {
+                v.insert(input);
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an input with a name that already exists in this module.")
+            }
+        }
         input
     }
 
@@ -457,7 +466,6 @@ impl<'a> Module<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::verilog;
 
     #[test]
     #[should_panic(
@@ -756,5 +764,17 @@ mod tests {
 
         m.output("o", m.input("i1", 1));
         m.output("o", m.input("i2", 1));
+    }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an input with a name that already exists in this module."
+    )]
+    fn inputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o1", m.input("i", 1));
+        m.output("o2", m.input("i", 1));
     }
 }
