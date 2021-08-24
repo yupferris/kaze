@@ -362,7 +362,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` identified by `module_name` doesn't exist in this [`Context`].
+    /// Panics if a `Module` identified by `module_name` doesn't exist in this [`Context`] or when the instance name already exists in this module.
     ///
     /// # Examples
     ///
@@ -390,16 +390,24 @@ impl<'a> Module<'a> {
             Some(instantiated_module) => {
                 let instance_name = instance_name.into();
 
-                let ret = self.context.instance_arena.alloc(Instance {
-                    context: self.context,
-                    module: self,
+                let mut map = self.instances.borrow_mut();
+                match map.entry(instance_name.clone()) {
+                    Entry::Vacant(v) => {
+                        let ret = self.context.instance_arena.alloc(Instance {
+                            context: self.context,
+                            module: self,
 
-                    instantiated_module,
-                    name: instance_name.clone(),
-                    driven_inputs: RefCell::new(BTreeMap::new()),
-                });
-                self.instances.borrow_mut().insert(instance_name, ret);
-                ret
+                            instantiated_module,
+                            name: instance_name,
+                            driven_inputs: Default::default(),
+                        });
+                        v.insert(ret);
+                        ret
+                    }
+                    Entry::Occupied(_) => {
+                        panic!("Cannot create an instance with a name that already exists in this module.")
+                    }
+                }
             }
             _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
         }
@@ -411,7 +419,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `address_bit_width` or `element_bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `address_bit_width` or `element_bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or when the memory name already exists in this module.
     ///
     /// # Examples
     ///
@@ -435,7 +444,6 @@ impl<'a> Module<'a> {
         address_bit_width: u32,
         element_bit_width: u32,
     ) -> &Mem<'a> {
-        // TODO: Error if name already exists in this context
         if address_bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a memory with {} address bit(s). Signals must not be narrower than {} bit(s).",
@@ -461,21 +469,31 @@ impl<'a> Module<'a> {
             );
         }
         let name = name.into();
-        let ret = self.context.mem_arena.alloc(Mem {
-            context: self.context,
-            module: self,
 
-            name: name.clone(),
-            address_bit_width,
-            element_bit_width,
+        let mut map = self.mems.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let ret = self.context.mem_arena.alloc(Mem {
+                    context: self.context,
+                    module: self,
 
-            initial_contents: RefCell::new(None),
+                    name,
+                    address_bit_width,
+                    element_bit_width,
 
-            read_ports: RefCell::new(Vec::new()),
-            write_port: RefCell::new(None),
-        });
-        self.mems.borrow_mut().insert(name, ret);
-        ret
+                    initial_contents: RefCell::new(None),
+
+                    read_ports: RefCell::new(Vec::new()),
+                    write_port: RefCell::new(None),
+                });
+
+                v.insert(ret);
+                ret
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create a memory with a name that already exists in this module.")
+            }
+        }
     }
 }
 
@@ -805,4 +823,30 @@ mod tests {
         let _ = m.reg("r", 1);
         let _ = m.reg("r", 1);
     }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create an instance with a name that already exists in this module."
+    )]
+    fn instances_same_name() {
+        let c = Context::new();
+        let ma = c.module("A");
+        let _ = c.module("B");
+
+        let _ = ma.instance("i", "B");
+        let _ = ma.instance("i", "B");
+    }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create a memory with a name that already exists in this module."
+    )]
+    fn memory_same_name() {
+        let c = Context::new();
+        let ma = c.module("A");
+
+        let _ = ma.mem("m", 1, 1);
+        let _ = ma.mem("m", 1, 1);
+    }
 }
+
