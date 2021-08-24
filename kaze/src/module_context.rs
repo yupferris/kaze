@@ -22,7 +22,6 @@ impl<'graph, 'arena> Default for ModuleContext<'graph, 'arena> {
     }
 }
 
-
 impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
     pub fn new() -> ModuleContext<'graph, 'arena> {
         ModuleContext {
