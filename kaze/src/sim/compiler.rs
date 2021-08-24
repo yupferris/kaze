@@ -69,8 +69,7 @@ impl<'graph, 'context_arena, 'expr_arena> Compiler<'graph, 'context_arena, 'expr
             },
         }
 
-        let mut frames = Vec::new();
-        frames.push(Frame::Enter { signal, context });
+        let mut frames =vec![Frame::Enter { signal, context }];
 
         let mut results = Vec::new();
 

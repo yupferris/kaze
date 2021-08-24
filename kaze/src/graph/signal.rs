@@ -1438,6 +1438,7 @@ pub(crate) enum UnOp {
 }
 
 #[derive(Clone, Copy)]
+#[allow(clippy::enum_variant_names)]
 pub(crate) enum SimpleBinOp {
     BitAnd,
     BitOr,

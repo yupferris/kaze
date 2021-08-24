@@ -117,8 +117,8 @@ impl<W: io::Write> Trace for VcdTrace<W> {
                 TraceValue::U128(value) => value,
             };
             let mut scalar_values = [vcd::Value::V0; 128];
-            for i in 0..signal.bit_width as usize {
-                scalar_values[i] = ((value >> (signal.bit_width as usize - 1 - i)) & 1 != 0).into();
+            for (i, scalar_value) in scalar_values.iter_mut().enumerate() {
+                *scalar_value = ((value >> (signal.bit_width as usize - 1 - i)) & 1 != 0).into();
             }
             self.w
                 .change_vector(signal.id, &scalar_values[0..signal.bit_width as usize])?;

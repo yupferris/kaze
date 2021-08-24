@@ -16,6 +16,13 @@ pub struct ModuleContext<'graph, 'arena> {
         RefCell<HashMap<*const graph::Instance<'graph>, &'arena ModuleContext<'graph, 'arena>>>,
 }
 
+impl<'graph, 'arena> Default for ModuleContext<'graph, 'arena> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+
 impl<'graph, 'arena> ModuleContext<'graph, 'arena> {
     pub fn new() -> ModuleContext<'graph, 'arena> {
         ModuleContext {

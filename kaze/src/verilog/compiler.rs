@@ -27,8 +27,7 @@ impl<'graph> Compiler<'graph> {
             Leave(&'graph graph::Signal<'graph>),
         }
 
-        let mut frames = Vec::new();
-        frames.push(Frame::Enter(signal));
+        let mut frames = vec![Frame::Enter(signal)];
 
         let mut results = Vec::new();
 
