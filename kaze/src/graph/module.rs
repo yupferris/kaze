@@ -8,6 +8,7 @@ use super::signal::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
+use std::collections::btree_map::Entry;
 
 /// A self-contained and potentially-reusable hardware design unit, created by the [`Context::module`] method.
 ///
@@ -144,7 +145,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -159,7 +161,6 @@ impl<'a> Module<'a> {
     /// ```
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
-        // TODO: Error if name already exists in this context
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create an input with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -172,24 +173,35 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
-        let input = self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
+        let mut map = self.inputs.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let input = self.context.signal_arena.alloc(Signal {
+                    context: self.context,
+                    module: self,
 
-            data: SignalData::Input {
-                name: name.clone(),
-                bit_width,
-            },
-        });
-        self.inputs.borrow_mut().insert(name, input);
-        input
+                    data: SignalData::Input {
+                        name,
+                        bit_width,
+                    },
+                });
+
+
+                v.insert(input);
+
+                input
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an input with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates an output for this `Module` called `name` with the same number of bits as `source`, and drives this output with `source`.
     ///
     /// # Panics
     ///
-    /// Panics of `source` doesn't belong to this `Module`.
+    /// Panics of `source` doesn't belong to this `Module` or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -207,8 +219,16 @@ impl<'a> Module<'a> {
         if !ptr::eq(self, source.module) {
             panic!("Cannot output a signal from another module.");
         }
-        // TODO: Error if name already exists in this context
-        self.outputs.borrow_mut().insert(name.into(), source);
+
+        let mut map = self.outputs.borrow_mut();
+        match map.entry(name.into()) {
+            Entry::Vacant(v) => {
+                v.insert(source);
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an output with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates a [`Register`] in this `Module` called `name` with `bit_width` bits.
@@ -232,7 +252,6 @@ impl<'a> Module<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
-        // TODO: Error if name already exists in this context and update docs for Signal::reg_next and Signal::reg_next_with_default to reflect this
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a register with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -734,5 +753,29 @@ mod tests {
 
         // Panic
         let _ = m.mem("mem", 1, 129);
+    }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an output with a name that already exists in this module."
+    )]
+    fn outputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o", m.input("i1", 1));
+        m.output("o", m.input("i2", 1));
+    }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an input with a name that already exists in this module."
+    )]
+    fn inputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o1", m.input("i", 1));
+        m.output("o2", m.input("i", 1));
     }
 }
