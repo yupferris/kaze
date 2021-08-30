@@ -35,6 +35,7 @@
 //! # Ok(())
 //! # }
 //! ```
+#![allow(clippy::mutable_key_type)] // TODO: check this
 
 // Must be kept up-to-date with version in Cargo.toml
 #![doc(html_root_url = "https://docs.rs/kaze/0.1.19")]

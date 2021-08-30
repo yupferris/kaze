@@ -267,10 +267,10 @@ impl<'graph, 'arena> StateElements<'graph, 'arena> {
                         Mem {
                             mem,
                             mem_name,
+                            read_signal_names,
                             write_address_name,
                             write_value_name,
                             write_enable_name,
-                            read_signal_names,
                         },
                     );
                     for (address, enable) in mem.read_ports.borrow().iter() {

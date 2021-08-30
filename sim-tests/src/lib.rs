@@ -45,7 +45,7 @@ mod tests {
         }
 
         fn append_newline(&mut self) -> fmt::Result {
-            writeln!(self.f, "")?;
+            writeln!(self.f)?;
             Ok(())
         }
 

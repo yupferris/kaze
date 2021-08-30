@@ -35,6 +35,12 @@ pub struct Context<'a> {
     pub(super) modules: RefCell<BTreeMap<String, &'a Module<'a>>>,
 }
 
+impl<'a> Default for Context<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a> Context<'a> {
     /// Creates a new, empty `Context`.
     ///

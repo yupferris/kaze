@@ -29,7 +29,7 @@ impl<W: Write> CodeWriter<W> {
     }
 
     pub fn append_newline(&mut self) -> Result<()> {
-        writeln!(self.w, "")?;
+        writeln!(self.w)?;
         Ok(())
     }
 
