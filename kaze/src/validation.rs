@@ -49,7 +49,7 @@ fn detect_recursive_definitions<'graph, 'frame>(
     module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
     root: &graph::Module<'graph>,
 ) {
-    for instance in m.instances.borrow().iter() {
+    for instance in m.instances.borrow().values() {
         let instantiated_module = instance.instantiated_module;
 
         if ptr::eq(instantiated_module, m) {
@@ -91,7 +91,7 @@ fn detect_undriven_registers<'graph, 'frame>(
     module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
     root: &graph::Module<'graph>,
 ) {
-    for register in m.registers.borrow().iter() {
+    for register in m.registers.borrow().values() {
         match register.data {
             graph::SignalData::Reg { ref data } => {
                 if data.next.borrow().is_none() {
@@ -102,7 +102,7 @@ fn detect_undriven_registers<'graph, 'frame>(
         }
     }
 
-    for instance in m.instances.borrow().iter() {
+    for instance in m.instances.borrow().values() {
         let instantiated_module = instance.instantiated_module;
 
         detect_undriven_registers(
@@ -121,7 +121,7 @@ fn detect_mem_errors<'graph, 'frame>(
     module_stack_frame: &ModuleStackFrame<'graph, 'frame>,
     root: &graph::Module<'graph>,
 ) {
-    for mem in m.mems.borrow().iter() {
+    for mem in m.mems.borrow().values() {
         if mem.read_ports.borrow().is_empty() {
             panic!("Cannot generate code for module \"{}\" because module \"{}\" contains a memory called \"{}\" which doesn't have any read ports.", root.name, m.name, mem.name);
         }
@@ -131,7 +131,7 @@ fn detect_mem_errors<'graph, 'frame>(
         }
     }
 
-    for instance in m.instances.borrow().iter() {
+    for instance in m.instances.borrow().values() {
         let instantiated_module = instance.instantiated_module;
 
         detect_mem_errors(
@@ -151,7 +151,7 @@ fn detect_combinational_loops<'graph, 'arena>(
     context_arena: &'arena Arena<ModuleContext<'graph, 'arena>>,
     root: &graph::Module<'graph>,
 ) {
-    for instance in m.instances.borrow().iter() {
+    for instance in m.instances.borrow().values() {
         let instantiated_module = instance.instantiated_module;
 
         let context = context.get_child(instance, context_arena);

@@ -20,14 +20,14 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     validate_module_hierarchy(m);
 
     let mut instances = HashMap::new();
-    for instance in m.instances.borrow().iter() {
+    for instance in m.instances.borrow().values() {
         let mut input_names = HashMap::new();
-        for (name, _) in instance.instantiated_module.inputs.borrow().iter() {
+        for name in instance.instantiated_module.inputs.borrow().keys() {
             input_names.insert(name.clone(), format!("__{}_input_{}", instance.name, name));
         }
 
         let mut output_names = HashMap::new();
-        for (name, _) in instance.instantiated_module.outputs.borrow().iter() {
+        for name in instance.instantiated_module.outputs.borrow().keys() {
             output_names.insert(name.clone(), format!("__{}_output_{}", instance.name, name));
         }
 
@@ -41,7 +41,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     let mut mems = HashMap::new();
-    for mem in m.mems.borrow().iter() {
+    for mem in m.mems.borrow().values() {
         let mem_name = format!("__mem_{}", mem.name);
         let mut read_signal_names = HashMap::new();
         for (index, (address, enable)) in mem.read_ports.borrow().iter().enumerate() {
@@ -71,7 +71,7 @@ pub fn generate<'a, W: Write>(m: &'a graph::Module<'a>, w: W) -> Result<()> {
     }
 
     let mut regs = HashMap::new();
-    for reg in m.registers.borrow().iter() {
+    for reg in m.registers.borrow().values() {
         match reg.data {
             graph::SignalData::Reg { data } => {
                 let value_name = format!("__reg_{}_{}", data.name, regs.len());

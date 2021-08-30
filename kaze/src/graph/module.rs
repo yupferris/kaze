@@ -8,6 +8,7 @@ use super::signal::*;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::ptr;
+use std::collections::btree_map::Entry;
 
 /// A self-contained and potentially-reusable hardware design unit, created by the [`Context::module`] method.
 ///
@@ -34,9 +35,9 @@ pub struct Module<'a> {
 
     pub(crate) inputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
     pub(crate) outputs: RefCell<BTreeMap<String, &'a Signal<'a>>>,
-    pub(crate) registers: RefCell<Vec<&'a Signal<'a>>>,
-    pub(crate) instances: RefCell<Vec<&'a Instance<'a>>>,
-    pub(crate) mems: RefCell<Vec<&'a Mem<'a>>>,
+    pub(crate) registers: RefCell<BTreeMap<String, &'a Signal<'a>>>,
+    pub(crate) instances: RefCell<BTreeMap<String, &'a Instance<'a>>>,
+    pub(crate) mems: RefCell<BTreeMap<String, &'a Mem<'a>>>,
 }
 
 impl<'a> Module<'a> {
@@ -46,11 +47,11 @@ impl<'a> Module<'a> {
 
             name,
 
-            inputs: RefCell::new(BTreeMap::new()),
-            outputs: RefCell::new(BTreeMap::new()),
-            registers: RefCell::new(Vec::new()),
-            instances: RefCell::new(Vec::new()),
-            mems: RefCell::new(Vec::new()),
+            inputs: Default::default(),
+            outputs: Default::default(),
+            registers: Default::default(),
+            instances: Default::default(),
+            mems: Default::default(),
         }
     }
 
@@ -144,7 +145,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -159,7 +161,6 @@ impl<'a> Module<'a> {
     /// ```
     pub fn input<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Signal<'a> {
         let name = name.into();
-        // TODO: Error if name already exists in this context
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create an input with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -172,24 +173,35 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
-        let input = self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
+        let mut map = self.inputs.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let input = self.context.signal_arena.alloc(Signal {
+                    context: self.context,
+                    module: self,
 
-            data: SignalData::Input {
-                name: name.clone(),
-                bit_width,
-            },
-        });
-        self.inputs.borrow_mut().insert(name, input);
-        input
+                    data: SignalData::Input {
+                        name,
+                        bit_width,
+                    },
+                });
+
+
+                v.insert(input);
+
+                input
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an input with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates an output for this `Module` called `name` with the same number of bits as `source`, and drives this output with `source`.
     ///
     /// # Panics
     ///
-    /// Panics of `source` doesn't belong to this `Module`.
+    /// Panics of `source` doesn't belong to this `Module` or if the name of the input is already used in the module.
     ///
     /// # Examples
     ///
@@ -207,15 +219,24 @@ impl<'a> Module<'a> {
         if !ptr::eq(self, source.module) {
             panic!("Cannot output a signal from another module.");
         }
-        // TODO: Error if name already exists in this context
-        self.outputs.borrow_mut().insert(name.into(), source);
+
+        let mut map = self.outputs.borrow_mut();
+        match map.entry(name.into()) {
+            Entry::Vacant(v) => {
+                v.insert(source);
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create an output with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates a [`Register`] in this `Module` called `name` with `bit_width` bits.
     ///
     /// # Panics
     ///
-    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or when the name already exists in the module.
     ///
     /// # Examples
     ///
@@ -232,7 +253,6 @@ impl<'a> Module<'a> {
     /// m.output("my_output", my_reg.value);
     /// ```
     pub fn reg<S: Into<String>>(&'a self, name: S, bit_width: u32) -> &Register<'a> {
-        // TODO: Error if name already exists in this context and update docs for Signal::reg_next and Signal::reg_next_with_default to reflect this
         if bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a register with {} bit(s). Signals must not be narrower than {} bit(s).",
@@ -245,22 +265,34 @@ impl<'a> Module<'a> {
                 bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
-        let data = self.context.register_data_arena.alloc(RegisterData {
-            module: self,
+        let name = name.into();
 
-            name: name.into(),
-            initial_value: RefCell::new(None),
-            bit_width,
-            next: RefCell::new(None),
-        });
-        let value = self.context.signal_arena.alloc(Signal {
-            context: self.context,
-            module: self,
+        let mut map = self.registers.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let data = self.context.register_data_arena.alloc(RegisterData {
+                    module: self,
 
-            data: SignalData::Reg { data },
-        });
-        self.registers.borrow_mut().push(value);
-        self.context.register_arena.alloc(Register { data, value })
+                    name: name.clone(),
+                    initial_value: RefCell::new(None),
+                    bit_width,
+                    next: RefCell::new(None),
+                });
+                let value = self.context.signal_arena.alloc(Signal {
+                    context: self.context,
+                    module: self,
+
+                    data: SignalData::Reg { data },
+                });
+
+                v.insert(value);
+
+                self.context.register_arena.alloc(Register { data, value })
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create a register with a name that already exists in this module.")
+            }
+        }
     }
 
     /// Creates a 2:1 [multiplexer](https://en.wikipedia.org/wiki/Multiplexer) that represents `when_true`'s value when `cond` is high, and `when_false`'s value when `cond` is low.
@@ -330,7 +362,7 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if a `Module` identified by `module_name` doesn't exist in this [`Context`].
+    /// Panics if a `Module` identified by `module_name` doesn't exist in this [`Context`] or when the instance name already exists in this module.
     ///
     /// # Examples
     ///
@@ -354,19 +386,28 @@ impl<'a> Module<'a> {
         instance_name: S,
         module_name: &str,
     ) -> &Instance<'a> {
-        // TODO: Error if instance_name already exists in this context
         match self.context.modules.borrow().get(module_name) {
             Some(instantiated_module) => {
-                let ret = self.context.instance_arena.alloc(Instance {
-                    context: self.context,
-                    module: self,
+                let instance_name = instance_name.into();
 
-                    instantiated_module,
-                    name: instance_name.into(),
-                    driven_inputs: RefCell::new(BTreeMap::new()),
-                });
-                self.instances.borrow_mut().push(ret);
-                ret
+                let mut map = self.instances.borrow_mut();
+                match map.entry(instance_name.clone()) {
+                    Entry::Vacant(v) => {
+                        let ret = self.context.instance_arena.alloc(Instance {
+                            context: self.context,
+                            module: self,
+
+                            instantiated_module,
+                            name: instance_name,
+                            driven_inputs: Default::default(),
+                        });
+                        v.insert(ret);
+                        ret
+                    }
+                    Entry::Occupied(_) => {
+                        panic!("Cannot create an instance with a name that already exists in this module.")
+                    }
+                }
             }
             _ => panic!("Attempted to instantiate a module identified by \"{}\", but no such module exists in this context.", module_name)
         }
@@ -378,7 +419,8 @@ impl<'a> Module<'a> {
     ///
     /// # Panics
     ///
-    /// Panics if `address_bit_width` or `element_bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively.
+    /// Panics if `address_bit_width` or `element_bit_width` is less than [`MIN_SIGNAL_BIT_WIDTH`] or greater than [`MAX_SIGNAL_BIT_WIDTH`], respectively,
+    /// or when the memory name already exists in this module.
     ///
     /// # Examples
     ///
@@ -402,7 +444,6 @@ impl<'a> Module<'a> {
         address_bit_width: u32,
         element_bit_width: u32,
     ) -> &Mem<'a> {
-        // TODO: Error if name already exists in this context
         if address_bit_width < MIN_SIGNAL_BIT_WIDTH {
             panic!(
                 "Cannot create a memory with {} address bit(s). Signals must not be narrower than {} bit(s).",
@@ -427,21 +468,32 @@ impl<'a> Module<'a> {
                 element_bit_width, MAX_SIGNAL_BIT_WIDTH
             );
         }
-        let ret = self.context.mem_arena.alloc(Mem {
-            context: self.context,
-            module: self,
+        let name = name.into();
 
-            name: name.into(),
-            address_bit_width,
-            element_bit_width,
+        let mut map = self.mems.borrow_mut();
+        match map.entry(name.clone()) {
+            Entry::Vacant(v) => {
+                let ret = self.context.mem_arena.alloc(Mem {
+                    context: self.context,
+                    module: self,
 
-            initial_contents: RefCell::new(None),
+                    name,
+                    address_bit_width,
+                    element_bit_width,
 
-            read_ports: RefCell::new(Vec::new()),
-            write_port: RefCell::new(None),
-        });
-        self.mems.borrow_mut().push(ret);
-        ret
+                    initial_contents: RefCell::new(None),
+
+                    read_ports: RefCell::new(Vec::new()),
+                    write_port: RefCell::new(None),
+                });
+
+                v.insert(ret);
+                ret
+            }
+            Entry::Occupied(_) => {
+                panic!("Cannot create a memory with a name that already exists in this module.")
+            }
+        }
     }
 }
 
@@ -735,4 +787,66 @@ mod tests {
         // Panic
         let _ = m.mem("mem", 1, 129);
     }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an output with a name that already exists in this module."
+    )]
+    fn outputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o", m.input("i1", 1));
+        m.output("o", m.input("i2", 1));
+    }
+
+    #[test]
+    #[should_panic(
+        expected="Cannot create an input with a name that already exists in this module."
+    )]
+    fn inputs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        m.output("o1", m.input("i", 1));
+        m.output("o2", m.input("i", 1));
+    }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create a register with a name that already exists in this module."
+    )]
+    fn regs_same_name() {
+        let c = Context::new();
+        let m = c.module("A");
+
+        let _ = m.reg("r", 1);
+        let _ = m.reg("r", 1);
+    }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create an instance with a name that already exists in this module."
+    )]
+    fn instances_same_name() {
+        let c = Context::new();
+        let ma = c.module("A");
+        let _ = c.module("B");
+
+        let _ = ma.instance("i", "B");
+        let _ = ma.instance("i", "B");
+    }
+
+    #[test]
+    #[should_panic(
+    expected="Cannot create a memory with a name that already exists in this module."
+    )]
+    fn memory_same_name() {
+        let c = Context::new();
+        let ma = c.module("A");
+
+        let _ = ma.mem("m", 1, 1);
+        let _ = ma.mem("m", 1, 1);
+    }
 }
+
