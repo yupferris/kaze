@@ -32,11 +32,15 @@ pub fn generate<'a, W: Write>(
 ) -> Result<()> {
     validate_module_hierarchy(m);
 
-    let mut state_elements = StateElements::new();
+    // TODO: Consider exposing as a codegen option (and testing both variants)
+    let included_ports = if options.tracing {
+        IncludedPorts::All
+    } else {
+        IncludedPorts::ReachableFromTopLevelOutputs
+    };
+
     let mut signal_reference_counts = HashMap::new();
-    for (_, output) in m.outputs.borrow().iter() {
-        state_elements.gather(output.data.source, &mut signal_reference_counts);
-    }
+    let state_elements = StateElements::new(m, included_ports, &mut signal_reference_counts);
 
     struct TraceSignal {
         name: String,
@@ -79,6 +83,67 @@ pub fn generate<'a, W: Write>(
         });
 
         add_trace_signal(m, name.clone(), name.clone(), output.data.bit_width);
+    }
+    struct InnerField {
+        name: String,
+        bit_width: u32,
+    }
+    let mut inner_fields = Vec::new();
+    if options.tracing {
+        fn visit_module<'graph, 'context, 'expr_arena>(
+            module: &'graph graph::Module<'graph>,
+            c: &mut Compiler<'graph, 'context, 'expr_arena>,
+            inner_fields: &mut Vec<InnerField>,
+            prop_context: &mut AssignmentContext<'expr_arena>,
+            expr_arena: &'expr_arena Arena<Expr>,
+            add_trace_signal: &mut impl FnMut(&'graph graph::Module<'graph>, String, String, u32),
+        ) -> Result<()> {
+            // TODO: Identify and fix duplicate signals in traces
+            for (name, &input) in module.inputs.borrow().iter() {
+                // TODO: De-dupe inner field allocs
+                let field_name = format!("__inner_{}_{}", name, inner_fields.len());
+                inner_fields.push(InnerField {
+                    name: field_name.clone(),
+                    bit_width: input.data.bit_width,
+                });
+                let expr = c.compile_signal(input.data.driven_value.borrow().unwrap(), prop_context);
+                prop_context.push(Assignment {
+                    target: expr_arena.alloc(Expr::Ref {
+                        name: field_name.clone(),
+                        scope: Scope::Member,
+                    }),
+                    expr,
+                });
+
+                add_trace_signal(module, name.clone(), field_name, input.data.bit_width);
+            }
+            for (name, &output) in module.outputs.borrow().iter() {
+                // TODO: De-dupe inner field allocs
+                let field_name = format!("__inner_{}_{}", name, inner_fields.len());
+                inner_fields.push(InnerField {
+                    name: field_name.clone(),
+                    bit_width: output.data.bit_width,
+                });
+                let expr = c.compile_signal(output.data.source, prop_context);
+                prop_context.push(Assignment {
+                    target: expr_arena.alloc(Expr::Ref {
+                        name: field_name.clone(),
+                        scope: Scope::Member,
+                    }),
+                    expr,
+                });
+
+                add_trace_signal(module, name.clone(), field_name, output.data.bit_width);
+            }
+            for child in module.modules.borrow().iter() {
+                visit_module(child, c, inner_fields, prop_context, expr_arena, add_trace_signal)?;
+            }
+
+            Ok(())
+        }
+        for child in m.modules.borrow().iter() {
+            visit_module(child, &mut c, &mut inner_fields, &mut prop_context, &expr_arena, &mut add_trace_signal)?;
+        }
     }
     for (graph_mem, mem) in state_elements.mems.iter() {
         for ((address, enable), read_signal_names) in mem.read_signal_names.iter() {
@@ -271,6 +336,18 @@ pub fn generate<'a, W: Write>(
         }
     }
 
+    if !inner_fields.is_empty() {
+        w.append_newline()?;
+        w.append_line("// Inner")?;
+        for field in &inner_fields {
+            let type_name = ValueType::from_bit_width(field.bit_width).name();
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                field.name, type_name, field.bit_width
+            ))?;
+        }
+    }
+
     if options.tracing {
         w.append_newline()?;
         w.append_line("__trace: T,")?;
@@ -458,6 +535,18 @@ pub fn generate<'a, W: Write>(
                     ValueType::Bool.zero_str()
                 ))?;
             }
+        }
+    }
+
+    if !inner_fields.is_empty() {
+        w.append_newline()?;
+        for field in &inner_fields {
+            w.append_line(&format!(
+                "{}: {}, // {} bit(s)",
+                field.name,
+                ValueType::from_bit_width(field.bit_width).zero_str(),
+                field.bit_width
+            ))?;
         }
     }
 
