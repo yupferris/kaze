@@ -43,7 +43,8 @@ mod code_writer;
 mod graph;
 pub mod runtime;
 pub mod sim;
+mod state_elements;
 mod validation;
-//pub mod verilog;
+pub mod verilog;
 
 pub use graph::*;

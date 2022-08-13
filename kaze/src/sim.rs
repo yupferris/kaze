@@ -2,17 +2,16 @@
 
 mod compiler;
 mod ir;
-mod state_elements;
 
 use compiler::*;
 use ir::*;
-use state_elements::*;
 
 use typed_arena::Arena;
 
 use crate::code_writer;
 use crate::graph;
 use crate::runtime::tracing::*;
+use crate::state_elements::*;
 use crate::validation::*;
 
 use std::collections::HashMap;

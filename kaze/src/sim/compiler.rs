@@ -1,7 +1,7 @@
 use super::ir::*;
-use super::state_elements::*;
 
 use crate::graph::internal_signal;
+use crate::state_elements::*;
 
 use typed_arena::Arena;
 
