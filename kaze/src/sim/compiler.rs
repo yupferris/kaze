@@ -42,22 +42,18 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
         a: &mut AssignmentContext<'expr_arena>,
     ) -> &'expr_arena Expr<'expr_arena> {
         enum Frame<'graph> {
-            Enter {
-                signal: &'graph internal_signal::InternalSignal<'graph>,
-            },
-            Leave {
-                signal: &'graph internal_signal::InternalSignal<'graph>,
-            },
+            Enter(&'graph internal_signal::InternalSignal<'graph>),
+            Leave(&'graph internal_signal::InternalSignal<'graph>),
         }
 
         let mut frames = Vec::new();
-        frames.push(Frame::Enter { signal });
+        frames.push(Frame::Enter(signal));
 
         let mut results = Vec::new();
 
         while let Some(frame) = frames.pop() {
             if let Some((key, mut expr)) = match frame {
-                Frame::Enter { signal } => {
+                Frame::Enter(signal) => {
                     let key = signal;
                     if let Some(expr) = self.signal_exprs.get(&key) {
                         results.push(*expr);
@@ -72,9 +68,7 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
 
                         internal_signal::SignalData::Input { data } => {
                             if let Some(driven_value) = data.driven_value.borrow().clone() {
-                                frames.push(Frame::Enter {
-                                    signal: driven_value,
-                                });
+                                frames.push(Frame::Enter(driven_value));
                                 None
                             } else {
                                 let bit_width = data.bit_width;
@@ -87,9 +81,7 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
                             }
                         }
                         internal_signal::SignalData::Output { data } => {
-                            frames.push(Frame::Enter {
-                                signal: data.source,
-                            });
+                            frames.push(Frame::Enter(data.source));
                             None
                         }
 
@@ -102,63 +94,63 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
                         )),
 
                         internal_signal::SignalData::UnOp { source, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: source });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
                         internal_signal::SignalData::SimpleBinOp { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         internal_signal::SignalData::AdditiveBinOp { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         internal_signal::SignalData::ComparisonBinOp { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         internal_signal::SignalData::ShiftBinOp { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
                         internal_signal::SignalData::Mul { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
                         internal_signal::SignalData::MulSigned { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
                         internal_signal::SignalData::Bits { source, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: source });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
 
                         internal_signal::SignalData::Repeat { source, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: source });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(source));
                             None
                         }
                         internal_signal::SignalData::Concat { lhs, rhs, .. } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: lhs });
-                            frames.push(Frame::Enter { signal: rhs });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(lhs));
+                            frames.push(Frame::Enter(rhs));
                             None
                         }
 
@@ -168,10 +160,10 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
                             when_false,
                             ..
                         } => {
-                            frames.push(Frame::Leave { signal });
-                            frames.push(Frame::Enter { signal: cond });
-                            frames.push(Frame::Enter { signal: when_true });
-                            frames.push(Frame::Enter { signal: when_false });
+                            frames.push(Frame::Leave(signal));
+                            frames.push(Frame::Enter(cond));
+                            frames.push(Frame::Enter(when_true));
+                            frames.push(Frame::Enter(when_false));
                             None
                         }
 
@@ -192,7 +184,7 @@ impl<'graph, 'context, 'expr_arena> Compiler<'graph, 'context, 'expr_arena> {
                         }
                     }
                 }
-                Frame::Leave { signal } => {
+                Frame::Leave(signal) => {
                     let key = signal;
 
                     match signal.data {
