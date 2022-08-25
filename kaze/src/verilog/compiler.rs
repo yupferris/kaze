@@ -248,6 +248,12 @@ impl<'graph, 'context> Compiler<'graph> {
                         }
                         internal_signal::SignalData::ShiftBinOp { op, bit_width, .. } => {
                             let lhs = results.pop().unwrap();
+                            let lhs = match op {
+                                internal_signal::ShiftBinOp::Shl | internal_signal::ShiftBinOp::Shr => lhs,
+                                internal_signal::ShiftBinOp::ShrArithmetic => Expr::Signed {
+                                    source: Box::new(lhs),
+                                },
+                            };
                             let rhs = results.pop().unwrap();
                             Some(a.gen_temp(
                                 Expr::BinOp {
