@@ -53,12 +53,15 @@ impl<'a> StateElements<'a> {
         let mut mems = HashMap::new();
         let mut regs = HashMap::new();
 
-        visit_module(m, included_ports, &mut mems, &mut regs, signal_reference_counts);
+        visit_module(
+            m,
+            included_ports,
+            &mut mems,
+            &mut regs,
+            signal_reference_counts,
+        );
 
-        StateElements {
-            mems,
-            regs,
-        }
+        StateElements { mems, regs }
     }
 }
 
@@ -82,7 +85,12 @@ fn visit_module<'a>(
             for &register in m.registers.borrow().iter() {
                 match register.data {
                     internal_signal::SignalData::Reg { ref data } => {
-                        visit_signal(data.next.borrow().unwrap(), mems, regs, signal_reference_counts);
+                        visit_signal(
+                            data.next.borrow().unwrap(),
+                            mems,
+                            regs,
+                            signal_reference_counts,
+                        );
                     }
                     _ => unreachable!(),
                 }

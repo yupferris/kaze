@@ -105,7 +105,8 @@ pub fn generate<'a, W: Write>(
                     name: field_name.clone(),
                     bit_width: input.data.bit_width,
                 });
-                let expr = c.compile_signal(input.data.driven_value.borrow().unwrap(), prop_context);
+                let expr =
+                    c.compile_signal(input.data.driven_value.borrow().unwrap(), prop_context);
                 prop_context.push(Assignment {
                     target: expr_arena.alloc(Expr::Ref {
                         name: field_name.clone(),
@@ -135,13 +136,27 @@ pub fn generate<'a, W: Write>(
                 add_trace_signal(module, name.clone(), field_name, output.data.bit_width);
             }
             for child in module.modules.borrow().iter() {
-                visit_module(child, c, inner_fields, prop_context, expr_arena, add_trace_signal)?;
+                visit_module(
+                    child,
+                    c,
+                    inner_fields,
+                    prop_context,
+                    expr_arena,
+                    add_trace_signal,
+                )?;
             }
 
             Ok(())
         }
         for child in m.modules.borrow().iter() {
-            visit_module(child, &mut c, &mut inner_fields, &mut prop_context, &expr_arena, &mut add_trace_signal)?;
+            visit_module(
+                child,
+                &mut c,
+                &mut inner_fields,
+                &mut prop_context,
+                &expr_arena,
+                &mut add_trace_signal,
+            )?;
         }
     }
     for (graph_mem, mem) in state_elements.mems.iter() {

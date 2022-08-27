@@ -51,7 +51,9 @@ impl<'graph, 'context> Compiler<'graph> {
                                 frames.push(Frame::Enter(driven_value));
                                 None
                             } else {
-                                Some(Expr::Ref { name: data.name.clone() })
+                                Some(Expr::Ref {
+                                    name: data.name.clone(),
+                                })
                             }
                         }
                         internal_signal::SignalData::Output { data } => {
@@ -249,7 +251,8 @@ impl<'graph, 'context> Compiler<'graph> {
                         internal_signal::SignalData::ShiftBinOp { op, bit_width, .. } => {
                             let lhs = results.pop().unwrap();
                             let lhs = match op {
-                                internal_signal::ShiftBinOp::Shl | internal_signal::ShiftBinOp::Shr => lhs,
+                                internal_signal::ShiftBinOp::Shl
+                                | internal_signal::ShiftBinOp::Shr => lhs,
                                 internal_signal::ShiftBinOp::ShrArithmetic => Expr::Signed {
                                     source: Box::new(lhs),
                                 },
@@ -262,7 +265,9 @@ impl<'graph, 'context> Compiler<'graph> {
                                     op: match op {
                                         internal_signal::ShiftBinOp::Shl => BinOp::Shl,
                                         internal_signal::ShiftBinOp::Shr => BinOp::Shr,
-                                        internal_signal::ShiftBinOp::ShrArithmetic => BinOp::ShrArithmetic,
+                                        internal_signal::ShiftBinOp::ShrArithmetic => {
+                                            BinOp::ShrArithmetic
+                                        }
                                     },
                                 },
                                 bit_width,
