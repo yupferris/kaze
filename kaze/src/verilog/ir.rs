@@ -51,8 +51,8 @@ impl AssignmentContext {
         }
     }
 
-    pub fn gen_temp(&mut self, expr: Expr, bit_width: u32) -> Expr {
-        let name = format!("__temp_{}", self.local_decls.len());
+    pub fn gen_temp(&mut self, expr: Expr, bit_width: u32, name_prefix: String) -> Expr {
+        let name = format!("__temp_{}_{}", name_prefix, self.local_decls.len());
 
         self.local_decls.push(NodeDecl {
             net_type: NetType::Wire,

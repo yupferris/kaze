@@ -151,7 +151,12 @@ fn visit_signal<'a>(
 
             internal_signal::SignalData::Reg { data } => {
                 let key = signal;
-                let value_name = format!("__reg_{}_{}", data.name, regs.len());
+                let value_name = format!(
+                    "__reg_{}_{}_{}",
+                    signal.module_instance_name_prefix(),
+                    data.name,
+                    regs.len()
+                );
                 let next_name = format!("{}_next", value_name);
                 regs.insert(
                     key,
@@ -220,7 +225,12 @@ fn visit_signal<'a>(
 
             internal_signal::SignalData::MemReadPortOutput { mem, .. } => {
                 let key = mem;
-                let mem_name = format!("{}_{}", mem.name, mems.len());
+                let mem_name = format!(
+                    "__mem_{}_{}_{}",
+                    signal.module_instance_name_prefix(),
+                    mem.name,
+                    mems.len()
+                );
                 // TODO: It might actually be too conservative to trace all read ports,
                 //  as we only know that the write port and _this_ read port are reachable
                 //  at this point, but we have to keep some extra state to know whether or

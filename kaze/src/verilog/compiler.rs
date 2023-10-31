@@ -171,6 +171,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     },
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::SimpleBinOp { op, bit_width, .. } => {
@@ -187,6 +188,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     },
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::AdditiveBinOp { op, bit_width, .. } => {
@@ -202,6 +204,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     },
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::ComparisonBinOp { op, .. } => {
@@ -246,6 +249,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     },
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::ShiftBinOp { op, bit_width, .. } => {
@@ -271,6 +275,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     },
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
 
@@ -284,6 +289,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     op: BinOp::Mul,
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::MulSigned { bit_width, .. } => {
@@ -302,6 +308,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     op: BinOp::Mul,
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
 
@@ -324,6 +331,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                         range_low,
                                     },
                                     bit_width,
+                                    signal.module_instance_name_prefix(),
                                 )
                             })
                         }
@@ -338,6 +346,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     count,
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
                         internal_signal::SignalData::Concat { bit_width, .. } => {
@@ -349,6 +358,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     rhs: Box::new(rhs),
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
 
@@ -363,6 +373,7 @@ impl<'graph, 'context> Compiler<'graph> {
                                     when_false: Box::new(when_false),
                                 },
                                 bit_width,
+                                signal.module_instance_name_prefix(),
                             ))
                         }
 

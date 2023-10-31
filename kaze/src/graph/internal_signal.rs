@@ -40,6 +40,26 @@ impl<'a> InternalSignal<'a> {
             SignalData::MemReadPortOutput { mem, .. } => mem.element_bit_width,
         }
     }
+
+    pub(crate) fn module_instance_name_prefix(&self) -> String {
+        let mut stack = Vec::new();
+        let mut module = Some(self.module);
+        while let Some(m) = module {
+            stack.push(m);
+            module = m.parent;
+        }
+
+        let mut ret = String::new();
+        while let Some(m) = stack.pop() {
+            ret = if ret.is_empty() {
+                m.instance_name.clone()
+            } else {
+                format!("{}_{}", ret, m.instance_name)
+            };
+        }
+
+        ret
+    }
 }
 
 impl<'a> Eq for &'a InternalSignal<'a> {}
