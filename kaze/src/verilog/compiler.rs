@@ -48,6 +48,7 @@ impl<'graph, 'context> Compiler<'graph> {
 
                         internal_signal::SignalData::Input { data } => {
                             if let Some(driven_value) = data.driven_value.borrow().clone() {
+                                frames.push(Frame::Leave(signal));
                                 frames.push(Frame::Enter(driven_value));
                                 None
                             } else {
@@ -57,6 +58,7 @@ impl<'graph, 'context> Compiler<'graph> {
                             }
                         }
                         internal_signal::SignalData::Output { data } => {
+                            frames.push(Frame::Leave(signal));
                             frames.push(Frame::Enter(data.source));
                             None
                         }
@@ -156,8 +158,26 @@ impl<'graph, 'context> Compiler<'graph> {
                     match signal.data {
                         internal_signal::SignalData::Lit { .. } => unreachable!(),
 
-                        internal_signal::SignalData::Input { .. } => unreachable!(),
-                        internal_signal::SignalData::Output { .. } => unreachable!(),
+                        internal_signal::SignalData::Input { data } => {
+                            if data.driven_value.borrow().is_none() {
+                                unreachable!();
+                            }
+
+                            Some(a.gen_temp(
+                                results.pop().unwrap(),
+                                signal.bit_width(),
+                                format!("{}_{}", signal.module_instance_name_prefix(), data.name),
+                            ))
+                        }
+                        internal_signal::SignalData::Output { data } => Some(a.gen_temp(
+                            results.pop().unwrap(),
+                            signal.bit_width(),
+                            format!(
+                                "{}_{}",
+                                data.source.module_instance_name_prefix(),
+                                data.name
+                            ),
+                        )),
 
                         internal_signal::SignalData::Reg { .. } => unreachable!(),
 
