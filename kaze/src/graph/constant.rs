@@ -17,6 +17,7 @@
 /// c.default_value(5u32);
 /// let d = m.lit(42u32, 8);
 /// ```
+#[derive(Clone)]
 pub enum Constant {
     /// Contains a boolean value
     Bool(bool),
